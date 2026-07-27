@@ -9,7 +9,12 @@ export async function getMongoClient(): Promise<MongoClient> {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error('MONGODB_URI is not set');
 
-  cachedClient = new MongoClient(uri);
+  const options = {
+    tlsInsecure: process.env.NODE_ENV === 'development',
+    retryWrites: false,
+  };
+
+  cachedClient = new MongoClient(uri, options);
   await cachedClient.connect();
 
   return cachedClient;
