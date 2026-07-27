@@ -35,10 +35,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (matches && user) {
-      const created = matches.filter((m) => m.match.creatorId === user.id).length;
+      const created = matches.filter((m) => m.creatorId === user.id).length;
       const joined = matches.filter(
         (m) =>
-          m.match.creatorId !== user.id &&
+          m.creatorId !== user.id &&
           m.roster.some((r) => r.userId === user.id)
       ).length;
       setStats({
@@ -95,9 +95,9 @@ export default function DashboardPage() {
             {matches.length > 0 ? (
               matches.slice(0, 10).map((match) => (
                 <MatchListItem
-                  key={match.match.id}
-                  match={match.match as any}
-                  isCreator={match.match.creatorId === user?.id}
+                  key={match.id}
+                  match={match}
+                  isCreator={match.creatorId === user?.id}
                 />
               ))
             ) : (

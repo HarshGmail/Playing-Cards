@@ -2,6 +2,7 @@
 
 import FriendCard from './FriendCard';
 import { useFriendsStore } from '@/lib/store/friendsStore';
+import { useUIStore } from '@/lib/store/uiStore';
 
 interface FriendsListProps {
   title?: string;
@@ -13,6 +14,15 @@ export default function FriendsList({
   onCreateMatch,
 }: FriendsListProps) {
   const { friends, removeFriend } = useFriendsStore();
+  const { addToast } = useUIStore();
+
+  const handleRemove = async (friendId: string) => {
+    try {
+      await removeFriend(friendId);
+    } catch {
+      addToast({ type: 'error', message: 'Could not remove friend. Try again.' });
+    }
+  };
 
   if (friends.length === 0) {
     return (
@@ -30,11 +40,11 @@ export default function FriendsList({
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {friends.map((friend) => (
           <FriendCard
-            key={friend.userId}
+            key={friend.id}
             name={friend.name}
             username={friend.username}
             profilePicUrl={friend.profilePicUrl}
-            onRemove={() => removeFriend(friend.userId)}
+            onRemove={() => handleRemove(friend.id)}
           />
         ))}
       </div>

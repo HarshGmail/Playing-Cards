@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import type { MatchState } from '@/types';
+import type { MatchState, MatchSummary } from '@/types';
 
 export interface MatchStoreState {
-  matches: MatchState[];
+  matches: MatchSummary[];
   currentMatch: MatchState | null;
   isLoading: boolean;
   error: string | null;
@@ -44,9 +44,18 @@ export const useMatchStore = create<MatchStoreState>((set) => ({
 
   updateMatch: (matchId: string, match: MatchState) => {
     set((state) => {
-      const updated = state.matches.map((m) =>
-        m.match.id === matchId ? match : m
-      );
+      // The list holds summaries, so project the full state down to one
+      // rather than storing mismatched shapes side by side.
+      const summary: MatchSummary = {
+        id: match.match.id,
+        name: match.match.name,
+        creatorId: match.match.creatorId,
+        status: match.match.status,
+        roundsPlayed: match.match.roundsPlayed,
+        roster: match.roster,
+        version: match.version,
+      };
+      const updated = state.matches.map((m) => (m.id === matchId ? summary : m));
       const current =
         state.currentMatch?.match.id === matchId ? match : state.currentMatch;
       return { matches: updated, currentMatch: current };

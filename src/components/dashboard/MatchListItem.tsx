@@ -1,8 +1,10 @@
 import Link from 'next/link';
-import { Match } from '@/lib/db/collections';
+import type { MatchSummary } from '@/types';
 
 interface MatchListItemProps {
-  match: Match;
+  // The API shape (id), not the DB document (_id) — this component renders
+  // data that came over the wire from GET /api/matches.
+  match: MatchSummary;
   leaderboardPosition?: number;
   isCreator?: boolean;
 }
@@ -17,7 +19,7 @@ export default function MatchListItem({
 
   return (
     <Link
-      href={`/matches/${match._id?.toString()}`}
+      href={`/matches/${match.id}`}
       className="block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-md transition-all"
     >
       <div className="flex items-start justify-between mb-2">

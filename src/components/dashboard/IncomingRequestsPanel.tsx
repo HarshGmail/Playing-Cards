@@ -1,9 +1,31 @@
 'use client';
 
 import { useFriendsStore } from '@/lib/store/friendsStore';
+import { useUIStore } from '@/lib/store/uiStore';
 
 export default function IncomingRequestsPanel() {
   const { incoming, acceptRequest, declineRequest } = useFriendsStore();
+  const { addToast } = useUIStore();
+
+  const respond = async (
+    action: 'accept' | 'decline',
+    requestId: string
+  ) => {
+    try {
+      await (action === 'accept'
+        ? acceptRequest(requestId)
+        : declineRequest(requestId));
+      addToast({
+        type: 'success',
+        message: action === 'accept' ? 'Friend request accepted!' : 'Request declined.',
+      });
+    } catch {
+      addToast({
+        type: 'error',
+        message: `Could not ${action} the request. Try again.`,
+      });
+    }
+  };
 
   if (incoming.length === 0) {
     return null;
@@ -30,13 +52,13 @@ export default function IncomingRequestsPanel() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => acceptRequest(req.id)}
+                onClick={() => respond('accept', req.id)}
                 className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium"
               >
                 Accept
               </button>
               <button
-                onClick={() => declineRequest(req.id)}
+                onClick={() => respond('decline', req.id)}
                 className="px-3 py-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded text-sm font-medium"
               >
                 Decline

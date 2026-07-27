@@ -49,7 +49,7 @@ export default function NotificationsPage() {
 
   const handleMarkAllRead = async () => {
     try {
-      const res = await fetch('/api/notifications/mark-all-read', { method: 'POST' });
+      const res = await fetch('/api/notifications', { method: 'POST' });
       if (res.ok) {
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       }

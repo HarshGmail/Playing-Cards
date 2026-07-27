@@ -22,6 +22,21 @@ export interface Match {
   endedAt: string | null;
 }
 
+/**
+ * Shape returned by GET /api/matches. The list endpoint returns flat match
+ * summaries — it does not compute scores or a leaderboard, so it is not a
+ * MatchState (which is what GET /api/matches/[id] returns).
+ */
+export interface MatchSummary {
+  id: string;
+  name: string;
+  creatorId: string;
+  status: 'active' | 'ended';
+  roundsPlayed: number;
+  roster: RosterEntry[];
+  version: number;
+}
+
 export interface RosterEntry {
   userId: string;
   userName: string;

@@ -48,10 +48,14 @@ export default function MyProfilePage() {
     }
   };
 
-  const handleShareProfile = () => {
+  const handleShareProfile = async () => {
     const url = `${window.location.origin}/profile/${user?.username}`;
-    navigator.clipboard.writeText(url);
-    alert('Profile link copied to clipboard!');
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('Profile link copied to clipboard!');
+    } catch {
+      alert(`Could not copy automatically. Your profile link is: ${url}`);
+    }
   };
 
   if (loading) {

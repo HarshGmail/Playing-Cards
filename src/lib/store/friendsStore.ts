@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 
 export interface Friend {
-  userId: string;
+  // Matches the `id` key returned by GET /api/friends.
+  id: string;
   name: string;
   username: string;
   profilePicUrl: string | null;
@@ -81,30 +82,37 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       await get().fetchFriends();
     } catch (err) {
       set({ error: 'Failed to remove friend' });
+      throw err;
     }
   },
 
   acceptRequest: async (requestId: string) => {
     try {
-      const res = await fetch(`/api/friends/requests/${requestId}/accept`, {
+      const res = await fetch(`/api/friends/requests/${requestId}`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'accept' }),
       });
       if (!res.ok) throw new Error('Failed to accept request');
       await Promise.all([get().fetchFriends(), get().fetchIncomingRequests()]);
     } catch (err) {
       set({ error: 'Failed to accept request' });
+      throw err;
     }
   },
 
   declineRequest: async (requestId: string) => {
     try {
-      const res = await fetch(`/api/friends/requests/${requestId}/decline`, {
+      const res = await fetch(`/api/friends/requests/${requestId}`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'decline' }),
       });
       if (!res.ok) throw new Error('Failed to decline request');
       await get().fetchIncomingRequests();
     } catch (err) {
       set({ error: 'Failed to decline request' });
+      throw err;
     }
   },
 }));

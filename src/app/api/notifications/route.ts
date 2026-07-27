@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { userId } = authResult;
-    logApiRequest(requestId, 'POST /api/notifications/mark-all-read', userId, {});
+    logApiRequest(requestId, 'POST /api/notifications (mark all read)', userId, {});
 
     const notificationsCol = await getNotifications();
     const result = await notificationsCol.updateMany(

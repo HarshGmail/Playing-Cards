@@ -72,7 +72,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAllAsRead: async () => {
     try {
-      const res = await fetch('/api/notifications/mark-all-read', {
+      // Mark-all-read is POST on the collection itself; there is no
+      // /mark-all-read subroute (that URL resolves to [id], which is PATCH-only).
+      const res = await fetch('/api/notifications', {
         method: 'POST',
       });
       if (!res.ok) throw new Error('Failed to mark all as read');
