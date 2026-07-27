@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuthStore } from '@/lib/store/authStore';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -10,6 +11,7 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const router = useRouter();
+  const setUser = useAuthStore((s) => s.setUser);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -33,6 +35,10 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         setError(data.error || 'Login failed');
         return;
       }
+
+      // Seed the auth store from the login response so the (app) layout does
+      // not have to re-resolve the session before it will render.
+      setUser(data.user);
 
       if (onSuccess) {
         onSuccess();

@@ -32,6 +32,13 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   error: null,
 
   fetchNotifications: async () => {
+    // Skip if a previous fetch is still in flight (a slow request shouldn't
+    // stack with the next poll tick) or the tab is hidden/offline.
+    if (get().isLoading) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+
+    set({ isLoading: true });
     try {
       const res = await fetch('/api/notifications');
       if (!res.ok) throw new Error('Failed to fetch notifications');
@@ -40,9 +47,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       set({
         notifications,
         unreadCount: notifications.filter((n: Notification) => !n.read).length,
+        error: null,
       });
     } catch (err) {
       set({ error: 'Failed to load notifications' });
+    } finally {
+      set({ isLoading: false });
     }
   },
 

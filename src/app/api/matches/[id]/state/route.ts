@@ -4,6 +4,7 @@ import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { ObjectId } from 'mongodb';
+import { buildAggregates, computeLeaderboard, LeaderboardEntry as DomainLeaderboardEntry } from '@/lib/domain/ranking';
 
 export async function GET(
   request: NextRequest,
@@ -90,70 +91,34 @@ export async function GET(
   }
 }
 
-interface LeaderboardEntry {
-  userId: string;
-  userName: string;
-  totalScore: number;
-  roundScores: number[];
-  rank: number;
-  status: 'active' | 'dnf';
-}
+function calculateLeaderboard(match: any, scores: any[]): DomainLeaderboardEntry[] {
+  // Group scores by playerId, in round order. Rounds before a player joined
+  // never have a score doc (they weren't in the roster yet), and rounds
+  // after a DNF are excluded so their total/average freeze at the DNF point
+  // — both fall out naturally from only including rounds that actually
+  // exist for that player, no zero-padding needed.
+  const scoresByPlayer = new Map<string, { scores: number[]; isDnf: boolean }>();
 
-function calculateLeaderboard(match: any, scores: any[]): LeaderboardEntry[] {
-  // Group scores by userId
-  const playerScores = new Map<string, number[]>();
-
-  // Initialize all active players
   match.roster.forEach((r: any) => {
-    if (r.status === 'active') {
-      playerScores.set(r.userId, []);
-    }
+    scoresByPlayer.set(r.userId, { scores: [], isDnf: r.status === 'dnf' });
   });
 
-  // Accumulate scores by round
-  scores.forEach((score: any) => {
-    if (!playerScores.has(score.playerId)) {
-      playerScores.set(score.playerId, []);
+  const sortedScores = [...scores].sort((a, b) => a.round - b.round);
+  for (const score of sortedScores) {
+    const entry = scoresByPlayer.get(score.playerId);
+    if (!entry) continue;
+    const rosterEntry = match.roster.find((r: any) => r.userId === score.playerId);
+    if (rosterEntry?.dnfAfterRound != null && score.round > rosterEntry.dnfAfterRound) {
+      continue;
     }
-    const roundScores = playerScores.get(score.playerId)!;
-    // Ensure array has enough space for this round
-    while (roundScores.length < score.round) {
-      roundScores.push(0);
-    }
-    roundScores[score.round - 1] = score.value;
-  });
+    entry.scores.push(score.value);
+  }
 
-  // Calculate totals and create entries
-  const entries: LeaderboardEntry[] = Array.from(playerScores.entries()).map(
-    ([userId, roundScores]) => {
-      const rosterEntry = match.roster.find((r: any) => r.userId === userId);
-      const totalScore = roundScores.reduce((sum: number, v: number) => sum + v, 0);
+  const aggregates = buildAggregates(scoresByPlayer);
+  const leaderboard = computeLeaderboard(aggregates, match.rankPreference, match.tiebreakers);
 
-      return {
-        userId,
-        userName: rosterEntry?.userName || 'Unknown',
-        totalScore,
-        roundScores,
-        rank: 0, // Will be set after sorting
-        status: rosterEntry?.status || 'active',
-      };
-    }
-  );
-
-  // Sort by total score based on rank preference
-  const isLowestFirst = match.rankPreference === 'lowest-first';
-  entries.sort((a, b) => {
-    if (isLowestFirst) {
-      return a.totalScore - b.totalScore;
-    } else {
-      return b.totalScore - a.totalScore;
-    }
-  });
-
-  // Assign ranks
-  entries.forEach((entry, idx) => {
-    entry.rank = idx + 1;
-  });
-
-  return entries;
+  return leaderboard.map((entry) => ({
+    ...entry,
+    name: match.roster.find((r: any) => r.userId === entry.playerId)?.userName || 'Unknown',
+  }));
 }

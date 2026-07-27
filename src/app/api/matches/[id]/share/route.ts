@@ -70,9 +70,10 @@ export async function POST(
       code = generateCode();
     }
 
-    // Create share link (valid for 30 days)
+    // Share links are short-lived (15 min), unlimited uses within that
+    // window, and revocable by the creator via DELETE.
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 
     const result = await shareLinksCol.insertOne({
       matchId: params.id,
@@ -94,6 +95,65 @@ export async function POST(
       },
       201
     );
+  } catch (err) {
+    logError(requestId, err);
+    logApiResponse(requestId, 500, Date.now() - startTime);
+    return error('Internal server error', 'INTERNAL_ERROR', 500);
+  }
+}
+
+/**
+ * DELETE /api/matches/[id]/share
+ * Revoke all active share codes for the match. Only creator can revoke.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const startTime = Date.now();
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
+
+  try {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
+      logApiResponse(requestId, 401, Date.now() - startTime);
+      return authResult;
+    }
+    const { userId } = authResult;
+
+    logApiRequest(requestId, `DELETE /api/matches/${params.id}/share`, userId, {
+      matchId: params.id,
+    });
+
+    if (!ObjectId.isValid(params.id)) {
+      logApiResponse(requestId, 404, Date.now() - startTime);
+      return notFound();
+    }
+
+    const matchesCol = await getMatches();
+    const match = await matchesCol.findOne({
+      _id: new ObjectId(params.id),
+      deletedAt: null,
+    });
+
+    if (!match) {
+      logApiResponse(requestId, 404, Date.now() - startTime);
+      return notFound();
+    }
+
+    if (match.creatorId !== userId) {
+      logApiResponse(requestId, 403, Date.now() - startTime);
+      return forbidden();
+    }
+
+    const shareLinksCol = await getShareLinks();
+    await shareLinksCol.updateMany(
+      { matchId: params.id, revokedAt: null },
+      { $set: { revokedAt: new Date() } }
+    );
+
+    logApiResponse(requestId, 200, Date.now() - startTime);
+    return success({ matchId: params.id, revoked: true });
   } catch (err) {
     logError(requestId, err);
     logApiResponse(requestId, 500, Date.now() - startTime);

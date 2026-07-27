@@ -90,8 +90,8 @@ export async function PATCH(
           $set: {
             'roster.$.status': 'dnf',
             'roster.$.dnfAfterRound': match.roundsPlayed,
-            version: match.version + 1,
           },
+          $inc: { version: 1 },
         }
       );
     } else if (action === 'rejoin') {
@@ -107,8 +107,8 @@ export async function PATCH(
           $set: {
             'roster.$.status': 'active',
             'roster.$.dnfAfterRound': null,
-            version: match.version + 1,
           },
+          $inc: { version: 1 },
         }
       );
     }

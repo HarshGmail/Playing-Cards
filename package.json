@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node scripts/with-corp-ca.cjs dev",
+    "build": "node scripts/with-corp-ca.cjs build",
+    "start": "node scripts/with-corp-ca.cjs start",
     "lint": "next lint",
     "test": "vitest"
   },

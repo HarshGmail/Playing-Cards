@@ -4,6 +4,7 @@ import { getMatches, getScores } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { submitRoundSchema } from '@/lib/schemas/match';
+import { withTransaction } from '@/lib/db/client';
 import { ObjectId } from 'mongodb';
 
 /**
@@ -99,18 +100,17 @@ export async function POST(
       editHistory: [],
     }));
 
-    await scoresCol.insertMany(scoreDocuments);
-
-    // Update match with new round count and version
-    await matchesCol.updateOne(
-      { _id: new ObjectId(params.id) },
-      {
-        $set: {
-          roundsPlayed: nextRound,
-          version: match.version + 1,
+    await withTransaction(async (session) => {
+      await scoresCol.insertMany(scoreDocuments, { session });
+      await matchesCol.updateOne(
+        { _id: new ObjectId(params.id) },
+        {
+          $set: { roundsPlayed: nextRound },
+          $inc: { version: 1 },
         },
-      }
-    );
+        { session }
+      );
+    });
 
     logApiResponse(requestId, 201, Date.now() - startTime);
 

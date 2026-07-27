@@ -10,8 +10,8 @@ export default function CreateMatchPage() {
   const [formData, setFormData] = useState({
     name: '',
     creatorRole: 'score-only',
-    rankPreference: 'highest-first',
-    playerIds: [] as string[],
+    rankPreference: 'highest-first' as 'highest-first' | 'lowest-first',
+    tiebreakers: [] as string[],
   });
 
   const handleStep1 = (data: {
@@ -19,12 +19,16 @@ export default function CreateMatchPage() {
     creatorRole: string;
     rankPreference: string;
   }) => {
-    setFormData((prev) => ({ ...prev, ...data }));
+    setFormData((prev) => ({
+      ...prev,
+      ...data,
+      rankPreference: data.rankPreference as 'highest-first' | 'lowest-first',
+    }));
     setStep(2);
   };
 
-  const handleStep2 = (playerIds: string[]) => {
-    setFormData((prev) => ({ ...prev, playerIds }));
+  const handleStep2 = (tiebreakers: string[]) => {
+    setFormData((prev) => ({ ...prev, tiebreakers }));
     setStep(3);
   };
 
@@ -69,7 +73,7 @@ export default function CreateMatchPage() {
           {step === 1 && <CreateMatchStep1 onNext={handleStep1} />}
           {step === 2 && (
             <CreateMatchStep2
-              creatorRole={formData.creatorRole}
+              rankPreference={formData.rankPreference}
               onNext={handleStep2}
               onBack={() => setStep(1)}
             />
@@ -79,7 +83,7 @@ export default function CreateMatchPage() {
               name={formData.name}
               creatorRole={formData.creatorRole}
               rankPreference={formData.rankPreference}
-              playerIds={formData.playerIds}
+              tiebreakers={formData.tiebreakers}
               onBack={() => setStep(2)}
             />
           )}

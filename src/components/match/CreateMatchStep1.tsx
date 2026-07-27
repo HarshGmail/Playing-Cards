@@ -74,7 +74,7 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
         onClick={handleNext}
         className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
       >
-        Next: Add Players
+        Next: Tiebreakers
       </button>
     </div>
   );

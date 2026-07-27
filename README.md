@@ -44,6 +44,58 @@ npm run build
 npm run start
 ```
 
+### Behind a corporate VPN / TLS-intercepting proxy
+
+If the app starts fine but every database-backed request fails with:
+
+```text
+MongoServerSelectionError: self-signed certificate in certificate chain
+```
+
+…that is **not** a network problem and **not** an Atlas IP access-list problem
+(adding `0.0.0.0/0` will not fix it). The TCP connection reaches Atlas fine.
+
+A corporate proxy is intercepting the TLS handshake and re-signing Atlas's
+certificate with an internal root CA. Your OS trusts that CA, but **Node ships
+its own bundled CA list and ignores the system trust store**, so the MongoDB
+driver rejects the chain.
+
+**There is nothing to configure** — `npm run dev`, `npm run build`, and
+`npm run start` handle it. But it is worth knowing why the fix has the shape it
+does, because the obvious places to put it do not work.
+
+Node can trust the OS certificate store, but only when started with
+`--use-system-ca`. That flag is **opt-in**, so pinning Node 24 via `.nvmrc` is
+not enough on its own — it grants the capability, not the behaviour. And since
+Node builds its TLS root store during process startup, the flag cannot be
+applied from `.env.local` (Next reads that long after boot) or from application
+code such as `src/lib/db/client.ts`. It has to be in place *before Node starts*.
+
+That is the whole job of `scripts/with-corp-ca.cjs`: it re-spawns Next as
+`node --use-system-ca <next-bin>`, and the three npm scripts route through it.
+Passing the flag as a node argument rather than via `NODE_OPTIONS` keeps any
+`NODE_OPTIONS` you already have set intact.
+
+Off such a network the flag is harmless — it *adds* the OS roots to Node's own
+bundled list rather than replacing it, so public certificates validate exactly
+as before and the same setup works on and off VPN.
+
+Requires Node ≥ 22.15 (`.nvmrc` pins 24); run `nvm use` first. If you must use
+Node 18 or 20, prepend `NODE_EXTRA_CA_CERTS=/path/to/root-ca.pem` instead, where
+that PEM holds your proxy's root CA. To identify and export it on macOS:
+
+```bash
+# Which CA is re-signing the connection? (look at the last "i:" line)
+echo | openssl s_client -connect <cluster-host>:27017 2>&1 | grep "i:"
+
+# Export it
+security find-certificate -a -c "<RootCAName>" -p \
+  /Library/Keychains/System.keychain > root-ca.pem
+```
+
+If a TLS trust failure does occur, the driver now fails fast with an actionable
+message instead of retrying a deterministic error five times (~53s per request).
+
 ---
 
 ## 📋 Implemented Features

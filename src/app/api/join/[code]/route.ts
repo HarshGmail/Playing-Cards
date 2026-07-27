@@ -152,7 +152,7 @@ export async function POST(
       { _id: shareLink.matchId },
       {
         $push: { roster: newRosterEntry },
-        $set: { version: match.version + 1 },
+        $inc: { version: 1 },
       }
     );
 

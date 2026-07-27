@@ -100,9 +100,7 @@ export async function POST(
         $push: {
           roster: newRosterEntry,
         },
-        $set: {
-          version: match.version + 1,
-        },
+        $inc: { version: 1 },
       }
     );
 

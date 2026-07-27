@@ -111,17 +111,24 @@ export const POST = createHandler(
       return error('Friend request already pending', 'REQUEST_PENDING', 409);
     }
 
-    const result = await friendRequestsCol.insertOne({
-      fromUserId: userId,
-      toUserId,
-      status: 'pending' as const,
-      createdAt: new Date(),
-      respondedAt: null,
-    });
+    // A prior request between this exact pair (e.g. previously declined) already
+    // holds the unique {fromUserId, toUserId} index slot, so re-request by
+    // resetting it to pending rather than inserting a fresh document.
+    const updated = await friendRequestsCol.findOneAndUpdate(
+      { fromUserId: userId, toUserId },
+      {
+        $set: {
+          status: 'pending' as const,
+          createdAt: new Date(),
+          respondedAt: null,
+        },
+      },
+      { upsert: true, returnDocument: 'after' }
+    );
 
     return success(
       {
-        requestId: result.insertedId.toString(),
+        requestId: updated?._id?.toString(),
         fromUserId: userId,
         toUserId,
         status: 'pending',

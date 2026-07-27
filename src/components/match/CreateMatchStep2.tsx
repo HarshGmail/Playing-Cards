@@ -1,118 +1,94 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
-
-interface Player {
-  id: string;
-  name: string;
-  username: string;
-}
+import { ChevronUp, ChevronDown } from 'lucide-react';
 
 interface Step2Props {
-  creatorRole: string;
-  onNext: (playerIds: string[]) => void;
+  rankPreference: 'highest-first' | 'lowest-first';
+  onNext: (tiebreakers: string[]) => void;
   onBack: () => void;
 }
 
-export default function CreateMatchStep2({ creatorRole, onNext, onBack }: Step2Props) {
-  const [selected, setSelected] = useState<string[]>(creatorRole === 'score-and-play' ? ['self'] : []);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+const LABELS: Record<string, string> = {
+  'lower-average': 'Lower average wins',
+  'higher-average': 'Higher average wins',
+  'more-consistent': 'More consistent (lower std. deviation)',
+  'less-consistent': 'Less consistent (higher std. deviation)',
+};
 
+function defaultOrderFor(rankPreference: 'highest-first' | 'lowest-first'): string[] {
+  const averageCriterion = rankPreference === 'highest-first' ? 'higher-average' : 'lower-average';
+  return ['more-consistent', averageCriterion, 'less-consistent'];
+}
+
+export default function CreateMatchStep2({ rankPreference, onNext, onBack }: Step2Props) {
+  const [order, setOrder] = useState<string[]>(() => defaultOrderFor(rankPreference));
+
+  // If the user goes back to Step 1 and flips rank preference, the average
+  // criterion flips too — re-filter and reset to default rather than leaving
+  // a contradictory criterion (e.g. "higher-average" under lowest-first) selected.
   useEffect(() => {
-    const search = async () => {
-      if (!searchQuery.trim()) {
-        setSearchResults([]);
-        return;
-      }
-      setLoading(true);
-      try {
-        const res = await fetch('/api/users/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: searchQuery, limit: 10 }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setSearchResults(data.results || []);
-        }
-      } catch (err) {
-        setError('Failed to search users');
-      } finally {
-        setLoading(false);
-      }
-    };
+    setOrder(defaultOrderFor(rankPreference));
+  }, [rankPreference]);
 
-    const timer = setTimeout(search, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const togglePlayer = (id: string) => {
-    if (id === 'self') return;
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
-  };
-
-  const handleNext = () => {
-    if (selected.length === 0) {
-      setError('Add at least one player');
-      return;
-    }
-    // Remove 'self' marker, send actual player IDs
-    const playerIds = selected.filter((p) => p !== 'self');
-    onNext(playerIds);
+  const move = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= order.length) return;
+    setOrder((prev) => {
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Search Players
-        </label>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by name or username..."
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
-        />
+        <h2 className="font-medium text-gray-900 dark:text-white mb-1">Tiebreaker order</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          When totals tie, these criteria are applied in order until one separates the players.
+        </p>
+
+        <div className="space-y-2">
+          {order.map((criterion, index) => (
+            <div
+              key={criterion}
+              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold">
+                  {index + 1}
+                </span>
+                <span className="text-gray-900 dark:text-white">{LABELS[criterion]}</span>
+              </div>
+              <div className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => move(index, -1)}
+                  disabled={index === 0}
+                  aria-label="Move up"
+                  className="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:hover:text-gray-600"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(index, 1)}
+                  disabled={index === order.length - 1}
+                  aria-label="Move down"
+                  className="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:hover:text-gray-600"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+          Average only separates players who played a different number of rounds.
+        </p>
       </div>
-
-      {selected.length > 0 && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-            {selected.length} player(s) selected
-          </p>
-        </div>
-      )}
-
-      {searchResults.length > 0 && (
-        <div>
-          <h3 className="font-medium text-gray-900 dark:text-white mb-3">Search Results</h3>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {searchResults.map((player) => (
-              <button
-                key={player.id}
-                onClick={() => togglePlayer(player.id)}
-                className={`w-full text-left p-3 rounded-lg border transition ${
-                  selected.includes(player.id)
-                    ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-600'
-                    : 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:border-blue-400'
-                }`}
-              >
-                <p className="font-medium text-gray-900 dark:text-white">{player.name}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">@{player.username}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {error && <p className="text-red-500 text-sm">{error}</p>}
 
       <div className="flex gap-3">
         <button
@@ -122,10 +98,10 @@ export default function CreateMatchStep2({ creatorRole, onNext, onBack }: Step2P
           Back
         </button>
         <button
-          onClick={handleNext}
+          onClick={() => onNext(order)}
           className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
         >
-          Next: Review
+          Next: Players
         </button>
       </div>
     </div>

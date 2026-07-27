@@ -4,6 +4,7 @@ import { getMatches, getScores } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { updateRoundSchema } from '@/lib/schemas/match';
+import { withTransaction } from '@/lib/db/client';
 import { ObjectId } from 'mongodb';
 
 /**
@@ -112,42 +113,41 @@ export async function PUT(
       existingScores.map((s) => [s.playerId, s])
     );
 
-    // Update each score with edit history
-    for (const scoreUpdate of parsed.data.scores) {
-      const existing = existingByPlayerId.get(scoreUpdate.playerId);
+    // Update each score with edit history, and bump version, atomically
+    await withTransaction(async (session) => {
+      for (const scoreUpdate of parsed.data.scores) {
+        const existing = existingByPlayerId.get(scoreUpdate.playerId);
 
-      if (existing) {
-        const editEntry = {
-          from: existing.value,
-          to: scoreUpdate.value,
-          at: new Date(),
-          by: userId,
-        };
+        if (existing) {
+          const editEntry = {
+            from: existing.value,
+            to: scoreUpdate.value,
+            at: new Date(),
+            by: userId,
+          };
 
-        await scoresCol.updateOne(
-          { _id: existing._id },
-          {
-            $set: {
-              value: scoreUpdate.value,
-              enteredAt: new Date(),
+          await scoresCol.updateOne(
+            { _id: existing._id },
+            {
+              $set: {
+                value: scoreUpdate.value,
+                enteredAt: new Date(),
+              },
+              $push: {
+                editHistory: editEntry,
+              },
             },
-            $push: {
-              editHistory: editEntry,
-            },
-          }
-        );
+            { session }
+          );
+        }
       }
-    }
 
-    // Increment version
-    await matchesCol.updateOne(
-      { _id: new ObjectId(params.id) },
-      {
-        $set: {
-          version: match.version + 1,
-        },
-      }
-    );
+      await matchesCol.updateOne(
+        { _id: new ObjectId(params.id) },
+        { $inc: { version: 1 } },
+        { session }
+      );
+    });
 
     logApiResponse(requestId, 200, Date.now() - startTime);
 

@@ -44,14 +44,23 @@ export default function AppLayout({
   }, [setTheme]);
 
   useEffect(() => {
-    // Poll notifications every 20 seconds
-    if (user) {
-      fetchNotifications();
-      const interval = setInterval(() => {
-        fetchNotifications();
-      }, 20000);
-      return () => clearInterval(interval);
-    }
+    // Poll notifications every 20 seconds; also refetch on regaining
+    // visibility/connectivity so a backgrounded tab catches up immediately.
+    if (!user) return;
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 20000);
+    const handleVisibility = () => {
+      if (!document.hidden) fetchNotifications();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('online', fetchNotifications);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('online', fetchNotifications);
+    };
   }, [user, fetchNotifications]);
 
   if (isLoading) {

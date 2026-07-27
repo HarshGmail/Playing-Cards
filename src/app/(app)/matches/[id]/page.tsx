@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useAuth } from '@/lib/hooks/useAuth';
 import Leaderboard from '@/components/match/Leaderboard';
 import Scoreboard from '@/components/match/Scoreboard';
 import RoundForm from '@/components/match/RoundForm';
 import SubmittedRounds from '@/components/match/SubmittedRounds';
+import RosterPanel from '@/components/match/RosterPanel';
+import JoinRequestsPanel from '@/components/match/JoinRequestsPanel';
 
 export default function MatchPage() {
   const params = useParams();
   const matchId = params.id as string;
+  const { user } = useAuth();
   const [tab, setTab] = useState('leaderboard');
   const [match, setMatch] = useState<any>(null);
   const [state, setState] = useState<any>(null);
@@ -17,48 +21,74 @@ export default function MatchPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [matchRes, stateRes, roundsRes] = await Promise.all([
-          fetch(`/api/matches/${matchId}`),
-          fetch(`/api/matches/${matchId}/state`),
-          fetch(`/api/matches/${matchId}/rounds`),
-        ]);
+  const isFetchingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-        if (!matchRes.ok) throw new Error('Match not found');
+  const fetchData = useCallback(async () => {
+    // Skip this tick entirely if a previous one is still in flight, the tab
+    // is hidden, or we're offline — prevents unbounded concurrent requests
+    // piling up when a fetch is slow (the corporate-network TLS handshake
+    // can easily exceed the 5s poll interval).
+    if (isFetchingRef.current) return;
+    if (document.hidden) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
 
-        const matchData = await matchRes.json();
-        const stateData = stateRes.ok ? await stateRes.json() : null;
-        const roundsData = roundsRes.ok ? await roundsRes.json() : { rounds: [] };
+    isFetchingRef.current = true;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-        setMatch(matchData.match);
-        setState(stateData?.state);
-        setRounds(roundsData.rounds);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load match');
-      } finally {
-        setLoading(false);
-      }
-    };
+    try {
+      const [matchRes, stateRes, roundsRes] = await Promise.all([
+        fetch(`/api/matches/${matchId}`, { signal: controller.signal }),
+        fetch(`/api/matches/${matchId}/state`, { signal: controller.signal }),
+        fetch(`/api/matches/${matchId}/rounds`, { signal: controller.signal }),
+      ]);
 
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
+      if (!matchRes.ok) throw new Error('Match not found');
+
+      const matchData = await matchRes.json();
+      const stateData = stateRes.ok ? await stateRes.json() : null;
+      const roundsData = roundsRes.ok ? await roundsRes.json() : { rounds: [] };
+
+      setMatch(matchData.match);
+      setState(stateData?.state);
+      setRounds(roundsData.rounds);
+      setError('');
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setError(err instanceof Error ? err.message : 'Failed to load match');
+    } finally {
+      setLoading(false);
+      isFetchingRef.current = false;
+    }
   }, [matchId]);
 
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    const handleVisibility = () => {
+      if (!document.hidden) fetchData();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('online', fetchData);
+
+    return () => {
+      clearInterval(interval);
+      abortRef.current?.abort();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('online', fetchData);
+    };
+  }, [fetchData]);
+
   const handleRoundSubmit = async (scores: any[]) => {
-    try {
-      const res = await fetch(`/api/matches/${matchId}/rounds`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scores }),
-      });
-      if (!res.ok) throw new Error('Failed to submit round');
-      window.location.reload();
-    } catch (err) {
-      throw err;
-    }
+    const res = await fetch(`/api/matches/${matchId}/rounds`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scores }),
+    });
+    if (!res.ok) throw new Error('Failed to submit round');
+    await fetchData();
   };
 
   if (loading) {
@@ -80,6 +110,10 @@ export default function MatchPage() {
   const playerNames = Object.fromEntries(
     match.roster.map((r: any) => [r.userId, r.userName])
   );
+  const isCreator = !!user && match.creatorId === user.id;
+  const tabs = isCreator
+    ? ['leaderboard', 'scoreboard', 'rounds', 'form', 'roster']
+    : ['leaderboard', 'scoreboard', 'rounds', 'roster'];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
@@ -91,8 +125,14 @@ export default function MatchPage() {
           Round {match.roundsPlayed} • {match.roster.length} players • {match.status}
         </p>
 
+        {isCreator && (
+          <div className="mb-6">
+            <JoinRequestsPanel matchId={matchId} isCreator={isCreator} />
+          </div>
+        )}
+
         <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
-          {['leaderboard', 'scoreboard', 'rounds', 'form'].map((t) => (
+          {tabs.map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -112,20 +152,28 @@ export default function MatchPage() {
             <Leaderboard entries={state.leaderboard} />
           )}
           {tab === 'scoreboard' && (
-            <Scoreboard rounds={rounds} players={match.roster} />
+            <Scoreboard rounds={rounds} players={match.roster} leaderboard={state?.leaderboard} />
           )}
           {tab === 'rounds' && (
             <SubmittedRounds
               rounds={rounds}
               playerNames={playerNames}
-              isCreator={match.creatorId === 'currentUserId'}
+              isCreator={isCreator}
             />
           )}
-          {tab === 'form' && (
+          {tab === 'form' && isCreator && (
             <RoundForm
               round={match.roundsPlayed + 1}
               players={match.roster}
               onSubmit={handleRoundSubmit}
+            />
+          )}
+          {tab === 'roster' && (
+            <RosterPanel
+              matchId={matchId}
+              roster={match.roster}
+              isCreator={isCreator}
+              onChange={fetchData}
             />
           )}
         </div>

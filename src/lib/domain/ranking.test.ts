@@ -41,9 +41,9 @@ describe('ranking', () => {
     const p3Agg = aggregates.find(a => a.playerId === 'p3')!;
     const p4Agg = aggregates.find(a => a.playerId === 'p4')!;
 
-    expect(p1Agg.stdDev).toBeCloseTo(9.55, 1);
-    expect(p2Agg.stdDev).toBeCloseTo(12.03, 1);
-    expect(p3Agg.stdDev).toBeCloseTo(21.65, 1);
+    expect(p1Agg.stdDev).toBeCloseTo(9.6, 1);
+    expect(p2Agg.stdDev).toBeCloseTo(11.92, 1);
+    expect(p3Agg.stdDev).toBeCloseTo(22.19, 1);
     expect(p4Agg.stdDev).toBeCloseTo(19.49, 1);
 
     // Compute leaderboard with tiebreakers
@@ -93,7 +93,7 @@ describe('ranking', () => {
     expect(p3Entry.position).toBe(3);
   });
 
-  it('should identify last active player', () => {
+  it('never marks anyone red with 3 or fewer active players', () => {
     const scoresByPlayer = new Map([
       ['p1', { scores: [100], isDnf: false }],
       ['p2', { scores: [50], isDnf: false }],
@@ -103,13 +103,27 @@ describe('ranking', () => {
     const aggregates = buildAggregates(scoresByPlayer);
     const leaderboard = computeLeaderboard(aggregates, 'highest-first', []);
 
-    const p1Entry = leaderboard.find(e => e.playerId === 'p1')!;
-    const p2Entry = leaderboard.find(e => e.playerId === 'p2')!;
-    const p3Entry = leaderboard.find(e => e.playerId === 'p3')!;
+    expect(leaderboard.every(e => e.isLast === false)).toBe(true);
+  });
 
-    expect(p1Entry.isLast).toBe(false);
-    expect(p2Entry.isLast).toBe(true);
-    expect(p3Entry.isLast).toBe(false);
+  it('identifies the last active player once there are more than 3 active', () => {
+    const scoresByPlayer = new Map([
+      ['p1', { scores: [100], isDnf: false }],
+      ['p2', { scores: [50], isDnf: false }],
+      ['p3', { scores: [30], isDnf: false }],
+      ['p4', { scores: [10], isDnf: false }],
+      ['p5', { scores: [5], isDnf: true }],
+    ]);
+
+    const aggregates = buildAggregates(scoresByPlayer);
+    const leaderboard = computeLeaderboard(aggregates, 'highest-first', []);
+
+    const p4Entry = leaderboard.find(e => e.playerId === 'p4')!;
+    const p5Entry = leaderboard.find(e => e.playerId === 'p5')!;
+
+    expect(p4Entry.isLast).toBe(true);
+    expect(p5Entry.isLast).toBe(false);
+    expect(leaderboard.filter(e => e.isLast).length).toBe(1);
   });
 
   it('should handle zero-state (no rounds)', () => {

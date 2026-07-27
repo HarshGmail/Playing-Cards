@@ -9,9 +9,12 @@ export async function middleware(request: NextRequest) {
     '/api/auth/signup',
     '/api/auth/logout',
     '/api/auth/username-available',
+    '/api/auth/recover/verify',
+    '/api/auth/recover/reset',
   ];
   const isPublicRoute =
     request.nextUrl.pathname === '/' ||
+    request.nextUrl.pathname === '/forgot-password' ||
     publicAuthRoutes.includes(request.nextUrl.pathname) ||
     request.nextUrl.pathname.startsWith('/join/');
 

@@ -79,7 +79,10 @@ export function computeLeaderboard(
     positions.push(currentPosition);
   }
 
-  // Determine who is last (among active players only)
+  // Determine who is last (among active players only). With 3 or fewer
+  // active players, nobody is singled out as "last" — red is reserved for
+  // matches where being last is meaningfully distinct from 4th+.
+  const activeCount = sorted.filter((agg) => !agg.isDnf).length;
   const lastPosition = Math.max(
     ...sorted
       .map((agg, idx) => (!agg.isDnf ? positions[idx] : 0))
@@ -88,9 +91,10 @@ export function computeLeaderboard(
   return sorted.map((agg, idx) => {
     const position = positions[idx];
     const isDnf = agg.isDnf;
-    const isLast = !isDnf && position === lastPosition;
+    const isLast = !isDnf && activeCount > 3 && position === lastPosition;
     const isSharedPosition =
-      idx > 0 && comparator(sorted[idx], sorted[idx - 1]) === 0;
+      (idx > 0 && comparator(sorted[idx], sorted[idx - 1]) === 0) ||
+      (idx < sorted.length - 1 && comparator(sorted[idx], sorted[idx + 1]) === 0);
 
     // Gap to leader
     const leader = sorted[0];

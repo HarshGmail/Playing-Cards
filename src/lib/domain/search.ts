@@ -34,7 +34,7 @@ export function fuzzySort(
 ): Array<{ nameLower: string; [key: string]: unknown }> {
   const queryLower = query.toLowerCase();
 
-  return items.sort((a, b) => {
+  return [...items].sort((a, b) => {
     const distA = levenshteinDistance(a.nameLower, queryLower);
     const distB = levenshteinDistance(b.nameLower, queryLower);
     return distA - distB;

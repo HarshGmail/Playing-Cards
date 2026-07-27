@@ -103,6 +103,6 @@ export function logError(requestId: string, error: unknown, context?: Record<str
     requestId,
     message: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
-    ...context,
+    ...redactSensitive(context || {}),
   });
 }

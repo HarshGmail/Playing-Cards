@@ -1,8 +1,8 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'dev-secret-key'
-);
+if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not set');
+
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export interface JwtPayload {
   userId: string;

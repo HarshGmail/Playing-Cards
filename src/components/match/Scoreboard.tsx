@@ -1,5 +1,15 @@
 'use client';
 
+import { buildScoreboardRows } from '@/lib/domain/scoreboard';
+import { getPositionColor, PositionColorToken } from '@/lib/domain/positionColor';
+
+interface LeaderboardEntry {
+  playerId: string;
+  position: number;
+  isDnf: boolean;
+  isLast: boolean;
+}
+
 interface ScoreboardProps {
   rounds: Array<{
     round: number;
@@ -12,9 +22,19 @@ interface ScoreboardProps {
     userId: string;
     userName: string;
   }>;
+  leaderboard?: LeaderboardEntry[];
 }
 
-export default function Scoreboard({ rounds, players }: ScoreboardProps) {
+const TOTAL_CELL_CLASSES: Record<PositionColorToken, string> = {
+  'pos-1': 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400',
+  'pos-2': 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400',
+  'pos-3': 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400',
+  'pos-last': 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400',
+  'pos-mid': 'bg-blue-50 dark:bg-blue-900/20 text-gray-900 dark:text-white',
+  'pos-dnf': 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500',
+};
+
+export default function Scoreboard({ rounds, players, leaderboard }: ScoreboardProps) {
   if (rounds.length === 0 || players.length === 0) {
     return (
       <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
@@ -23,35 +43,15 @@ export default function Scoreboard({ rounds, players }: ScoreboardProps) {
     );
   }
 
-  // Create score matrix
-  const playerMap = new Map(players.map((p) => [p.userId, p.userName]));
-  const scoreMatrix = new Map<string, Map<number, number>>();
-
-  players.forEach((p) => {
-    scoreMatrix.set(p.userId, new Map());
-  });
-
-  rounds.forEach((round) => {
-    round.scores.forEach((score) => {
-      scoreMatrix.get(score.playerId)?.set(round.round, score.value);
-    });
-  });
-
-  // Calculate running totals
-  const totals = new Map<string, number>();
-  players.forEach((p) => {
-    let total = 0;
-    for (let r = 1; r <= rounds.length; r++) {
-      total += scoreMatrix.get(p.userId)?.get(r) || 0;
-    }
-    totals.set(p.userId, total);
-  });
+  const rows = buildScoreboardRows(rounds, players);
+  const entryByPlayer = new Map((leaderboard ?? []).map((e) => [e.playerId, e]));
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+            <th className="p-3 text-left font-semibold text-gray-900 dark:text-white">S.no</th>
             <th className="p-3 text-left font-semibold text-gray-900 dark:text-white">Player</th>
             {rounds.map((round) => (
               <th
@@ -67,25 +67,28 @@ export default function Scoreboard({ rounds, players }: ScoreboardProps) {
           </tr>
         </thead>
         <tbody>
-          {players.map((player) => (
-            <tr
-              key={player.userId}
-              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-            >
-              <td className="p-3 font-medium text-gray-900 dark:text-white">{player.userName}</td>
-              {rounds.map((round) => {
-                const score = scoreMatrix.get(player.userId)?.get(round.round);
-                return (
-                  <td key={round.round} className="p-3 text-center text-gray-700 dark:text-gray-300">
-                    {score !== undefined ? score : '-'}
+          {rows.map((row, idx) => {
+            const entry = entryByPlayer.get(row.playerId);
+            const totalCellClass = entry
+              ? TOTAL_CELL_CLASSES[getPositionColor(entry.position, entry.isLast, entry.isDnf)]
+              : 'bg-blue-50 dark:bg-blue-900/20 text-gray-900 dark:text-white';
+
+            return (
+              <tr
+                key={row.playerId}
+                className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              >
+                <td className="p-3 text-gray-500 dark:text-gray-500">{idx + 1}</td>
+                <td className="p-3 font-medium text-gray-900 dark:text-white">{row.userName}</td>
+                {row.cells.map((score, i) => (
+                  <td key={rounds[i].round} className="p-3 text-center text-gray-700 dark:text-gray-300">
+                    {score === null ? '-' : score}
                   </td>
-                );
-              })}
-              <td className="p-3 text-center font-bold text-gray-900 dark:text-white bg-blue-50 dark:bg-blue-900/20">
-                {totals.get(player.userId) || 0}
-              </td>
-            </tr>
-          ))}
+                ))}
+                <td className={`p-3 text-center font-bold ${totalCellClass}`}>{row.total}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

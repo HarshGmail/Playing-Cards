@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { requireAuth } from '@/lib/api/auth';
 import { getUsers } from '@/lib/db/collections';
 import { success, unauthorized, error, validationError } from '@/lib/api/respond';
@@ -39,15 +40,17 @@ export async function POST(request: NextRequest) {
     const { query, limit } = parsed.data;
     const usersCol = await getUsers();
 
-    // Search by username or name (case-insensitive)
-    const searchRegex = new RegExp(query, 'i');
+    // Search by username or name (case-insensitive). Escape regex
+    // metacharacters in user input to avoid ReDoS / regex injection.
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const searchRegex = new RegExp(escaped, 'i');
     const results = await usersCol
       .find({
         $or: [
           { username: searchRegex },
           { name: searchRegex },
         ],
-        _id: { $ne: userId }, // Exclude current user
+        _id: { $ne: new ObjectId(userId) }, // Exclude current user
       })
       .limit(limit)
       .toArray();
