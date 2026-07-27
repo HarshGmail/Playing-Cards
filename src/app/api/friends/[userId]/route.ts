@@ -1,50 +1,37 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
 import { getFriendships } from '@/lib/db/collections';
-import { success, notFound, unauthorized, error } from '@/lib/api/respond';
+import { success, notFound, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
+import { requireAuth } from '@/lib/api/auth';
 
-/**
- * DELETE /api/friends/[userId]
- * Remove a friend.
- */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, `DELETE /api/friends/${params.userId}`, payload.userId, {
+    const { userId } = authResult;
+    logApiRequest(requestId, `DELETE /api/friends/${params.userId}`, userId, {
       friendUserId: params.userId,
     });
 
-    // Prevent self-unfriending
-    if (params.userId === payload.userId) {
+    if (params.userId === userId) {
       return error('Cannot remove yourself', 'SELF_REMOVE', 400);
     }
 
     const friendshipsCol = await getFriendships();
-
-    // Find friendship
     const friendship = await friendshipsCol.findOne({
       $or: [
-        { userA: payload.userId, userB: params.userId },
-        { userA: params.userId, userB: payload.userId },
+        { userA: userId, userB: params.userId },
+        { userA: params.userId, userB: userId },
       ],
     });
 
@@ -53,7 +40,6 @@ export async function DELETE(
       return notFound();
     }
 
-    // Delete friendship
     const result = await friendshipsCol.deleteOne({ _id: friendship._id });
 
     if (result.deletedCount === 0) {

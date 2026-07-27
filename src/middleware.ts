@@ -4,10 +4,15 @@ import { verifyJwt } from './lib/auth/jwt';
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth')?.value;
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/api/auth');
+  const publicAuthRoutes = [
+    '/api/auth/login',
+    '/api/auth/signup',
+    '/api/auth/logout',
+    '/api/auth/username-available',
+  ];
   const isPublicRoute =
     request.nextUrl.pathname === '/' ||
-    request.nextUrl.pathname.startsWith('/api/auth') ||
+    publicAuthRoutes.includes(request.nextUrl.pathname) ||
     request.nextUrl.pathname.startsWith('/join/');
 
   if (isPublicRoute) {

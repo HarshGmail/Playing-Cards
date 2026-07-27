@@ -1,10 +1,9 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
+import { requireAuth } from '@/lib/api/auth';
 import { getUsers } from '@/lib/db/collections';
 import { success, unauthorized, error, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { searchUsersSchema } from '@/lib/schemas/friends';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
 
 /**
  * POST /api/users/search
@@ -13,24 +12,19 @@ import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
-
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const { userId } = authResult;
 
     const body = await request.json();
 
-    logApiRequest(requestId, 'POST /api/users/search', payload.userId, {
+    logApiRequest(requestId, 'POST /api/users/search', userId, {
       query: body.query?.substring(0, 20) || '',
       limit: body.limit,
     });
@@ -53,7 +47,7 @@ export async function POST(request: NextRequest) {
           { username: searchRegex },
           { name: searchRegex },
         ],
-        _id: { $ne: payload.userId }, // Exclude current user
+        _id: { $ne: userId }, // Exclude current user
       })
       .limit(limit)
       .toArray();

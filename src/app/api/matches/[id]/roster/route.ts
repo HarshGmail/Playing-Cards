@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
+import { requireAuth } from '@/lib/api/auth';
 import { getMatches, getUsers } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError, conflict } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
@@ -21,24 +20,19 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
-
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const { userId } = authResult;
 
     const body = await request.json();
 
-    logApiRequest(requestId, `POST /api/matches/${params.id}/roster`, payload.userId, {
+    logApiRequest(requestId, `POST /api/matches/${params.id}/roster`, userId, {
       matchId: params.id,
       newUserId: body.userId,
     });
@@ -68,7 +62,7 @@ export async function POST(
     }
 
     // Only creator can add players
-    if (match.creatorId !== payload.userId) {
+    if (match.creatorId !== userId) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }

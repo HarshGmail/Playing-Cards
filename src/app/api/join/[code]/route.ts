@@ -1,40 +1,28 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
-import { getMatches, getShareLinks } from '@/lib/db/collections';
-import { success, notFound, unauthorized, error, conflict } from '@/lib/api/respond';
+import { getMatches, getShareLinks, getUsers } from '@/lib/db/collections';
+import { success, notFound, error, conflict } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
+import { requireAuth } from '@/lib/api/auth';
+import { ObjectId } from 'mongodb';
 
-/**
- * GET /api/join/[code]
- * Redeem a share code to join a match.
- * Returns match details and join status.
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: { code: string } }
 ) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
+    const { userId } = authResult;
     const code = params.code.toUpperCase();
 
-    logApiRequest(requestId, `GET /api/join/${code}`, payload.userId, {
-      code,
-    });
+    logApiRequest(requestId, `GET /api/join/${code}`, userId, { code });
 
     const shareLinksCol = await getShareLinks();
     const shareLink = await shareLinksCol.findOne({
@@ -47,7 +35,6 @@ export async function GET(
       return notFound();
     }
 
-    // Check if expired
     if (new Date() > shareLink.expiresAt) {
       logApiResponse(requestId, 410, Date.now() - startTime);
       return error('Share code expired', 'CODE_EXPIRED', 410);
@@ -64,8 +51,7 @@ export async function GET(
       return notFound();
     }
 
-    // Check if user already in match
-    const alreadyInMatch = match.roster.some((r) => r.userId === payload.userId);
+    const alreadyInMatch = match.roster.some((r) => r.userId === userId);
 
     if (alreadyInMatch) {
       logApiResponse(requestId, 409, Date.now() - startTime);
@@ -92,35 +78,24 @@ export async function GET(
   }
 }
 
-/**
- * POST /api/join/[code]
- * Actually join a match using a share code.
- */
 export async function POST(
   request: NextRequest,
   { params }: { params: { code: string } }
 ) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
+    const { userId } = authResult;
     const code = params.code.toUpperCase();
 
-    logApiRequest(requestId, `POST /api/join/${code}`, payload.userId, {
-      code,
-    });
+    logApiRequest(requestId, `POST /api/join/${code}`, userId, { code });
 
     const shareLinksCol = await getShareLinks();
     const shareLink = await shareLinksCol.findOne({
@@ -133,7 +108,6 @@ export async function POST(
       return notFound();
     }
 
-    // Check if expired
     if (new Date() > shareLink.expiresAt) {
       logApiResponse(requestId, 410, Date.now() - startTime);
       return error('Share code expired', 'CODE_EXPIRED', 410);
@@ -150,28 +124,23 @@ export async function POST(
       return notFound();
     }
 
-    // Check if user already in match
-    const alreadyInMatch = match.roster.some((r) => r.userId === payload.userId);
+    const alreadyInMatch = match.roster.some((r) => r.userId === userId);
 
     if (alreadyInMatch) {
       logApiResponse(requestId, 409, Date.now() - startTime);
       return conflict('You are already in this match');
     }
 
-    // Get user details
-    const { getUsers } = await import('@/lib/db/collections');
     const usersCol = await getUsers();
-    const { ObjectId } = await import('mongodb');
-    const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) });
+    const user = await usersCol.findOne({ _id: new ObjectId(userId) });
 
     if (!user) {
       logApiResponse(requestId, 404, Date.now() - startTime);
       return error('User not found', 'USER_NOT_FOUND', 404);
     }
 
-    // Add user to roster
     const newRosterEntry = {
-      userId: payload.userId,
+      userId,
       userName: user.name,
       joinedAtRound: match.roundsPlayed + 1,
       status: 'active' as const,
@@ -182,12 +151,8 @@ export async function POST(
     await matchesCol.updateOne(
       { _id: shareLink.matchId },
       {
-        $push: {
-          roster: newRosterEntry,
-        },
-        $set: {
-          version: match.version + 1,
-        },
+        $push: { roster: newRosterEntry },
+        $set: { version: match.version + 1 },
       }
     );
 
@@ -195,7 +160,7 @@ export async function POST(
 
     return success({
       matchId: match._id?.toString(),
-      userId: payload.userId,
+      userId,
       userName: user.name,
       joined: true,
       joinedAtRound: match.roundsPlayed + 1,

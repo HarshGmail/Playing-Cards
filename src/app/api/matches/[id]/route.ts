@@ -1,36 +1,29 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
-import { getMatches, getUsers } from '@/lib/db/collections';
-import { success, notFound, unauthorized, error, forbidden } from '@/lib/api/respond';
+import { getMatches } from '@/lib/db/collections';
+import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
+import { requireAuth } from '@/lib/api/auth';
 import { ObjectId } from 'mongodb';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, `GET /api/matches/${params.id}`, payload.userId, {
+    const { userId } = authResult;
+    logApiRequest(requestId, `GET /api/matches/${params.id}`, userId, {
       matchId: params.id,
     });
 
-    // Validate ObjectId format
     if (!ObjectId.isValid(params.id)) {
       logApiResponse(requestId, 404, Date.now() - startTime);
       return notFound();
@@ -47,9 +40,8 @@ export async function GET(
       return notFound();
     }
 
-    // Check if user is creator or in roster
-    const isCreator = match.creatorId === payload.userId;
-    const isInRoster = match.roster.some((r) => r.userId === payload.userId);
+    const isCreator = match.creatorId === userId;
+    const isInRoster = match.roster.some((r) => r.userId === userId);
 
     if (!isCreator && !isInRoster) {
       logApiResponse(requestId, 403, Date.now() - startTime);

@@ -1,10 +1,9 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
+import { requireAuth } from '@/lib/api/auth';
 import { getMatches, getScores } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { submitRoundSchema } from '@/lib/schemas/match';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
 import { ObjectId } from 'mongodb';
 
 /**
@@ -16,23 +15,18 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
-
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const { userId } = authResult;
 
     const body = await request.json();
-    logApiRequest(requestId, `POST /api/matches/${params.id}/rounds`, payload.userId, {
+    logApiRequest(requestId, `POST /api/matches/${params.id}/rounds`, userId, {
       matchId: params.id,
       scoreCount: body.scores?.length || 0,
     });
@@ -62,7 +56,7 @@ export async function POST(
     }
 
     // Only creator can submit rounds
-    if (match.creatorId !== payload.userId) {
+    if (match.creatorId !== userId) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }
@@ -100,7 +94,7 @@ export async function POST(
       round: nextRound,
       playerId: score.playerId,
       value: score.value,
-      enteredBy: payload.userId,
+      enteredBy: userId,
       enteredAt: new Date(),
       editHistory: [],
     }));
@@ -145,22 +139,17 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
+    const { userId } = authResult;
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, `GET /api/matches/${params.id}/rounds`, payload.userId, {
+    logApiRequest(requestId, `GET /api/matches/${params.id}/rounds`, userId, {
       matchId: params.id,
     });
 
@@ -182,8 +171,8 @@ export async function GET(
     }
 
     // Check if user is creator or in roster
-    const isCreator = match.creatorId === payload.userId;
-    const isInRoster = match.roster.some((r) => r.userId === payload.userId);
+    const isCreator = match.creatorId === userId;
+    const isInRoster = match.roster.some((r) => r.userId === userId);
 
     if (!isCreator && !isInRoster) {
       logApiResponse(requestId, 403, Date.now() - startTime);

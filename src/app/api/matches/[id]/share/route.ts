@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
+import { requireAuth } from '@/lib/api/auth';
 import { getMatches, getShareLinks } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
 import { ObjectId } from 'mongodb';
 
 /**
@@ -16,22 +15,17 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
+    const { userId } = authResult;
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, `POST /api/matches/${params.id}/share`, payload.userId, {
+    logApiRequest(requestId, `POST /api/matches/${params.id}/share`, userId, {
       matchId: params.id,
     });
 
@@ -53,7 +47,7 @@ export async function POST(
     }
 
     // Only creator can share
-    if (match.creatorId !== payload.userId) {
+    if (match.creatorId !== userId) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }
@@ -83,7 +77,7 @@ export async function POST(
     const result = await shareLinksCol.insertOne({
       matchId: params.id,
       code,
-      createdBy: payload.userId,
+      createdBy: userId,
       createdAt: new Date(),
       expiresAt,
       revokedAt: null,

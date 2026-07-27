@@ -1,23 +1,33 @@
 import { NextRequest } from 'next/server';
 import { getUsers } from '@/lib/db/collections';
-import { success, unauthorized } from '@/lib/api/respond';
+import { success, error } from '@/lib/api/respond';
+import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
+import { requireAuth } from '@/lib/api/auth';
 import { ObjectId } from 'mongodb';
 
 export async function GET(request: NextRequest) {
-  const userId = request.headers.get('x-user-id');
-
-  if (!userId) {
-    return unauthorized();
-  }
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
+  const startTime = Date.now();
 
   try {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
+      logApiResponse(requestId, 401, Date.now() - startTime);
+      return authResult;
+    }
+
+    const { userId } = authResult;
+    logApiRequest(requestId, 'GET /api/auth/me', userId, {});
+
     const users = await getUsers();
     const user = await users.findOne({ _id: new ObjectId(userId) });
 
     if (!user) {
-      return unauthorized();
+      logApiResponse(requestId, 401, Date.now() - startTime);
+      return error('User not found', 'USER_NOT_FOUND', 401);
     }
 
+    logApiResponse(requestId, 200, Date.now() - startTime);
     return success({
       user: {
         id: user._id!.toString(),
@@ -28,7 +38,9 @@ export async function GET(request: NextRequest) {
         dob: user.dob,
       },
     });
-  } catch {
-    return unauthorized();
+  } catch (err) {
+    logError(requestId, err);
+    logApiResponse(requestId, 500, Date.now() - startTime);
+    return error('Internal server error', 'INTERNAL_ERROR', 500);
   }
 }

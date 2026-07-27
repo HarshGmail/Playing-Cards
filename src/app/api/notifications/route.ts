@@ -1,40 +1,28 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
 import { getNotifications } from '@/lib/db/collections';
-import { success, unauthorized, error } from '@/lib/api/respond';
+import { success, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
+import { requireAuth } from '@/lib/api/auth';
 
-/**
- * GET /api/notifications
- * Fetch all notifications for the current user.
- */
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, 'GET /api/notifications', payload.userId, {});
+    const { userId } = authResult;
+    logApiRequest(requestId, 'GET /api/notifications', userId, {});
 
     const notificationsCol = await getNotifications();
-
-    // Get all notifications for user, sorted by creation date
     const notifications = await notificationsCol
-      .find({ userId: payload.userId })
+      .find({ userId })
       .sort({ createdAt: -1 })
-      .limit(100) // Return last 100 notifications
+      .limit(100)
       .toArray();
 
     const unreadCount = notifications.filter((n) => !n.read).length;
@@ -59,34 +47,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/notifications/mark-all-read
- * Mark all notifications as read for the current user.
- */
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, 'POST /api/notifications/mark-all-read', payload.userId, {});
+    const { userId } = authResult;
+    logApiRequest(requestId, 'POST /api/notifications/mark-all-read', userId, {});
 
     const notificationsCol = await getNotifications();
-
-    // Mark all notifications as read
     const result = await notificationsCol.updateMany(
-      { userId: payload.userId, read: false },
+      { userId, read: false },
       { $set: { read: true } }
     );
 

@@ -1,10 +1,9 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
+import { requireAuth } from '@/lib/api/auth';
 import { getMatches, getScores } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { updateRoundSchema } from '@/lib/schemas/match';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
 import { ObjectId } from 'mongodb';
 
 /**
@@ -16,25 +15,20 @@ export async function PUT(
   { params }: { params: { id: string; round: string } }
 ) {
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
-
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const { userId } = authResult;
 
     const body = await request.json();
     const roundNum = parseInt(params.round, 10);
 
-    logApiRequest(requestId, `PUT /api/matches/${params.id}/rounds/${roundNum}`, payload.userId, {
+    logApiRequest(requestId, `PUT /api/matches/${params.id}/rounds/${roundNum}`, userId, {
       matchId: params.id,
       round: roundNum,
       scoreCount: body.scores?.length || 0,
@@ -71,7 +65,7 @@ export async function PUT(
     }
 
     // Only creator can edit rounds
-    if (match.creatorId !== payload.userId) {
+    if (match.creatorId !== userId) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }
@@ -127,7 +121,7 @@ export async function PUT(
           from: existing.value,
           to: scoreUpdate.value,
           at: new Date(),
-          by: payload.userId,
+          by: userId,
         };
 
         await scoresCol.updateOne(

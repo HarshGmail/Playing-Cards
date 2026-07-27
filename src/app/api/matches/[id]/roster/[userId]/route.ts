@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
+import { requireAuth } from '@/lib/api/auth';
 import { getMatches } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
@@ -21,24 +20,19 @@ export async function PATCH(
   { params }: { params: { id: string; userId: string } }
 ) {
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
-
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const { userId: currentUserId } = authResult;
 
     const body = await request.json();
 
-    logApiRequest(requestId, `PATCH /api/matches/${params.id}/roster/${params.userId}`, payload.userId, {
+    logApiRequest(requestId, `PATCH /api/matches/${params.id}/roster/${params.userId}`, currentUserId, {
       matchId: params.id,
       targetUserId: params.userId,
       action: body.action,
@@ -69,7 +63,7 @@ export async function PATCH(
     }
 
     // Only creator can manage roster
-    if (match.creatorId !== payload.userId) {
+    if (match.creatorId !== currentUserId) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }

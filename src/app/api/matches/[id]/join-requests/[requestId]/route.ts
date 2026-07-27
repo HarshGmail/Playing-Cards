@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
+import { requireAuth } from '@/lib/api/auth';
 import { getMatches, getJoinRequests, getUsers } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
@@ -21,24 +20,19 @@ export async function POST(
   { params }: { params: { id: string; requestId: string } }
 ) {
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
+  const logId = crypto.randomUUID?.() || Date.now().toString();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
+      logApiResponse(logId, 401, Date.now() - startTime);
+      return authResult;
     }
-
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const { userId } = authResult;
 
     const body = await request.json();
 
-    logApiRequest(requestId, `POST /api/matches/${params.id}/join-requests/${params.requestId}`, payload.userId, {
+    logApiRequest(logId, `POST /api/matches/${params.id}/join-requests/${params.requestId}`, userId, {
       matchId: params.id,
       requestId: params.requestId,
       action: body.action,
@@ -47,13 +41,13 @@ export async function POST(
     // Validate request body
     const parsed = respondSchema.safeParse(body);
     if (!parsed.success) {
-      logApiResponse(requestId, 400, Date.now() - startTime);
+      logApiResponse(logId, 400, Date.now() - startTime);
       return validationError(parsed.error.issues[0]?.message || 'Invalid input');
     }
 
     // Validate ObjectId formats
     if (!ObjectId.isValid(params.id) || !ObjectId.isValid(params.requestId)) {
-      logApiResponse(requestId, 404, Date.now() - startTime);
+      logApiResponse(logId, 404, Date.now() - startTime);
       return notFound();
     }
 
@@ -64,13 +58,13 @@ export async function POST(
     });
 
     if (!match) {
-      logApiResponse(requestId, 404, Date.now() - startTime);
+      logApiResponse(logId, 404, Date.now() - startTime);
       return notFound();
     }
 
     // Only creator can respond
-    if (match.creatorId !== payload.userId) {
-      logApiResponse(requestId, 403, Date.now() - startTime);
+    if (match.creatorId !== userId) {
+      logApiResponse(logId, 403, Date.now() - startTime);
       return forbidden();
     }
 
@@ -81,7 +75,7 @@ export async function POST(
     });
 
     if (!joinRequest) {
-      logApiResponse(requestId, 404, Date.now() - startTime);
+      logApiResponse(logId, 404, Date.now() - startTime);
       return notFound();
     }
 
@@ -141,7 +135,7 @@ export async function POST(
       }
     );
 
-    logApiResponse(requestId, 200, Date.now() - startTime);
+    logApiResponse(logId, 200, Date.now() - startTime);
 
     return success({
       requestId: params.requestId,
@@ -151,8 +145,8 @@ export async function POST(
       version: action === 'approve' ? match.version + 1 : match.version,
     });
   } catch (err) {
-    logError(requestId, err);
-    logApiResponse(requestId, 500, Date.now() - startTime);
+    logError(logId, err);
+    logApiResponse(logId, 500, Date.now() - startTime);
     return error('Internal server error', 'INTERNAL_ERROR', 500);
   }
 }

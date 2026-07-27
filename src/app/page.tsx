@@ -8,9 +8,13 @@ export default function Landing() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        router.push('/dashboard');
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          router.push('/dashboard');
+        }
+      } catch {
+        // Not authenticated, stay on landing page
       }
     };
     checkAuth();

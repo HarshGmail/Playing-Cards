@@ -1,36 +1,25 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
 import { getUsers } from '@/lib/db/collections';
-import { success, notFound, unauthorized, error } from '@/lib/api/respond';
+import { success, notFound, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
+import { requireAuth } from '@/lib/api/auth';
 
-/**
- * GET /api/users/[username]
- * Get public profile information for a user by username.
- * Available to authenticated users only.
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: { username: string } }
 ) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, `GET /api/users/${params.username}`, payload.userId, {
+    const { userId } = authResult;
+    logApiRequest(requestId, `GET /api/users/${params.username}`, userId, {
       username: params.username,
     });
 

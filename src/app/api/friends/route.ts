@@ -1,54 +1,47 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
-import { getUsers, getFriendships } from '@/lib/db/collections';
-import { success, unauthorized, error } from '@/lib/api/respond';
+import { getUsers, getFriendships, getFriendRequests } from '@/lib/db/collections';
+import { success, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
+import { requireAuth } from '@/lib/api/auth';
+import { createHandler } from '@/lib/api/handler';
 import { ObjectId } from 'mongodb';
+import { z } from 'zod';
 
-/**
- * GET /api/friends
- * List all confirmed friendships for the current user.
- */
+const sendFriendRequestSchema = z.object({
+  toUserId: z.string(),
+});
+
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, 'GET /api/friends', payload.userId, {});
+    const { userId } = authResult;
+    logApiRequest(requestId, 'GET /api/friends', userId, {});
 
     const friendshipsCol = await getFriendships();
     const usersCol = await getUsers();
 
-    // Find all friendships involving this user
     const friendships = await friendshipsCol
       .find({
         $or: [
-          { userA: payload.userId },
-          { userB: payload.userId },
+          { userA: userId },
+          { userB: userId },
         ],
       })
       .toArray();
 
-    // Extract friend IDs
     const friendIds = friendships.map((f) => {
-      const otherId = f.userA === payload.userId ? f.userB : f.userA;
+      const otherId = f.userA === userId ? f.userB : f.userA;
       return new ObjectId(otherId);
     });
 
-    // Fetch friend details
     const friends = await usersCol
       .find({ _id: { $in: friendIds } })
       .toArray();
@@ -71,64 +64,35 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/friends
- * Send a friend request.
- */
-export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-  const requestId = crypto.randomUUID();
-
-  try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+export const POST = createHandler(
+  async (_, data, userId) => {
+    if (!userId) {
+      return error('Unauthorized', 'UNAUTHORIZED', 401);
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const { toUserId } = data as typeof sendFriendRequestSchema._type;
 
-    const body = await request.json();
-
-    logApiRequest(requestId, 'POST /api/friends', payload.userId, {
-      toUserId: body.toUserId,
-    });
-
-    // Validate request body
-    if (!body.toUserId || typeof body.toUserId !== 'string') {
-      return error('toUserId is required', 'VALIDATION_ERROR', 400);
-    }
-
-    // Prevent self-friending
-    if (body.toUserId === payload.userId) {
+    if (toUserId === userId) {
       return error('Cannot send friend request to yourself', 'SELF_REQUEST', 400);
     }
 
-    // Validate ObjectId format
-    if (!ObjectId.isValid(body.toUserId)) {
+    if (!ObjectId.isValid(toUserId)) {
       return error('Invalid user ID', 'INVALID_USER_ID', 400);
     }
 
     const usersCol = await getUsers();
-    const friendRequestsCol = await (await import('@/lib/db/collections')).getFriendRequests();
-
-    // Verify target user exists
-    const targetUser = await usersCol.findOne({ _id: new ObjectId(body.toUserId) });
+    const targetUser = await usersCol.findOne({ _id: new ObjectId(toUserId) });
     if (!targetUser) {
-      logApiResponse(requestId, 404, Date.now() - startTime);
       return error('User not found', 'USER_NOT_FOUND', 404);
     }
 
-    // Check if already friends
     const friendshipsCol = await getFriendships();
+    const friendRequestsCol = await getFriendRequests();
+
     const existing = await friendshipsCol.findOne({
       $or: [
-        { userA: payload.userId, userB: body.toUserId },
-        { userA: body.toUserId, userB: payload.userId },
+        { userA: userId, userB: toUserId },
+        { userA: toUserId, userB: userId },
       ],
     });
 
@@ -136,11 +100,10 @@ export async function POST(request: NextRequest) {
       return error('Already friends', 'ALREADY_FRIENDS', 409);
     }
 
-    // Check if request already pending
     const pendingRequest = await friendRequestsCol.findOne({
       $or: [
-        { fromUserId: payload.userId, toUserId: body.toUserId, status: 'pending' },
-        { fromUserId: body.toUserId, toUserId: payload.userId, status: 'pending' },
+        { fromUserId: userId, toUserId, status: 'pending' },
+        { fromUserId: toUserId, toUserId: userId, status: 'pending' },
       ],
     });
 
@@ -148,29 +111,29 @@ export async function POST(request: NextRequest) {
       return error('Friend request already pending', 'REQUEST_PENDING', 409);
     }
 
-    // Create friend request
     const result = await friendRequestsCol.insertOne({
-      fromUserId: payload.userId,
-      toUserId: body.toUserId,
+      fromUserId: userId,
+      toUserId,
       status: 'pending' as const,
       createdAt: new Date(),
       respondedAt: null,
     });
 
-    logApiResponse(requestId, 201, Date.now() - startTime);
-
     return success(
       {
         requestId: result.insertedId.toString(),
-        fromUserId: payload.userId,
-        toUserId: body.toUserId,
+        fromUserId: userId,
+        toUserId,
         status: 'pending',
       },
       201
     );
-  } catch (err) {
-    logError(requestId, err);
-    logApiResponse(requestId, 500, Date.now() - startTime);
-    return error('Internal server error', 'INTERNAL_ERROR', 500);
+  },
+  {
+    rateLimitKey: 'send-friend-request',
+    maxAttempts: 20,
+    windowMs: 60 * 60 * 1000,
+    schema: sendFriendRequestSchema,
+    requireAuth: true,
   }
-}
+);

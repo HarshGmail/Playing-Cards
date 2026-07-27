@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
 import { getUsers, User } from '@/lib/db/collections';
-import { success, unauthorized, error, validationError } from '@/lib/api/respond';
+import { success, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
+import { requireAuth } from '@/lib/api/auth';
+import { createHandler } from '@/lib/api/handler';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
@@ -14,32 +14,23 @@ const updateProfileSchema = z.object({
   profilePicUrl: z.string().url().optional().nullable(),
 });
 
-/**
- * GET /api/users/me
- * Get the current user's full profile.
- */
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, 'GET /api/users/me', payload.userId, {});
+    const { userId } = authResult;
+    logApiRequest(requestId, 'GET /api/users/me', userId, {});
 
     const usersCol = await getUsers();
     const user = await usersCol.findOne({
-      _id: new ObjectId(payload.userId),
+      _id: new ObjectId(userId),
     });
 
     if (!user) {
@@ -69,73 +60,43 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * PATCH /api/users/me
- * Update the current user's profile.
- */
-export async function PATCH(request: NextRequest) {
-  const startTime = Date.now();
-  const requestId = crypto.randomUUID();
-
-  try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+export const PATCH = createHandler(
+  async (_, data, userId) => {
+    if (!userId) {
+      return error('Unauthorized', 'UNAUTHORIZED', 401);
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const payload = data as typeof updateProfileSchema._type;
 
-    const body = await request.json();
-
-    logApiRequest(requestId, 'PATCH /api/users/me', payload.userId, {
-      fieldsUpdated: Object.keys(body),
-    });
-
-    // Validate request body
-    const parsed = updateProfileSchema.safeParse(body);
-    if (!parsed.success) {
-      logApiResponse(requestId, 400, Date.now() - startTime);
-      return validationError(parsed.error.issues[0]?.message || 'Invalid input');
-    }
-
-    // Only update fields that were provided
     const updateFields: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
-    if (parsed.data.name !== undefined) {
-      updateFields.name = parsed.data.name;
+    if (payload.name !== undefined) {
+      updateFields.name = payload.name;
     }
-    if (parsed.data.phone !== undefined) {
-      updateFields.phone = parsed.data.phone;
+    if (payload.phone !== undefined) {
+      updateFields.phone = payload.phone;
     }
-    if (parsed.data.dob !== undefined) {
-      updateFields.dob = parsed.data.dob;
+    if (payload.dob !== undefined) {
+      updateFields.dob = payload.dob;
     }
-    if (parsed.data.profilePicUrl !== undefined) {
-      updateFields.profilePicUrl = parsed.data.profilePicUrl;
+    if (payload.profilePicUrl !== undefined) {
+      updateFields.profilePicUrl = payload.profilePicUrl;
     }
 
     const usersCol = await getUsers();
     const result = await usersCol.findOneAndUpdate(
-      { _id: new ObjectId(payload.userId) },
+      { _id: new ObjectId(userId) },
       { $set: updateFields },
       { returnDocument: 'after' }
     );
 
     if (!result) {
-      logApiResponse(requestId, 404, Date.now() - startTime);
       return error('User not found', 'USER_NOT_FOUND', 404);
     }
 
     const user = result as User;
-
-    logApiResponse(requestId, 200, Date.now() - startTime);
 
     return success({
       user: {
@@ -149,9 +110,12 @@ export async function PATCH(request: NextRequest) {
         updatedAt: user.updatedAt,
       },
     });
-  } catch (err) {
-    logError(requestId, err);
-    logApiResponse(requestId, 500, Date.now() - startTime);
-    return error('Internal server error', 'INTERNAL_ERROR', 500);
+  },
+  {
+    rateLimitKey: 'update-profile',
+    maxAttempts: 20,
+    windowMs: 60 * 60 * 1000,
+    schema: updateProfileSchema,
+    requireAuth: true,
   }
-}
+);
