@@ -10,7 +10,9 @@ export const respondToFriendRequestSchema = z.object({
 
 export const searchUsersSchema = z.object({
   query: z.string().min(1).max(50),
-  limit: z.number().int().min(1).max(50).optional().default(20),
+  // Coerced because the search endpoint reads this off the query string,
+  // where every value arrives as a string.
+  limit: z.coerce.number().int().min(1).max(50).optional().default(20),
 });
 
 export type SendFriendRequestInput = z.infer<typeof sendFriendRequestSchema>;

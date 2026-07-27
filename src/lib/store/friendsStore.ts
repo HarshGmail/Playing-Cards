@@ -62,12 +62,15 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       const res = await fetch('/api/friends', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ toUserId: userId }),
       });
       if (!res.ok) throw new Error('Failed to send friend request');
       await get().fetchIncomingRequests();
     } catch (err) {
       set({ error: 'Failed to send friend request' });
+      // Rethrow so the caller can tell the user it failed rather than
+      // reporting success unconditionally.
+      throw err;
     }
   },
 

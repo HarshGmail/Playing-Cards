@@ -2,18 +2,18 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { requireAuth } from '@/lib/api/auth';
 import { getUsers } from '@/lib/db/collections';
-import { success, unauthorized, error, validationError } from '@/lib/api/respond';
+import { success, error, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { searchUsersSchema } from '@/lib/schemas/friends';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/users/search
+ * GET /api/users/search?q=<query>&limit=<n>
  * Search for users by name or username.
  * Available to authenticated users only.
  */
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const requestId = crypto.randomUUID?.() || Date.now().toString();
 
@@ -25,15 +25,20 @@ export async function POST(request: NextRequest) {
     }
     const { userId } = authResult;
 
-    const body = await request.json();
+    const params = request.nextUrl.searchParams;
+    const rawQuery = params.get('q') ?? '';
+    const rawLimit = params.get('limit');
 
-    logApiRequest(requestId, 'POST /api/users/search', userId, {
-      query: body.query?.substring(0, 20) || '',
-      limit: body.limit,
+    logApiRequest(requestId, 'GET /api/users/search', userId, {
+      query: rawQuery.substring(0, 20),
+      limit: rawLimit,
     });
 
-    // Validate request body
-    const parsed = searchUsersSchema.safeParse(body);
+    const parsed = searchUsersSchema.safeParse({
+      query: rawQuery,
+      // Omit rather than pass null so the schema default applies.
+      ...(rawLimit === null ? {} : { limit: rawLimit }),
+    });
     if (!parsed.success) {
       logApiResponse(requestId, 400, Date.now() - startTime);
       return validationError(parsed.error.issues[0]?.message || 'Invalid input');

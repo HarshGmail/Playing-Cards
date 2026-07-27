@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useUIStore } from '@/lib/store/uiStore';
 
 interface FindFriendsTabProps {
-  onAddFriend?: (userId: string, name: string) => void;
+  onAddFriend?: (userId: string, name: string) => void | Promise<void>;
 }
 
 export default function FindFriendsTab({ onAddFriend }: FindFriendsTabProps) {
@@ -21,7 +21,7 @@ export default function FindFriendsTab({ onAddFriend }: FindFriendsTabProps) {
       const res = await fetch(`/api/users/search?q=${encodeURIComponent(search)}`);
       if (!res.ok) throw new Error('Search failed');
       const data = await res.json();
-      setResults(data.users || []);
+      setResults(data.results || []);
     } catch (err) {
       addToast({
         type: 'error',
@@ -32,8 +32,16 @@ export default function FindFriendsTab({ onAddFriend }: FindFriendsTabProps) {
     }
   };
 
-  const handleAddFriend = (userId: string, name: string) => {
-    onAddFriend?.(userId, name);
+  const handleAddFriend = async (userId: string, name: string) => {
+    try {
+      await onAddFriend?.(userId, name);
+    } catch {
+      addToast({
+        type: 'error',
+        message: 'Could not send friend request. Try again.',
+      });
+      return;
+    }
     addToast({
       type: 'success',
       message: 'Friend request sent!',
