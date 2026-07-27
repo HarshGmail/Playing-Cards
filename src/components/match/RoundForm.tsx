@@ -1,0 +1,84 @@
+'use client';
+
+import { useState } from 'react';
+
+interface RoundFormProps {
+  round: number;
+  players: Array<{
+    userId: string;
+    userName: string;
+  }>;
+  onSubmit: (scores: Array<{ playerId: string; value: number }>) => Promise<void>;
+}
+
+export default function RoundForm({ round, players, onSubmit }: RoundFormProps) {
+  const [scores, setScores] = useState<Record<string, string>>(
+    Object.fromEntries(players.map((p) => [p.userId, '']))
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleScoreChange = (playerId: string, value: string) => {
+    setScores((prev) => ({
+      ...prev,
+      [playerId]: value === '' ? '' : Math.max(0, Math.min(99999, parseInt(value) || 0)).toString(),
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (Object.values(scores).some((s) => s === '')) {
+      setError('All players must have scores');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const scoresArray = players.map((p) => ({
+        playerId: p.userId,
+        value: parseInt(scores[p.userId]),
+      }));
+      await onSubmit(scoresArray);
+      setScores(Object.fromEntries(players.map((p) => [p.userId, ''])));
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit round');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Round {round}</h3>
+      <div className="space-y-3 mb-4">
+        {players.map((player) => (
+          <div key={player.userId} className="flex items-center gap-3">
+            <label className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+              {player.userName}
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="99999"
+              value={scores[player.userId]}
+              onChange={(e) => handleScoreChange(player.userId, e.target.value)}
+              placeholder="0"
+              disabled={loading}
+              className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50"
+            />
+          </div>
+        ))}
+      </div>
+
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+      <button
+        onClick={handleSubmit}
+        disabled={loading || Object.values(scores).some((s) => s === '')}
+        className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
+      >
+        {loading ? 'Submitting...' : 'Submit Round'}
+      </button>
+    </div>
+  );
+}

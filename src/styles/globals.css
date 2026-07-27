@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pos-1: 266 82% 51%;
+  --pos-2: 142 71% 46%;
+  --pos-3: 48 96% 53%;
+  --pos-last: 0 84% 60%;
+  --pos-mid: 0 0% 50%;
+  --pos-dnf: 0 0% 60%;
+}
+
+.dark {
+  --pos-1: 266 82% 51%;
+  --pos-2: 142 71% 46%;
+  --pos-3: 48 96% 53%;
+  --pos-last: 0 84% 60%;
+  --pos-mid: 0 0% 50%;
+  --pos-dnf: 0 0% 60%;
+}
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+  }
+}
+
+@layer components {
+  .tap-highlight {
+    @apply transition-colors duration-150 active:opacity-75;
+  }
+
+  .gap-transition {
+    @apply transition-opacity duration-200;
+  }
+}
+
+*,
+*::before,
+*::after {
+  @apply box-border;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    @apply !transition-none !animate-none;
+  }
+}
