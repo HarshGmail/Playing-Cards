@@ -6,6 +6,8 @@ import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const updateRosterSchema = z.object({
   action: z.enum(['mark-dnf', 'rejoin']),
 });

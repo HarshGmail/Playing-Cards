@@ -7,6 +7,8 @@ import { createHandler } from '@/lib/api/handler';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const sendFriendRequestSchema = z.object({
   toUserId: z.string(),
 });

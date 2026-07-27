@@ -6,6 +6,8 @@ import { success, unauthorized } from '@/lib/api/respond';
 import { createHandler } from '@/lib/api/handler';
 import { ObjectId } from 'mongodb';
 
+export const dynamic = 'force-dynamic';
+
 export const POST = createHandler(
   async (req, data) => {
     const { password } = data as typeof resetPasswordSchema._type;

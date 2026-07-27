@@ -7,6 +7,8 @@ import { submitRoundSchema } from '@/lib/schemas/match';
 import { withTransaction } from '@/lib/db/client';
 import { ObjectId } from 'mongodb';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/matches/[id]/rounds
  * Submit scores for the next round. Only creator can submit rounds.

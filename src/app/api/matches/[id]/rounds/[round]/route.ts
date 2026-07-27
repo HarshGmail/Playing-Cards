@@ -7,6 +7,8 @@ import { updateRoundSchema } from '@/lib/schemas/match';
 import { withTransaction } from '@/lib/db/client';
 import { ObjectId } from 'mongodb';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * PUT /api/matches/[id]/rounds/[round]
  * Edit scores for a specific round. Only creator can edit rounds.

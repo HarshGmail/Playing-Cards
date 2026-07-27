@@ -5,6 +5,8 @@ import { signJwt } from '@/lib/auth/jwt';
 import { success, conflict } from '@/lib/api/respond';
 import { createHandler } from '@/lib/api/handler';
 
+export const dynamic = 'force-dynamic';
+
 export const POST = createHandler(
   async (_, data) => {
     const payload = data as typeof signupSchema._type;

@@ -6,6 +6,8 @@ import { requireAuth } from '@/lib/api/auth';
 import { ObjectId } from 'mongodb';
 import { buildAggregates, computeLeaderboard, LeaderboardEntry as DomainLeaderboardEntry } from '@/lib/domain/ranking';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

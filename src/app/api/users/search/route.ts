@@ -6,6 +6,8 @@ import { success, unauthorized, error, validationError } from '@/lib/api/respond
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { searchUsersSchema } from '@/lib/schemas/friends';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/users/search
  * Search for users by name or username.

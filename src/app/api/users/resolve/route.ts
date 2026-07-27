@@ -5,6 +5,8 @@ import { success, notFound, error, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const resolveUserSchema = z.object({
   identifier: z.string().min(1).max(100),
 });

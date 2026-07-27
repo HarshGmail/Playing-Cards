@@ -6,6 +6,8 @@ import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { ObjectId } from 'mongodb';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();

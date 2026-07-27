@@ -5,6 +5,8 @@ import { rateLimit } from '@/lib/auth/rateLimit';
 import { success, error } from '@/lib/api/respond';
 import { createHandler } from '@/lib/api/handler';
 
+export const dynamic = 'force-dynamic';
+
 export const POST = createHandler(
   async (_, data) => {
     const { username, email, phone, dob } = data as typeof recoverIdentitySchema._type;

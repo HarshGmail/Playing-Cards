@@ -5,6 +5,8 @@ import { signJwt } from '@/lib/auth/jwt';
 import { success, error } from '@/lib/api/respond';
 import { createHandler } from '@/lib/api/handler';
 
+export const dynamic = 'force-dynamic';
+
 export const POST = createHandler(
   async (_, data) => {
     const { identifier, password } = data as typeof loginSchema._type;

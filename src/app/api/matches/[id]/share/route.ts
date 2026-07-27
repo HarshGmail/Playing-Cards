@@ -5,6 +5,8 @@ import { success, notFound, unauthorized, error, forbidden } from '@/lib/api/res
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { ObjectId } from 'mongodb';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/matches/[id]/share
  * Generate a share code for the match.

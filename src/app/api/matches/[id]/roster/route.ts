@@ -6,6 +6,8 @@ import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const addPlayerSchema = z.object({
   userId: z.string(),
 });

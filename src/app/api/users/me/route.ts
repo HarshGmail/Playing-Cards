@@ -7,6 +7,8 @@ import { createHandler } from '@/lib/api/handler';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   phone: z.string().max(20).optional(),

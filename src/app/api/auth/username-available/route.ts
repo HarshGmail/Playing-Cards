@@ -3,6 +3,8 @@ import { getUsers } from '@/lib/db/collections';
 import { success, validationError, error } from '@/lib/api/respond';
 import { rateLimit } from '@/lib/auth/rateLimit';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') || 'unknown';
   const limit = rateLimit('username-available', ip, 20, 60 * 1000); // 20 per minute
