@@ -1,31 +1,26 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
 import { getMatches, getUsers, Match } from '@/lib/db/collections';
 import { createMatchSchema } from '@/lib/schemas/match';
-import { success, validationError, error, unauthorized } from '@/lib/api/respond';
+import { success, validationError, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
+import { requireAuth } from '@/lib/api/auth';
 import { ObjectId } from 'mongodb';
 
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const { userId } = authResult;
 
     const body = await request.json();
-    logApiRequest(requestId, 'POST /api/matches', payload.userId, {
+    logApiRequest(requestId, 'POST /api/matches', userId, {
       name: body.name,
     });
 
@@ -40,7 +35,7 @@ export async function POST(request: NextRequest) {
     const usersCol = await getUsers();
 
     // Get all players including creator
-    const playerIds = [payload.userId, ...data.players];
+    const playerIds = [userId, ...data.players];
     const players = await usersCol
       .find({ _id: { $in: playerIds.map((id) => new ObjectId(id)) } })
       .toArray();
@@ -67,7 +62,7 @@ export async function POST(request: NextRequest) {
     const matchDoc: Match = {
       name: data.name,
       nameLower: data.name.toLowerCase(),
-      creatorId: payload.userId,
+      creatorId: userId,
       creatorRole: data.creatorRole,
       rankPreference: data.rankPreference,
       status: 'active',
@@ -101,30 +96,26 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
+    const { userId } = authResult;
 
-    logApiRequest(requestId, 'GET /api/matches', payload.userId, {});
+    logApiRequest(requestId, 'GET /api/matches', userId, {});
 
     const matchesCol = await getMatches();
     const matches = await matchesCol
       .find({
         $or: [
-          { creatorId: payload.userId },
-          { 'roster.userId': payload.userId },
+          { creatorId: userId },
+          { 'roster.userId': userId },
         ],
         deletedAt: null,
       })
