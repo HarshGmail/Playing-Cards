@@ -1,33 +1,23 @@
 import { NextRequest } from 'next/server';
-import { verifyJwt } from '@/lib/auth/jwt';
 import { getUsers, getFriendRequests } from '@/lib/db/collections';
-import { success, unauthorized, error } from '@/lib/api/respond';
+import { success, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { crypto } from 'next/dist/compiled/@edge-runtime/primitives';
+import { requireAuth } from '@/lib/api/auth';
 import { ObjectId } from 'mongodb';
 
-/**
- * GET /api/friends/requests
- * Get incoming friend requests for the current user.
- */
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
-  const requestId = crypto.randomUUID();
 
   try {
-    const token = request.cookies.get('auth')?.value;
-    if (!token) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof Response) {
       logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
+      return authResult;
     }
 
-    const payload = await verifyJwt(token);
-    if (!payload?.userId) {
-      logApiResponse(requestId, 401, Date.now() - startTime);
-      return unauthorized();
-    }
-
-    logApiRequest(requestId, 'GET /api/friends/requests', payload.userId, {});
+    const { userId } = authResult;
+    logApiRequest(requestId, 'GET /api/friends/requests', userId, {});
 
     const friendRequestsCol = await getFriendRequests();
     const usersCol = await getUsers();
@@ -35,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Get incoming requests
     const requests = await friendRequestsCol
       .find({
-        toUserId: payload.userId,
+        toUserId: userId,
         status: 'pending',
       })
       .sort({ createdAt: -1 })
