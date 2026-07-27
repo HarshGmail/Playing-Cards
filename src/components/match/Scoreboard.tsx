@@ -43,6 +43,9 @@ export default function Scoreboard({ rounds, players, leaderboard }: ScoreboardP
     );
   }
 
+  // buildScoreboardRows still returns one entry per player (with cells
+  // indexed by round) — the table below just renders that transposed, players
+  // across the columns and rounds down the rows.
   const rows = buildScoreboardRows(rounds, players);
   const entryByPlayer = new Map((leaderboard ?? []).map((e) => [e.playerId, e]));
 
@@ -51,44 +54,48 @@ export default function Scoreboard({ rounds, players, leaderboard }: ScoreboardP
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-            <th className="p-3 text-left font-semibold text-gray-900 dark:text-white">S.no</th>
-            <th className="p-3 text-left font-semibold text-gray-900 dark:text-white">Player</th>
-            {rounds.map((round) => (
+            <th className="p-3 text-left font-semibold text-gray-900 dark:text-white">Round</th>
+            {rows.map((row) => (
               <th
-                key={round.round}
-                className="p-3 text-center font-semibold text-gray-900 dark:text-white min-w-12"
+                key={row.playerId}
+                className="p-3 text-center font-semibold text-gray-900 dark:text-white min-w-16"
               >
-                R{round.round}
+                {row.userName}
               </th>
             ))}
-            <th className="p-3 text-center font-semibold text-gray-900 dark:text-white bg-blue-100 dark:bg-blue-900/30">
-              Total
-            </th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, idx) => {
-            const entry = entryByPlayer.get(row.playerId);
-            const totalCellClass = entry
-              ? TOTAL_CELL_CLASSES[getPositionColor(entry.position, entry.isLast, entry.isDnf)]
-              : 'bg-blue-50 dark:bg-blue-900/20 text-gray-900 dark:text-white';
+          {rounds.map((round, i) => (
+            <tr
+              key={round.round}
+              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+              <td className="p-3 font-medium text-gray-900 dark:text-white">R{round.round}</td>
+              {rows.map((row) => (
+                <td key={row.playerId} className="p-3 text-center text-gray-700 dark:text-gray-300">
+                  {row.cells[i] === null ? '-' : row.cells[i]}
+                </td>
+              ))}
+            </tr>
+          ))}
+          <tr className="border-t-2 border-gray-300 dark:border-gray-600">
+            <td className="p-3 font-bold text-gray-900 dark:text-white bg-blue-100 dark:bg-blue-900/30">
+              Total
+            </td>
+            {rows.map((row) => {
+              const entry = entryByPlayer.get(row.playerId);
+              const totalCellClass = entry
+                ? TOTAL_CELL_CLASSES[getPositionColor(entry.position, entry.isLast, entry.isDnf)]
+                : 'bg-blue-50 dark:bg-blue-900/20 text-gray-900 dark:text-white';
 
-            return (
-              <tr
-                key={row.playerId}
-                className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-              >
-                <td className="p-3 text-gray-500 dark:text-gray-500">{idx + 1}</td>
-                <td className="p-3 font-medium text-gray-900 dark:text-white">{row.userName}</td>
-                {row.cells.map((score, i) => (
-                  <td key={rounds[i].round} className="p-3 text-center text-gray-700 dark:text-gray-300">
-                    {score === null ? '-' : score}
-                  </td>
-                ))}
-                <td className={`p-3 text-center font-bold ${totalCellClass}`}>{row.total}</td>
-              </tr>
-            );
-          })}
+              return (
+                <td key={row.playerId} className={`p-3 text-center font-bold ${totalCellClass}`}>
+                  {row.total}
+                </td>
+              );
+            })}
+          </tr>
         </tbody>
       </table>
     </div>

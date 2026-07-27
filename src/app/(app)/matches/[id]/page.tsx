@@ -9,6 +9,7 @@ import RoundForm from '@/components/match/RoundForm';
 import SubmittedRounds from '@/components/match/SubmittedRounds';
 import RosterPanel from '@/components/match/RosterPanel';
 import JoinRequestsPanel from '@/components/match/JoinRequestsPanel';
+import EditRoundModal from '@/components/match/EditRoundModal';
 
 export default function MatchPage() {
   const params = useParams();
@@ -20,6 +21,7 @@ export default function MatchPage() {
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingRound, setEditingRound] = useState<number | null>(null);
 
   const isFetchingRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -91,6 +93,16 @@ export default function MatchPage() {
     await fetchData();
   };
 
+  const handleRoundEdit = async (round: number, scores: any[]) => {
+    const res = await fetch(`/api/matches/${matchId}/rounds/${round}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scores }),
+    });
+    if (!res.ok) throw new Error('Failed to save round');
+    await fetchData();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 flex items-center justify-center">
@@ -159,6 +171,7 @@ export default function MatchPage() {
               rounds={rounds}
               playerNames={playerNames}
               isCreator={isCreator}
+              onEdit={setEditingRound}
             />
           )}
           {tab === 'form' && isCreator && (
@@ -178,6 +191,20 @@ export default function MatchPage() {
           )}
         </div>
       </div>
+
+      {editingRound !== null && (() => {
+        const roundData = rounds.find((r) => r.round === editingRound);
+        if (!roundData) return null;
+        return (
+          <EditRoundModal
+            round={editingRound}
+            players={match.roster}
+            existingScores={roundData.scores}
+            onClose={() => setEditingRound(null)}
+            onSave={(scores) => handleRoundEdit(editingRound, scores)}
+          />
+        );
+      })()}
     </div>
   );
 }
