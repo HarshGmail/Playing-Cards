@@ -10,6 +10,7 @@ import { Edit, Share } from 'lucide-react';
 export default function MyProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [stats, setStats] = useState<any>(undefined);
   const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,6 +22,12 @@ export default function MyProfilePage() {
         if (!res.ok) throw new Error('Failed to load profile');
         const data = await res.json();
         setUser(data.user);
+
+        const statsRes = await fetch(`/api/users/${data.user.username}/stats`);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData.stats);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load profile');
         router.push('/');
@@ -100,7 +107,7 @@ export default function MyProfilePage() {
           }
         />
 
-        <MedalsTable />
+        <MedalsTable stats={stats} />
 
         {showEditModal && (
           <ProfileEditModal

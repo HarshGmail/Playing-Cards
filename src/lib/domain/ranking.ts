@@ -153,6 +153,48 @@ export function computeGamesWon(
   return gamesWon;
 }
 
+export function computeMatchLeaderboard(
+  roster: Array<{
+    userId: string;
+    userName: string;
+    status: 'active' | 'dnf';
+    dnfAfterRound: number | null;
+  }>,
+  scores: Array<{ playerId: string; round: number; value: number }>,
+  rankPreference: 'highest-first' | 'lowest-first',
+  tiebreakers: string[]
+): LeaderboardEntry[] {
+  // Group scores by playerId, in round order. Rounds before a player joined
+  // never have a score doc (they weren't in the roster yet), and rounds
+  // after a DNF are excluded so their total/average freeze at the DNF point
+  // — both fall out naturally from only including rounds that actually
+  // exist for that player, no zero-padding needed.
+  const scoresByPlayer = new Map<string, { scores: number[]; isDnf: boolean }>();
+
+  roster.forEach((r) => {
+    scoresByPlayer.set(r.userId, { scores: [], isDnf: r.status === 'dnf' });
+  });
+
+  const sortedScores = [...scores].sort((a, b) => a.round - b.round);
+  for (const score of sortedScores) {
+    const entry = scoresByPlayer.get(score.playerId);
+    if (!entry) continue;
+    const rosterEntry = roster.find((r) => r.userId === score.playerId);
+    if (rosterEntry?.dnfAfterRound != null && score.round > rosterEntry.dnfAfterRound) {
+      continue;
+    }
+    entry.scores.push(score.value);
+  }
+
+  const aggregates = buildAggregates(scoresByPlayer);
+  const leaderboard = computeLeaderboard(aggregates, rankPreference, tiebreakers);
+
+  return leaderboard.map((entry) => ({
+    ...entry,
+    name: roster.find((r) => r.userId === entry.playerId)?.userName || 'Unknown',
+  }));
+}
+
 export function buildAggregates(
   scoresByPlayer: Map<string, { scores: number[]; isDnf: boolean }>
 ): PlayerAggregate[] {

@@ -4,7 +4,7 @@ import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { ObjectId } from 'mongodb';
-import { buildAggregates, computeLeaderboard, LeaderboardEntry as DomainLeaderboardEntry } from '@/lib/domain/ranking';
+import { computeMatchLeaderboard } from '@/lib/domain/ranking';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +66,12 @@ export async function GET(
       .toArray();
 
     // Calculate leaderboard
-    const leaderboard = calculateLeaderboard(match, scores);
+    const leaderboard = computeMatchLeaderboard(
+      match.roster,
+      scores,
+      match.rankPreference,
+      match.tiebreakers
+    );
 
     logApiResponse(requestId, 200, Date.now() - startTime);
 
@@ -91,36 +96,4 @@ export async function GET(
     logApiResponse(requestId, 500, Date.now() - startTime);
     return error('Internal server error', 'INTERNAL_ERROR', 500);
   }
-}
-
-function calculateLeaderboard(match: any, scores: any[]): DomainLeaderboardEntry[] {
-  // Group scores by playerId, in round order. Rounds before a player joined
-  // never have a score doc (they weren't in the roster yet), and rounds
-  // after a DNF are excluded so their total/average freeze at the DNF point
-  // — both fall out naturally from only including rounds that actually
-  // exist for that player, no zero-padding needed.
-  const scoresByPlayer = new Map<string, { scores: number[]; isDnf: boolean }>();
-
-  match.roster.forEach((r: any) => {
-    scoresByPlayer.set(r.userId, { scores: [], isDnf: r.status === 'dnf' });
-  });
-
-  const sortedScores = [...scores].sort((a, b) => a.round - b.round);
-  for (const score of sortedScores) {
-    const entry = scoresByPlayer.get(score.playerId);
-    if (!entry) continue;
-    const rosterEntry = match.roster.find((r: any) => r.userId === score.playerId);
-    if (rosterEntry?.dnfAfterRound != null && score.round > rosterEntry.dnfAfterRound) {
-      continue;
-    }
-    entry.scores.push(score.value);
-  }
-
-  const aggregates = buildAggregates(scoresByPlayer);
-  const leaderboard = computeLeaderboard(aggregates, match.rankPreference, match.tiebreakers);
-
-  return leaderboard.map((entry) => ({
-    ...entry,
-    name: match.roster.find((r: any) => r.userId === entry.playerId)?.userName || 'Unknown',
-  }));
 }
