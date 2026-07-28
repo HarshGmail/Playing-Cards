@@ -22,6 +22,7 @@ export default function MatchPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingRound, setEditingRound] = useState<number | null>(null);
+  const [endingMatch, setEndingMatch] = useState(false);
 
   const isFetchingRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -103,6 +104,20 @@ export default function MatchPage() {
     await fetchData();
   };
 
+  const handleEndMatch = async () => {
+    if (!confirm('End this match? No more rounds can be added afterward.')) return;
+    setEndingMatch(true);
+    try {
+      const res = await fetch(`/api/matches/${matchId}`, { method: 'PATCH' });
+      if (!res.ok) throw new Error('Failed to end match');
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to end match');
+    } finally {
+      setEndingMatch(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 flex items-center justify-center">
@@ -123,16 +138,27 @@ export default function MatchPage() {
     match.roster.map((r: any) => [r.userId, r.userName])
   );
   const isCreator = !!user && match.creatorId === user.id;
-  const tabs = isCreator
+  const tabs = isCreator && match.status === 'active'
     ? ['leaderboard', 'scoreboard', 'rounds', 'form', 'roster']
     : ['leaderboard', 'scoreboard', 'rounds', 'roster'];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          {match.name}
-        </h1>
+        <div className="flex items-start justify-between gap-4 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {match.name}
+          </h1>
+          {isCreator && match.status === 'active' && (
+            <button
+              onClick={handleEndMatch}
+              disabled={endingMatch}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition disabled:opacity-50 shrink-0"
+            >
+              {endingMatch ? 'Ending...' : 'End Match'}
+            </button>
+          )}
+        </div>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
           Round {match.roundsPlayed} • {match.roster.length} players • {match.status}
         </p>
@@ -174,7 +200,7 @@ export default function MatchPage() {
               onEdit={setEditingRound}
             />
           )}
-          {tab === 'form' && isCreator && (
+          {tab === 'form' && isCreator && match.status === 'active' && (
             <RoundForm
               round={match.roundsPlayed + 1}
               players={match.roster}
