@@ -5,18 +5,24 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import LoginForm from '@/components/auth/LoginForm';
 import SignupForm from '@/components/auth/SignupForm';
 
+// Only allow same-origin relative paths, so a crafted `redirect` query
+// param can't be used to bounce a logged-in user to an external site.
+const safeRedirect = (path: string | null) =>
+  path && path.startsWith('/') && !path.startsWith('//') ? path : '/dashboard';
+
 export default function Landing() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<'login' | 'signup'>('login');
   const [isLoading, setIsLoading] = useState(true);
+  const destination = safeRedirect(searchParams.get('redirect'));
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
-          router.push('/dashboard');
+          router.push(destination);
           return;
         }
       } catch {
@@ -25,7 +31,7 @@ export default function Landing() {
       setIsLoading(false);
     };
     checkAuth();
-  }, [router]);
+  }, [router, destination]);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -53,11 +59,11 @@ export default function Landing() {
   }
 
   const handleLoginSuccess = () => {
-    router.push('/dashboard');
+    router.push(destination);
   };
 
   const handleSignupSuccess = () => {
-    router.push('/dashboard');
+    router.push(destination);
   };
 
   return (
@@ -74,7 +80,8 @@ export default function Landing() {
             <button
               onClick={() => {
                 setTab('login');
-                window.history.pushState(null, '', '/?tab=login');
+                const qs = new URLSearchParams({ tab: 'login', ...(searchParams.get('redirect') ? { redirect: searchParams.get('redirect')! } : {}) });
+                window.history.pushState(null, '', `/?${qs.toString()}`);
               }}
               className={`flex-1 py-2 px-4 rounded font-medium transition-colors ${
                 tab === 'login'
@@ -87,7 +94,8 @@ export default function Landing() {
             <button
               onClick={() => {
                 setTab('signup');
-                window.history.pushState(null, '', '/?tab=signup');
+                const qs = new URLSearchParams({ tab: 'signup', ...(searchParams.get('redirect') ? { redirect: searchParams.get('redirect')! } : {}) });
+                window.history.pushState(null, '', `/?${qs.toString()}`);
               }}
               className={`flex-1 py-2 px-4 rounded font-medium transition-colors ${
                 tab === 'signup'

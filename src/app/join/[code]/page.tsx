@@ -17,22 +17,32 @@ export default function JoinCodePage() {
     const validate = async () => {
       try {
         const res = await fetch(`/api/join/${code.toUpperCase()}`);
+        if (res.status === 401) {
+          // Not logged in — send to login and come straight back here afterward.
+          // Leave `loading` on so this page doesn't flash "Invalid Code" mid-redirect.
+          router.push(`/?redirect=${encodeURIComponent(`/join/${code}`)}`);
+          return;
+        }
         if (!res.ok) throw new Error('Invalid or expired code');
         const data = await res.json();
         setMatch(data.match);
+        setLoading(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to validate code');
-      } finally {
         setLoading(false);
       }
     };
     validate();
-  }, [code]);
+  }, [code, router]);
 
   const handleJoin = async () => {
     setJoining(true);
     try {
       const res = await fetch(`/api/join/${code.toUpperCase()}`, { method: 'POST' });
+      if (res.status === 401) {
+        router.push(`/?redirect=${encodeURIComponent(`/join/${code}`)}`);
+        return;
+      }
       if (!res.ok) throw new Error('Failed to join');
       const data = await res.json();
       router.push(`/matches/${data.matchId}`);
