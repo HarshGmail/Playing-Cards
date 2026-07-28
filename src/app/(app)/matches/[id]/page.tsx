@@ -92,6 +92,7 @@ export default function MatchPage() {
     });
     if (!res.ok) throw new Error('Failed to submit round');
     await fetchData();
+    setTab('leaderboard');
   };
 
   const handleRoundEdit = async (round: number, scores: any[]) => {
