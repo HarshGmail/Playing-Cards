@@ -47,8 +47,9 @@ export async function GET(
 
     const isCreator = match.creatorId === userId;
     const isInRoster = match.roster.some((r) => r.userId === userId);
+    const isSpectator = (match.spectators ?? []).some((s) => s.userId === userId);
 
-    if (!isCreator && !isInRoster) {
+    if (!isCreator && !isInRoster && !isSpectator) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }

@@ -172,11 +172,12 @@ export async function GET(
       return notFound();
     }
 
-    // Check if user is creator or in roster
+    // Check if user is creator, in roster, or a spectator
     const isCreator = match.creatorId === userId;
     const isInRoster = match.roster.some((r) => r.userId === userId);
+    const isSpectator = (match.spectators ?? []).some((s) => s.userId === userId);
 
-    if (!isCreator && !isInRoster) {
+    if (!isCreator && !isInRoster && !isSpectator) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }

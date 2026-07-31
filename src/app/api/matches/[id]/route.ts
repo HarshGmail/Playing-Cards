@@ -44,8 +44,9 @@ export async function GET(
 
     const isCreator = match.creatorId === userId;
     const isInRoster = match.roster.some((r) => r.userId === userId);
+    const isSpectator = (match.spectators ?? []).some((s) => s.userId === userId);
 
-    if (!isCreator && !isInRoster) {
+    if (!isCreator && !isInRoster && !isSpectator) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }
@@ -69,6 +70,11 @@ export async function GET(
           dnfAfterRound: r.dnfAfterRound,
           order: r.order,
         })),
+        spectators: (match.spectators ?? []).map((s) => ({
+          userId: s.userId,
+          userName: s.userName,
+        })),
+        isSpectator,
         roundsPlayed: match.roundsPlayed,
         version: match.version,
         createdAt: match.createdAt,

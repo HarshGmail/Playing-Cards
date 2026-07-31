@@ -53,7 +53,9 @@ export async function GET(
       return notFound();
     }
 
-    const alreadyInMatch = match.roster.some((r) => r.userId === userId);
+    const alreadyInMatch =
+      match.roster.some((r) => r.userId === userId) ||
+      (match.spectators ?? []).some((s) => s.userId === userId);
 
     if (alreadyInMatch) {
       logApiResponse(requestId, 409, Date.now() - startTime);
@@ -71,6 +73,7 @@ export async function GET(
         playerCount: match.roster.length,
       },
       canJoin: true,
+      role: shareLink.role,
       code,
     });
   } catch (err) {
@@ -126,7 +129,9 @@ export async function POST(
       return notFound();
     }
 
-    const alreadyInMatch = match.roster.some((r) => r.userId === userId);
+    const alreadyInMatch =
+      match.roster.some((r) => r.userId === userId) ||
+      (match.spectators ?? []).some((s) => s.userId === userId);
 
     if (alreadyInMatch) {
       logApiResponse(requestId, 409, Date.now() - startTime);
@@ -139,6 +144,26 @@ export async function POST(
     if (!user) {
       logApiResponse(requestId, 404, Date.now() - startTime);
       return error('User not found', 'USER_NOT_FOUND', 404);
+    }
+
+    if (shareLink.role === 'spectator') {
+      await matchesCol.updateOne(
+        { _id: shareLink.matchId },
+        {
+          $push: { spectators: { userId, userName: user.name } },
+          $inc: { version: 1 },
+        }
+      );
+
+      logApiResponse(requestId, 200, Date.now() - startTime);
+
+      return success({
+        matchId: match._id?.toString(),
+        userId,
+        userName: user.name,
+        joined: true,
+        role: 'spectator',
+      });
     }
 
     const newRosterEntry = {
@@ -165,6 +190,7 @@ export async function POST(
       userId,
       userName: user.name,
       joined: true,
+      role: 'player',
       joinedAtRound: match.roundsPlayed + 1,
     });
   } catch (err) {

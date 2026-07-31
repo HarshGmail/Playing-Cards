@@ -60,6 +60,22 @@ export async function POST(request: NextRequest) {
       };
     });
 
+    // Spectators can't also be players — drop any overlap rather than erroring.
+    const spectatorIds = data.spectatorIds.filter((id) => !playerIds.includes(id));
+    const spectatorUsers = spectatorIds.length
+      ? await usersCol.find({ _id: { $in: spectatorIds.map((id) => new ObjectId(id)) } }).toArray()
+      : [];
+
+    if (spectatorUsers.length !== spectatorIds.length) {
+      logApiResponse(requestId, 400, Date.now() - startTime);
+      return error('Some spectators not found', 'INVALID_SPECTATORS', 400);
+    }
+
+    const spectators = spectatorIds.map((spectatorId) => {
+      const spectator = spectatorUsers.find((s) => s._id?.toString() === spectatorId);
+      return { userId: spectatorId, userName: spectator?.name || '' };
+    });
+
     // Create match
     const matchDoc: Match = {
       name: data.name,
@@ -71,6 +87,7 @@ export async function POST(request: NextRequest) {
       deletedAt: null,
       tiebreakers: data.tiebreakers,
       roster,
+      spectators,
       roundsPlayed: 0,
       version: 1,
       createdAt: new Date(),

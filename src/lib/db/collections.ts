@@ -23,6 +23,11 @@ export interface RosterEntry {
   order: number;
 }
 
+export interface SpectatorEntry {
+  userId: string;
+  userName: string;
+}
+
 export interface Match {
   _id?: { toString(): string };
   name: string;
@@ -34,6 +39,7 @@ export interface Match {
   deletedAt: Date | null;
   tiebreakers: string[];
   roster: RosterEntry[];
+  spectators: SpectatorEntry[];
   roundsPlayed: number;
   version: number;
   createdAt: Date;
@@ -80,6 +86,7 @@ export interface ShareLink {
   _id?: { toString(): string };
   matchId: string;
   code: string;
+  role: 'player' | 'spectator';
   createdBy: string;
   createdAt: Date;
   expiresAt: Date;

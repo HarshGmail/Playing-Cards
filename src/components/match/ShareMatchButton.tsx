@@ -9,6 +9,7 @@ interface ShareMatchButtonProps {
 
 export default function ShareMatchButton({ matchId }: ShareMatchButtonProps) {
   const [open, setOpen] = useState(false);
+  const [role, setRole] = useState<'player' | 'spectator'>('player');
   const [shareLink, setShareLink] = useState('');
   const [shareExpiresAt, setShareExpiresAt] = useState<Date | null>(null);
   const [generatingLink, setGeneratingLink] = useState(false);
@@ -32,7 +33,11 @@ export default function ShareMatchButton({ matchId }: ShareMatchButtonProps) {
     setShareError('');
     setCopied(false);
     try {
-      const res = await fetch(`/api/matches/${matchId}/share`, { method: 'POST' });
+      const res = await fetch(`/api/matches/${matchId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
       if (!res.ok) throw new Error('Failed to generate invite link');
       const data = await res.json();
       setShareLink(`${window.location.origin}/join/${data.shareCode}`);
@@ -53,6 +58,13 @@ export default function ShareMatchButton({ matchId }: ShareMatchButtonProps) {
     }
   };
 
+  const handleRoleChange = (nextRole: 'player' | 'spectator') => {
+    setRole(nextRole);
+    setShareLink('');
+    setShareExpiresAt(null);
+    setCopied(false);
+  };
+
   return (
     <div className="relative shrink-0" ref={containerRef}>
       <button
@@ -66,8 +78,34 @@ export default function ShareMatchButton({ matchId }: ShareMatchButtonProps) {
 
       {open && (
         <div className="absolute right-0 mt-2 w-80 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900 dark:text-white">Invite players</h3>
+          <h3 className="font-medium text-gray-900 dark:text-white">Invite link</h3>
+
+          <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+            <button
+              type="button"
+              onClick={() => handleRoleChange('player')}
+              className={`flex-1 px-3 py-1.5 text-sm font-medium transition ${
+                role === 'player'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              Player
+            </button>
+            <button
+              type="button"
+              onClick={() => handleRoleChange('spectator')}
+              className={`flex-1 px-3 py-1.5 text-sm font-medium transition ${
+                role === 'spectator'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              Spectate
+            </button>
+          </div>
+
+          <div className="flex items-center justify-end">
             <button
               type="button"
               onClick={handleGenerateInvite}

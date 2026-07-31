@@ -79,12 +79,16 @@ export default function JoinCodePage() {
     );
   }
 
+  const isSpectator = match.role === 'spectator';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center px-4">
       <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full space-y-6">
         <div className="text-center">
           <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900">Join Match</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isSpectator ? "You've Been Invited to Spectate" : 'Join Match'}
+          </h1>
         </div>
 
         <div className="p-4 bg-gray-50 rounded-lg space-y-2">
@@ -102,7 +106,7 @@ export default function JoinCodePage() {
             disabled={joining}
             className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {joining ? 'Joining...' : 'Join This Match'}
+            {joining ? 'Joining...' : isSpectator ? 'Spectate This Match' : 'Join This Match'}
           </button>
           <button
             onClick={() => router.push('/matches/join')}

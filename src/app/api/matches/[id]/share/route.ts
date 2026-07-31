@@ -27,8 +27,12 @@ export async function POST(
     }
     const { userId } = authResult;
 
+    const body = await request.json().catch(() => ({}));
+    const role: 'player' | 'spectator' = body?.role === 'spectator' ? 'spectator' : 'player';
+
     logApiRequest(requestId, `POST /api/matches/${params.id}/share`, userId, {
       matchId: params.id,
+      role,
     });
 
     // Validate ObjectId format
@@ -80,6 +84,7 @@ export async function POST(
     const result = await shareLinksCol.insertOne({
       matchId: params.id,
       code,
+      role,
       createdBy: userId,
       createdAt: new Date(),
       expiresAt,
@@ -93,6 +98,7 @@ export async function POST(
         shareCode: code,
         shareLinkId: result.insertedId.toString(),
         matchId: params.id,
+        role,
         expiresAt,
       },
       201

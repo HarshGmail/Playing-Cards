@@ -6,6 +6,7 @@ export const createMatchSchema = z.object({
   rankPreference: z.enum(['highest-first', 'lowest-first']),
   tiebreakers: z.array(z.string()).length(3),
   players: z.array(z.string()).min(1),
+  spectatorIds: z.array(z.string()).optional().default([]),
 });
 
 export const submitRoundSchema = z.object({

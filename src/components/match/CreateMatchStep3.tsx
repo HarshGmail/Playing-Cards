@@ -31,6 +31,7 @@ export default function CreateMatchStep3({
   const { friends, fetchFriends } = useFriendsStore();
   const [identifier, setIdentifier] = useState('');
   const [players, setPlayers] = useState<AddedPlayer[]>([]);
+  const [spectators, setSpectators] = useState<AddedPlayer[]>([]);
   const [addError, setAddError] = useState('');
   const [adding, setAdding] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -82,7 +83,28 @@ export default function CreateMatchStep3({
     }
 
     setAddError('');
+    setSpectators((prev) => prev.filter((p) => p.id !== found.id));
     setPlayers((prev) => [...prev, found]);
+    setIdentifier('');
+    setSuggestions([]);
+  };
+
+  const addSpectator = (found: AddedPlayer) => {
+    if (found.id === user?.id) {
+      setAddError("That's you — you're already in the match.");
+      return;
+    }
+    if (players.some((p) => p.id === found.id)) {
+      setAddError(`${found.name} is already added as a player.`);
+      return;
+    }
+    if (spectators.some((p) => p.id === found.id)) {
+      setAddError(`${found.name} has already been added as a spectator.`);
+      return;
+    }
+
+    setAddError('');
+    setSpectators((prev) => [...prev, found]);
     setIdentifier('');
     setSuggestions([]);
   };
@@ -121,7 +143,13 @@ export default function CreateMatchStep3({
     setPlayers((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const addableFriends = friends.filter((f) => !players.some((p) => p.id === f.id));
+  const handleRemoveSpectator = (id: string) => {
+    setSpectators((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const addableFriends = friends.filter(
+    (f) => !players.some((p) => p.id === f.id) && !spectators.some((p) => p.id === f.id)
+  );
 
   const handleCreate = async () => {
     setCreateError('');
@@ -136,6 +164,7 @@ export default function CreateMatchStep3({
           rankPreference,
           players: players.map((p) => p.id),
           tiebreakers,
+          spectatorIds: spectators.map((p) => p.id),
         }),
       });
 
@@ -196,18 +225,35 @@ export default function CreateMatchStep3({
                 <p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Searching...</p>
               )}
               {suggestions.map((s) => (
-                <button
+                <div
                   key={s.id}
-                  type="button"
-                  onClick={() => addPlayer(s)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                 >
-                  <span>
+                  <button
+                    type="button"
+                    onClick={() => addPlayer(s)}
+                    className="flex-1 text-left"
+                  >
                     <span className="font-medium text-gray-900 dark:text-white">{s.name}</span>{' '}
                     <span className="text-xs text-gray-500 dark:text-gray-400">@{s.username}</span>
-                  </span>
-                  <span className="text-xs text-blue-600 dark:text-blue-400">Add</span>
-                </button>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => addSpectator(s)}
+                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    >
+                      Spectate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addPlayer(s)}
+                      className="text-xs text-blue-600 dark:text-blue-400"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -238,6 +284,36 @@ export default function CreateMatchStep3({
           )}
         </div>
 
+        {spectators.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Spectators
+            </h3>
+            <div className="space-y-2">
+              {spectators.map((spectator) => (
+                <div
+                  key={spectator.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{spectator.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      @{spectator.username}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSpectator(spectator.id)}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {addableFriends.length > 0 && (
           <div className="mt-6">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Friends</h3>
@@ -251,13 +327,22 @@ export default function CreateMatchStep3({
                     <p className="font-medium text-gray-900 dark:text-white">{friend.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">@{friend.username}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => addPlayer(friend)}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium"
-                  >
-                    Add
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => addSpectator(friend)}
+                      className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded text-sm font-medium"
+                    >
+                      Add as spectator
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addPlayer(friend)}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium"
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
