@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import ProfileCard from '@/components/profile/ProfileCard';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import MedalsTable from '@/components/profile/MedalsTable';
+import FriendsLeaderboard from '@/components/profile/FriendsLeaderboard';
 import { Edit, Share } from 'lucide-react';
 
 export default function MyProfilePage() {
@@ -108,6 +109,8 @@ export default function MyProfilePage() {
         />
 
         <MedalsTable stats={stats} />
+
+        <FriendsLeaderboard self={{ id: user.id, name: user.name, username: user.username }} />
 
         {showEditModal && (
           <ProfileEditModal
