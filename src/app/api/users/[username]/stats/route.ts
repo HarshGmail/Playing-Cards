@@ -66,8 +66,8 @@ export async function GET(
 
       ranks.push(entry.position);
       if (entry.position === 1) {
-        timesLeading += 1;
         if (match.status === 'ended') wins += 1;
+        else timesLeading += 1;
       }
     }
 
