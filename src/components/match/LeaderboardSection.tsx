@@ -45,16 +45,33 @@ function findBestSingleRound(
   rankPreference: 'highest-first' | 'lowest-first'
 ) {
   const nameById = new Map(players.map((p) => [p.userId, p.userName]));
-  let best: { playerId: string; round: number; value: number } | null = null;
 
-  for (const round of rounds) {
-    for (const score of round.scores) {
-      if (
-        !best ||
-        (rankPreference === 'highest-first' ? score.value > best.value : score.value < best.value)
-      ) {
-        best = { playerId: score.playerId, round: round.round, value: score.value };
+  if (rankPreference === 'highest-first') {
+    let best: { playerId: string; round: number; value: number } | null = null;
+    for (const round of rounds) {
+      for (const score of round.scores) {
+        if (!best || score.value > best.value) {
+          best = { playerId: score.playerId, round: round.round, value: score.value };
+        }
       }
+    }
+    if (!best) return null;
+    return { ...best, margin: null as number | null, name: nameById.get(best.playerId) ?? 'Unknown' };
+  }
+
+  // Lowest-first: raw round values trend upward over the match (each round's
+  // penalty score is typically >= the last), so the lowest raw value is
+  // almost always round 1 and tells you nothing about a standout round.
+  // Instead, find the round where the winner beat the runner-up by the
+  // widest margin — a blowout can happen at any point in the match.
+  let best: { playerId: string; round: number; value: number; margin: number } | null = null;
+  for (const round of rounds) {
+    if (round.scores.length < 2) continue;
+    const sorted = [...round.scores].sort((a, b) => a.value - b.value);
+    const [winner, runnerUp] = sorted;
+    const margin = runnerUp.value - winner.value;
+    if (!best || margin > best.margin) {
+      best = { playerId: winner.playerId, round: round.round, value: winner.value, margin };
     }
   }
 
@@ -155,7 +172,9 @@ export default function LeaderboardSection({
               </p>
               <p className="font-semibold text-gray-900 dark:text-white">{bestRound.name}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {bestRound.value} in round {bestRound.round}
+                {rankPreference === 'highest-first'
+                  ? `${bestRound.value} in round ${bestRound.round}`
+                  : `won round ${bestRound.round} by ${bestRound.margin} pts`}
               </p>
             </div>
           )}

@@ -66,7 +66,7 @@ export default function MedalsTable({
             {stats.totalRounds}
             <ListOrdered className="w-5 h-5" />
           </div>
-          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Rounds Played</p>
+          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Games Played</p>
         </div>
       </div>
     </div>
