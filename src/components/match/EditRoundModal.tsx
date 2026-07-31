@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useLocalStorageRoundScores } from '@/lib/hooks/useLocalStorageRoundScores';
 
 interface EditRoundModalProps {
+  matchId: string;
   round: number;
   players: Array<{
     userId: string;
@@ -15,18 +18,33 @@ interface EditRoundModalProps {
 }
 
 export default function EditRoundModal({
+  matchId,
   round,
   players,
   existingScores,
   onClose,
   onSave,
 }: EditRoundModalProps) {
+  const { user } = useAuth();
+  const { loadSavedScores, saveScores, clearSavedScores } = useLocalStorageRoundScores({
+    matchId,
+    userId: user?.id || '',
+    round,
+    isEdit: true,
+  });
+
   const byPlayerId = new Map(existingScores.map((s) => [s.playerId, s.value]));
-  const [scores, setScores] = useState<Record<string, string>>(
-    Object.fromEntries(players.map((p) => [p.userId, String(byPlayerId.get(p.userId) ?? '')]))
-  );
+  const [scores, setScores] = useState<Record<string, string>>(() => {
+    const saved = loadSavedScores();
+    if (saved) return saved;
+    return Object.fromEntries(players.map((p) => [p.userId, String(byPlayerId.get(p.userId) ?? '')]));
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    saveScores(scores);
+  }, [scores, saveScores]);
 
   const handleScoreChange = (playerId: string, value: string) => {
     setScores((prev) => ({
@@ -48,6 +66,7 @@ export default function EditRoundModal({
         value: parseInt(scores[p.userId]),
       }));
       await onSave(scoresArray);
+      clearSavedScores();
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save round');

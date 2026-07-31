@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useLocalStorageRoundScores } from '@/lib/hooks/useLocalStorageRoundScores';
 
 interface RoundFormProps {
+  matchId: string;
   round: number;
   players: Array<{
     userId: string;
@@ -11,12 +14,25 @@ interface RoundFormProps {
   onSubmit: (scores: Array<{ playerId: string; value: number }>) => Promise<void>;
 }
 
-export default function RoundForm({ round, players, onSubmit }: RoundFormProps) {
-  const [scores, setScores] = useState<Record<string, string>>(
-    Object.fromEntries(players.map((p) => [p.userId, '']))
-  );
+export default function RoundForm({ matchId, round, players, onSubmit }: RoundFormProps) {
+  const { user } = useAuth();
+  const { loadSavedScores, saveScores, clearSavedScores } = useLocalStorageRoundScores({
+    matchId,
+    userId: user?.id || '',
+    round,
+    isEdit: false,
+  });
+
+  const [scores, setScores] = useState<Record<string, string>>(() => {
+    const saved = loadSavedScores();
+    return saved || Object.fromEntries(players.map((p) => [p.userId, '']));
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    saveScores(scores);
+  }, [scores, saveScores]);
 
   const handleScoreChange = (playerId: string, value: string) => {
     setScores((prev) => ({
@@ -38,6 +54,7 @@ export default function RoundForm({ round, players, onSubmit }: RoundFormProps) 
         value: parseInt(scores[p.userId]),
       }));
       await onSubmit(scoresArray);
+      clearSavedScores();
       setScores(Object.fromEntries(players.map((p) => [p.userId, ''])));
       setError('');
     } catch (err) {

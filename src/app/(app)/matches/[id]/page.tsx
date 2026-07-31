@@ -150,6 +150,7 @@ export default function MatchPage() {
           )}
           {tab === 'form' && isCreator && match.status === 'active' && (
             <RoundForm
+              matchId={matchId}
               round={match.roundsPlayed + 1}
               players={match.roster}
               onSubmit={handleRoundSubmit}
@@ -170,6 +171,7 @@ export default function MatchPage() {
         if (!roundData) return null;
         return (
           <EditRoundModal
+            matchId={matchId}
             round={editingRound}
             players={match.roster}
             existingScores={roundData.scores}
