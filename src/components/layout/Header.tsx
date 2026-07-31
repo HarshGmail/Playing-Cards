@@ -69,7 +69,7 @@ export default function Header() {
 
           {/* User Menu */}
           <div className="hidden sm:flex items-center gap-2">
-            <Link href={`/profile/${user?.username}`} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm">
+            <Link href="/profile" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm">
               {user?.name}
             </Link>
             <button
@@ -86,7 +86,7 @@ export default function Header() {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="sm:hidden border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-4 py-3 space-y-2">
-          <Link href={`/profile/${user?.username}`} className="block text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2">
+          <Link href="/profile" className="block text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2">
             {user?.name} (@{user?.username})
           </Link>
           <button
