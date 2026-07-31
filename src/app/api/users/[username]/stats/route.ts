@@ -50,6 +50,8 @@ export async function GET(
 
     let wins = 0;
     let timesLeading = 0;
+    let gamesWon = 0;
+    let totalRounds = 0;
     const ranks: number[] = [];
 
     for (const match of matches) {
@@ -65,6 +67,8 @@ export async function GET(
       if (!entry || entry.isDnf) continue;
 
       ranks.push(entry.position);
+      gamesWon += entry.gamesWon;
+      totalRounds += entry.roundsPlayed;
       if (entry.position === 1) {
         if (match.status === 'ended') wins += 1;
         else timesLeading += 1;
@@ -81,6 +85,8 @@ export async function GET(
         totalMatches: matches.length,
         averageRank,
         timesLeading,
+        gamesWon,
+        totalRounds,
       },
     });
   } catch (err) {

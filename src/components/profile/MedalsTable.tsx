@@ -1,6 +1,6 @@
 'use client';
 
-import { Trophy, Star } from 'lucide-react';
+import { Trophy, Star, Swords, ListOrdered } from 'lucide-react';
 
 interface MedalsTableProps {
   stats?: {
@@ -8,10 +8,14 @@ interface MedalsTableProps {
     totalMatches: number;
     averageRank: number;
     timesLeading: number;
+    gamesWon: number;
+    totalRounds: number;
   };
 }
 
-export default function MedalsTable({ stats = { wins: 0, totalMatches: 0, averageRank: 0, timesLeading: 0 } }: MedalsTableProps) {
+export default function MedalsTable({
+  stats = { wins: 0, totalMatches: 0, averageRank: 0, timesLeading: 0, gamesWon: 0, totalRounds: 0 },
+}: MedalsTableProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -19,7 +23,7 @@ export default function MedalsTable({ stats = { wins: 0, totalMatches: 0, averag
         Stats & Achievements
       </h3>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
         <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-900/40 rounded-lg text-center">
           <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-500">
             {stats.wins}
@@ -47,6 +51,22 @@ export default function MedalsTable({ stats = { wins: 0, totalMatches: 0, averag
             <Star className="w-5 h-5" />
           </div>
           <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Leading</p>
+        </div>
+
+        <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40 rounded-lg text-center">
+          <div className="text-3xl font-bold text-green-600 dark:text-green-500 flex items-center justify-center gap-1">
+            {stats.gamesWon}
+            <Swords className="w-5 h-5" />
+          </div>
+          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Games Won</p>
+        </div>
+
+        <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800 rounded-lg text-center">
+          <div className="text-3xl font-bold text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1">
+            {stats.totalRounds}
+            <ListOrdered className="w-5 h-5" />
+          </div>
+          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Rounds Played</p>
         </div>
       </div>
     </div>
