@@ -46,6 +46,15 @@ export function computeRoundWinners(
   });
 }
 
-export function computeZeroCounts(rows: ScoreboardRow[]): Map<string, number> {
-  return new Map(rows.map((row) => [row.playerId, row.cells.filter((c) => c === 0).length]));
+export function computeBracketCounts(
+  roundWinners: Array<Set<string>>,
+  players: Array<{ userId: string }>
+): Map<string, number> {
+  const counts = new Map<string, number>(players.map((p) => [p.userId, 0]));
+  roundWinners.forEach((winners) => {
+    winners.forEach((playerId) => {
+      counts.set(playerId, (counts.get(playerId) ?? 0) + 1);
+    });
+  });
+  return counts;
 }

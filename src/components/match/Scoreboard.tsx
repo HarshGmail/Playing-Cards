@@ -1,6 +1,6 @@
 'use client';
 
-import { buildScoreboardRows, computeRoundWinners, computeZeroCounts } from '@/lib/domain/scoreboard';
+import { buildScoreboardRows, computeRoundWinners, computeBracketCounts } from '@/lib/domain/scoreboard';
 import { getPositionColor, PositionColorToken } from '@/lib/domain/positionColor';
 
 interface LeaderboardEntry {
@@ -55,7 +55,7 @@ export default function Scoreboard({
   const rows = buildScoreboardRows(rounds, players);
   const entryByPlayer = new Map((leaderboard ?? []).map((e) => [e.playerId, e]));
   const roundWinners = computeRoundWinners(rounds, rankPreference);
-  const zeroCounts = computeZeroCounts(rows);
+  const bracketCounts = computeBracketCounts(roundWinners, players);
 
   return (
     <div className="overflow-x-auto">
@@ -70,7 +70,7 @@ export default function Scoreboard({
               >
                 {row.userName}{' '}
                 <span className="font-normal text-gray-500 dark:text-gray-400">
-                  ({zeroCounts.get(row.playerId) ?? 0})
+                  ({bracketCounts.get(row.playerId) ?? 0})
                 </span>
               </th>
             ))}
