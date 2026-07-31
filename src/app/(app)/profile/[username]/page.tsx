@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useAuth } from '@/lib/hooks/useAuth';
 import ProfileCard from '@/components/profile/ProfileCard';
 import MedalsTable from '@/components/profile/MedalsTable';
+import FriendsLeaderboard from '@/components/profile/FriendsLeaderboard';
 import { UserPlus, UserCheck, UserMinus } from 'lucide-react';
 
 export default function ProfilePage() {
   const params = useParams();
   const username = params.username as string;
+  const { user: viewer } = useAuth();
   const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState<any>(undefined);
   const [friendStatus, setFriendStatus] = useState<'none' | 'pending' | 'friend'>('none');
@@ -127,6 +130,11 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <ProfileCard user={user} actions={friendButton} />
         <MedalsTable stats={stats} />
+        {viewer && viewer.username === username && (
+          <FriendsLeaderboard
+            self={{ id: viewer.id, name: viewer.name, username: viewer.username }}
+          />
+        )}
       </div>
     </div>
   );
