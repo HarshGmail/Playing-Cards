@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
-import Leaderboard from '@/components/match/Leaderboard';
-import RoundsWonTable from '@/components/match/RoundsWonTable';
+import LeaderboardSection from '@/components/match/LeaderboardSection';
 import Scoreboard from '@/components/match/Scoreboard';
 import RoundForm from '@/components/match/RoundForm';
 import SubmittedRounds from '@/components/match/SubmittedRounds';
@@ -189,10 +188,12 @@ export default function MatchPage() {
 
         <div className="space-y-6">
           {tab === 'leaderboard' && state && (
-            <div className="grid md:grid-cols-2 gap-4">
-              <Leaderboard entries={state.leaderboard} compact />
-              <RoundsWonTable entries={state.leaderboard} />
-            </div>
+            <LeaderboardSection
+              entries={state.leaderboard}
+              rounds={rounds}
+              players={match.roster}
+              rankPreference={match.rankPreference}
+            />
           )}
           {tab === 'scoreboard' && (
             <Scoreboard
