@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getPositionColor, PositionColorToken } from '@/lib/domain/positionColor';
+import Podium from '@/components/match/Podium';
 
 interface LeaderboardEntry {
   position: number;
@@ -21,6 +22,7 @@ interface LeaderboardEntry {
 interface LeaderboardProps {
   entries: LeaderboardEntry[];
   compact?: boolean;
+  ended?: boolean;
 }
 
 const COLOR_CLASSES: Record<PositionColorToken, { badge: string; text: string; ring: string }> = {
@@ -56,7 +58,7 @@ const COLOR_CLASSES: Record<PositionColorToken, { badge: string; text: string; r
   },
 };
 
-export default function Leaderboard({ entries, compact = false }: LeaderboardProps) {
+export default function Leaderboard({ entries, compact = false, ended = false }: LeaderboardProps) {
   const [gapMode, setGapMode] = useState<'interval' | 'leader'>('interval');
 
   useEffect(() => {
@@ -86,28 +88,32 @@ export default function Leaderboard({ entries, compact = false }: LeaderboardPro
 
   return (
     <div className={compact ? 'space-y-3' : 'space-y-4'}>
-      <div className={`grid grid-cols-3 gap-2 ${compact ? 'mb-4' : 'md:gap-4 mb-6'}`}>
-        {podium.map((entry) => {
-          const colors = COLOR_CLASSES[getPositionColor(entry.position, entry.isLast, entry.isDnf)];
-          return (
-            <div
-              key={entry.playerId}
-              className={`bg-gradient-to-br rounded-lg border ${colors.ring} ${compact ? 'p-2' : 'p-4'}`}
-            >
-              <div className={`font-bold ${colors.text} ${compact ? 'text-lg' : 'text-2xl'}`}>
-                #{entry.position}
-                {entry.isSharedPosition && <span className="text-sm ml-1">(tied)</span>}
+      {ended ? (
+        <Podium entries={podium} />
+      ) : (
+        <div className={`grid grid-cols-3 gap-2 ${compact ? 'mb-4' : 'md:gap-4 mb-6'}`}>
+          {podium.map((entry) => {
+            const colors = COLOR_CLASSES[getPositionColor(entry.position, entry.isLast, entry.isDnf)];
+            return (
+              <div
+                key={entry.playerId}
+                className={`bg-gradient-to-br rounded-lg border ${colors.ring} ${compact ? 'p-2' : 'p-4'}`}
+              >
+                <div className={`font-bold ${colors.text} ${compact ? 'text-lg' : 'text-2xl'}`}>
+                  #{entry.position}
+                  {entry.isSharedPosition && <span className="text-sm ml-1">(tied)</span>}
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white truncate">
+                  {entry.name}
+                </p>
+                <p className={`font-bold ${colors.text} ${compact ? 'text-sm' : 'text-lg'}`}>
+                  {entry.total}
+                </p>
               </div>
-              <p className="font-semibold text-gray-900 dark:text-white truncate">
-                {entry.name}
-              </p>
-              <p className={`font-bold ${colors.text} ${compact ? 'text-sm' : 'text-lg'}`}>
-                {entry.total}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="flex items-center justify-center gap-2 text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">
         <span

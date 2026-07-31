@@ -193,6 +193,7 @@ export default function MatchPage() {
               rounds={rounds}
               players={match.roster}
               rankPreference={match.rankPreference}
+              ended={match.status === 'ended'}
             />
           )}
           {tab === 'scoreboard' && (

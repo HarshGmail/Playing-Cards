@@ -36,6 +36,7 @@ interface LeaderboardSectionProps {
   rounds: Array<{ round: number; scores: Array<{ playerId: string; value: number }> }>;
   players: Array<{ userId: string; userName: string }>;
   rankPreference: 'highest-first' | 'lowest-first';
+  ended?: boolean;
 }
 
 function findBestSingleRound(
@@ -72,6 +73,7 @@ export default function LeaderboardSection({
   rounds,
   players,
   rankPreference,
+  ended = false,
 }: LeaderboardSectionProps) {
   const [view, setView] = useState<'table' | 'chart'>('table');
 
@@ -107,7 +109,7 @@ export default function LeaderboardSection({
 
       {view === 'table' ? (
         <div className="grid md:grid-cols-2 gap-4">
-          <Leaderboard entries={entries} compact />
+          <Leaderboard entries={entries} compact ended={ended} />
           <RoundsWonTable entries={entries} />
         </div>
       ) : (
