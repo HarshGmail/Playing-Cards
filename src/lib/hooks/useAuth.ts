@@ -1,14 +1,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/authStore';
+import { useMeQuery } from '@/lib/queries/auth';
 
 export function useAuth(required = false) {
   const router = useRouter();
-  const { user, isLoading, error, checkAuth } = useAuthStore();
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  const { data, isLoading, error } = useMeQuery();
+  const user = data?.user ?? null;
 
   useEffect(() => {
     if (!isLoading && required && !user) {

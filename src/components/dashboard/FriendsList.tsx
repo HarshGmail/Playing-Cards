@@ -1,7 +1,7 @@
 'use client';
 
 import FriendCard from './FriendCard';
-import { useFriendsStore } from '@/lib/store/friendsStore';
+import { useFriendsQuery, useRemoveFriendMutation } from '@/lib/queries/friends';
 import { useUIStore } from '@/lib/store/uiStore';
 
 interface FriendsListProps {
@@ -13,15 +13,16 @@ export default function FriendsList({
   title = 'Friends',
   onCreateMatch,
 }: FriendsListProps) {
-  const { friends, removeFriend } = useFriendsStore();
+  const { data: friends = [] } = useFriendsQuery();
+  const { mutate: removeFriend, isPending } = useRemoveFriendMutation();
   const { addToast } = useUIStore();
 
-  const handleRemove = async (friendId: string) => {
-    try {
-      await removeFriend(friendId);
-    } catch {
-      addToast({ type: 'error', message: 'Could not remove friend. Try again.' });
-    }
+  const handleRemove = (friendId: string) => {
+    removeFriend(friendId, {
+      onError: () => {
+        addToast({ type: 'error', message: 'Could not remove friend. Try again.' });
+      },
+    });
   };
 
   if (friends.length === 0) {
@@ -45,6 +46,7 @@ export default function FriendsList({
             username={friend.username}
             profilePicUrl={friend.profilePicUrl}
             onRemove={() => handleRemove(friend.id)}
+            disabled={isPending}
           />
         ))}
       </div>

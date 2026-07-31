@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuthStore } from '@/lib/store/authStore';
+import { useLoginMutation } from '@/lib/queries/auth';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -11,46 +11,32 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
+  const loginMutation = useLoginMutation();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+      await loginMutation.mutateAsync({
+        email: identifier,
+        password,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Login failed');
-        return;
-      }
-
-      // Seed the auth store from the login response so the (app) layout does
-      // not have to re-resolve the session before it will render.
-      setUser(data.user);
 
       if (onSuccess) {
         onSuccess();
       } else {
         router.push('/dashboard');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
     }
   };
+
+  const isLoading = loginMutation.isPending;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

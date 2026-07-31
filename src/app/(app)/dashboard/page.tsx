@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { useMatchStore } from '@/lib/store/matchStore';
-import { useFriendsStore } from '@/lib/store/friendsStore';
-import { useUIStore } from '@/lib/store/uiStore';
+import { useMatchesQuery } from '@/lib/queries/matches';
+import { useFriendsQuery, useIncomingRequestsQuery } from '@/lib/queries/friends';
+import { useUserStatsQuery } from '@/lib/queries/users';
 import SelfStatsCard from '@/components/dashboard/SelfStatsCard';
 import IncomingRequestsPanel from '@/components/dashboard/IncomingRequestsPanel';
 import FriendsList from '@/components/dashboard/FriendsList';
@@ -14,51 +14,11 @@ import MatchListItem from '@/components/dashboard/MatchListItem';
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth(true);
-  const { matches, fetchMatches } = useMatchStore();
-  const { friends, fetchFriends, fetchIncomingRequests, addFriend } =
-    useFriendsStore();
-  const { addToast } = useUIStore();
+  const { data: matches = [] } = useMatchesQuery();
+  const { data: friends = [] } = useFriendsQuery();
+  const { data: incomingRequests = [] } = useIncomingRequestsQuery();
+  const { data: statsData } = useUserStatsQuery(user?.username || '');
   const [tab, setTab] = useState<'friends' | 'find'>('friends');
-  const [stats, setStats] = useState({
-    matchesCreated: 0,
-    matchesJoined: 0,
-    matchesWon: 0,
-  });
-
-  useEffect(() => {
-    if (user) {
-      fetchMatches();
-      fetchFriends();
-      fetchIncomingRequests();
-    }
-  }, [user, fetchMatches, fetchFriends, fetchIncomingRequests]);
-
-  useEffect(() => {
-    if (matches && user) {
-      const created = matches.filter((m) => m.creatorId === user.id).length;
-      const joined = matches.filter(
-        (m) =>
-          m.creatorId !== user.id &&
-          m.roster.some((r) => r.userId === user.id)
-      ).length;
-      setStats((prev) => ({
-        ...prev,
-        matchesCreated: created,
-        matchesJoined: joined,
-      }));
-    }
-  }, [matches, user]);
-
-  useEffect(() => {
-    if (!user) return;
-    const loadWins = async () => {
-      const res = await fetch(`/api/users/${user.username}/stats`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setStats((prev) => ({ ...prev, matchesWon: data.stats.wins }));
-    };
-    loadWins();
-  }, [user]);
 
   if (isLoading) {
     return (
@@ -68,14 +28,23 @@ export default function DashboardPage() {
     );
   }
 
-  const handleAddFriend = async (userId: string, name: string) => {
-    await addFriend(userId);
-  };
+  const matchesCreated = matches.filter((m) => m.creatorId === user?.id).length;
+  const matchesJoined = matches.filter(
+    (m) =>
+      m.creatorId !== user?.id &&
+      m.roster.some((r) => r.userId === user?.id)
+  ).length;
+  const matchesWon = statsData?.wins || 0;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Self Stats */}
-      {user && <SelfStatsCard user={user} stats={stats} />}
+      {user && (
+        <SelfStatsCard
+          user={user}
+          stats={{ matchesCreated, matchesJoined, matchesWon }}
+        />
+      )}
 
       {/* Incoming Requests */}
       <IncomingRequestsPanel />
@@ -147,9 +116,7 @@ export default function DashboardPage() {
             </div>
 
             {tab === 'friends' && <FriendsList />}
-            {tab === 'find' && (
-              <FindFriendsTab onAddFriend={handleAddFriend} />
-            )}
+            {tab === 'find' && <FindFriendsTab />}
           </div>
         </div>
       </div>

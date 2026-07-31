@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/authStore';
+import { useSignupMutation } from '@/lib/queries/auth';
 
 interface SignupFormProps {
   onSuccess?: () => void;
@@ -10,7 +10,7 @@ interface SignupFormProps {
 
 export default function SignupForm({ onSuccess }: SignupFormProps) {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
+  const signupMutation = useSignupMutation();
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -21,7 +21,8 @@ export default function SignupForm({ onSuccess }: SignupFormProps) {
     confirmPassword: '',
   });
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+
+  const isLoading = signupMutation.isPending;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -39,42 +40,21 @@ export default function SignupForm({ onSuccess }: SignupFormProps) {
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          username: formData.username,
-          email: formData.email,
-          phone: formData.phone,
-          dob: formData.dob,
-          password: formData.password,
-        }),
+      await signupMutation.mutateAsync({
+        name: formData.name,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Signup failed');
-        return;
-      }
-
-      // Seed the auth store from the signup response so the (app) layout does
-      // not have to re-resolve the session before it will render.
-      setUser(data.user);
 
       if (onSuccess) {
         onSuccess();
       } else {
         router.push('/dashboard');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'Signup failed');
     }
   };
 

@@ -1,28 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useNotificationsQuery } from '@/lib/queries/notifications';
 
 export default function NotificationBell() {
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const res = await fetch('/api/notifications');
-        if (res.ok) {
-          const data = await res.json();
-          setUnreadCount(data.unreadCount || 0);
-        }
-      } catch (err) {
-        console.error('Failed to fetch notifications', err);
-      }
-    };
-
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const { data: notifications = [] } = useNotificationsQuery();
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <Link href="/notifications" className="relative">

@@ -1,8 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
+import {
+  useMatchQuery,
+  useMatchStateQuery,
+  useMatchRoundsQuery,
+  useSubmitRoundMutation,
+  useEditRoundMutation,
+  useEndMatchMutation,
+} from '@/lib/queries/matchDetail';
 import LeaderboardSection from '@/components/match/LeaderboardSection';
 import Scoreboard from '@/components/match/Scoreboard';
 import RoundForm from '@/components/match/RoundForm';
@@ -17,107 +25,31 @@ export default function MatchPage() {
   const matchId = params.id as string;
   const { user } = useAuth();
   const [tab, setTab] = useState('leaderboard');
-  const [match, setMatch] = useState<any>(null);
-  const [state, setState] = useState<any>(null);
-  const [rounds, setRounds] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [editingRound, setEditingRound] = useState<number | null>(null);
-  const [endingMatch, setEndingMatch] = useState(false);
 
-  const isFetchingRef = useRef(false);
-  const abortRef = useRef<AbortController | null>(null);
+  const { data: match, isLoading: matchLoading, error: matchError } = useMatchQuery(matchId);
+  const { data: state, isLoading: stateLoading } = useMatchStateQuery(matchId);
+  const { data: rounds = [], isLoading: roundsLoading } = useMatchRoundsQuery(matchId);
 
-  const fetchData = useCallback(async () => {
-    // Skip this tick entirely if a previous one is still in flight, the tab
-    // is hidden, or we're offline — prevents unbounded concurrent requests
-    // piling up when a fetch is slow (the corporate-network TLS handshake
-    // can easily exceed the 5s poll interval).
-    if (isFetchingRef.current) return;
-    if (document.hidden) return;
-    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  const submitRoundMutation = useSubmitRoundMutation(matchId);
+  const editRoundMutation = useEditRoundMutation(matchId);
+  const endMatchMutation = useEndMatchMutation(matchId);
 
-    isFetchingRef.current = true;
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      const [matchRes, stateRes, roundsRes] = await Promise.all([
-        fetch(`/api/matches/${matchId}`, { signal: controller.signal }),
-        fetch(`/api/matches/${matchId}/state`, { signal: controller.signal }),
-        fetch(`/api/matches/${matchId}/rounds`, { signal: controller.signal }),
-      ]);
-
-      if (!matchRes.ok) throw new Error('Match not found');
-
-      const matchData = await matchRes.json();
-      const stateData = stateRes.ok ? await stateRes.json() : null;
-      const roundsData = roundsRes.ok ? await roundsRes.json() : { rounds: [] };
-
-      setMatch(matchData.match);
-      setState(stateData?.state);
-      setRounds(roundsData.rounds);
-      setError('');
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      setError(err instanceof Error ? err.message : 'Failed to load match');
-    } finally {
-      setLoading(false);
-      isFetchingRef.current = false;
-    }
-  }, [matchId]);
-
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    const handleVisibility = () => {
-      if (!document.hidden) fetchData();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('online', fetchData);
-
-    return () => {
-      clearInterval(interval);
-      abortRef.current?.abort();
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('online', fetchData);
-    };
-  }, [fetchData]);
+  const loading = matchLoading || stateLoading || roundsLoading;
+  const error = matchError?.message || '';
 
   const handleRoundSubmit = async (scores: any[]) => {
-    const res = await fetch(`/api/matches/${matchId}/rounds`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scores }),
-    });
-    if (!res.ok) throw new Error('Failed to submit round');
-    await fetchData();
+    await submitRoundMutation.mutateAsync({ scores });
     setTab('leaderboard');
   };
 
   const handleRoundEdit = async (round: number, scores: any[]) => {
-    const res = await fetch(`/api/matches/${matchId}/rounds/${round}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scores }),
-    });
-    if (!res.ok) throw new Error('Failed to save round');
-    await fetchData();
+    await editRoundMutation.mutateAsync({ round, scores });
   };
 
   const handleEndMatch = async () => {
     if (!confirm('End this match? No more rounds can be added afterward.')) return;
-    setEndingMatch(true);
-    try {
-      const res = await fetch(`/api/matches/${matchId}`, { method: 'PATCH' });
-      if (!res.ok) throw new Error('Failed to end match');
-      await fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to end match');
-    } finally {
-      setEndingMatch(false);
-    }
+    await endMatchMutation.mutateAsync();
   };
 
   if (loading) {
@@ -156,10 +88,10 @@ export default function MatchPage() {
             {isCreator && match.status === 'active' && (
               <button
                 onClick={handleEndMatch}
-                disabled={endingMatch}
+                disabled={endMatchMutation.isPending}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition disabled:opacity-50 shrink-0"
               >
-                {endingMatch ? 'Ending...' : 'End Match'}
+                {endMatchMutation.isPending ? 'Ending...' : 'End Match'}
               </button>
             )}
           </div>
@@ -228,7 +160,6 @@ export default function MatchPage() {
               matchId={matchId}
               roster={match.roster}
               isCreator={isCreator}
-              onChange={fetchData}
             />
           )}
         </div>

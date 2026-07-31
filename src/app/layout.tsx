@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
+import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { QueryProvider } from '@/components/providers/QueryProvider';
 
 export const metadata: Metadata = {
   title: 'Playing Cards',
@@ -31,9 +33,12 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body>
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </QueryProvider>
+        <Analytics />
       </body>
     </html>
   );

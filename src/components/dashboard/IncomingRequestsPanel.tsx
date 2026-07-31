@@ -1,35 +1,53 @@
 'use client';
 
-import { useFriendsStore } from '@/lib/store/friendsStore';
+import { useIncomingRequestsQuery, useAcceptRequestMutation, useDeclineRequestMutation } from '@/lib/queries/friends';
 import { useUIStore } from '@/lib/store/uiStore';
 
 export default function IncomingRequestsPanel() {
-  const { incoming, acceptRequest, declineRequest } = useFriendsStore();
+  const { data: incoming = [] } = useIncomingRequestsQuery();
+  const { mutate: acceptRequest, isPending: isAccepting } = useAcceptRequestMutation();
+  const { mutate: declineRequest, isPending: isDeclining } = useDeclineRequestMutation();
   const { addToast } = useUIStore();
 
-  const respond = async (
-    action: 'accept' | 'decline',
-    requestId: string
-  ) => {
-    try {
-      await (action === 'accept'
-        ? acceptRequest(requestId)
-        : declineRequest(requestId));
-      addToast({
-        type: 'success',
-        message: action === 'accept' ? 'Friend request accepted!' : 'Request declined.',
-      });
-    } catch {
-      addToast({
-        type: 'error',
-        message: `Could not ${action} the request. Try again.`,
-      });
-    }
+  const handleAccept = (requestId: string) => {
+    acceptRequest(requestId, {
+      onSuccess: () => {
+        addToast({
+          type: 'success',
+          message: 'Friend request accepted!',
+        });
+      },
+      onError: () => {
+        addToast({
+          type: 'error',
+          message: 'Could not accept the request. Try again.',
+        });
+      },
+    });
+  };
+
+  const handleDecline = (requestId: string) => {
+    declineRequest(requestId, {
+      onSuccess: () => {
+        addToast({
+          type: 'success',
+          message: 'Request declined.',
+        });
+      },
+      onError: () => {
+        addToast({
+          type: 'error',
+          message: 'Could not decline the request. Try again.',
+        });
+      },
+    });
   };
 
   if (incoming.length === 0) {
     return null;
   }
+
+  const isPending = isAccepting || isDeclining;
 
   return (
     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
@@ -52,14 +70,16 @@ export default function IncomingRequestsPanel() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => respond('accept', req.id)}
-                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium"
+                onClick={() => handleAccept(req.id)}
+                disabled={isPending}
+                className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded text-sm font-medium"
               >
                 Accept
               </button>
               <button
-                onClick={() => respond('decline', req.id)}
-                className="px-3 py-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded text-sm font-medium"
+                onClick={() => handleDecline(req.id)}
+                disabled={isPending}
+                className="px-3 py-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 disabled:bg-gray-400 text-gray-900 dark:text-white rounded text-sm font-medium"
               >
                 Decline
               </button>

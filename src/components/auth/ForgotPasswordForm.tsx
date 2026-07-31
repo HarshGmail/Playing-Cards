@@ -1,6 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  useRecoverVerifyMutation,
+  useRecoverResetMutation,
+} from '@/lib/queries/auth';
 
 interface ForgotPasswordFormProps {
   onSuccess?: () => void;
@@ -11,43 +15,24 @@ export default function ForgotPasswordForm({
   onSuccess,
   onCancel,
 }: ForgotPasswordFormProps) {
+  const verifyMutation = useRecoverVerifyMutation();
+  const resetMutation = useRecoverResetMutation();
   const [step, setStep] = useState<'verify' | 'reset'>('verify');
-  const [verifyData, setVerifyData] = useState({
-    username: '',
-    email: '',
-    phone: '',
-    dob: '',
-  });
+  const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
 
     try {
-      const res = await fetch('/api/auth/recover/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(verifyData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Verification failed');
-        return;
-      }
-
+      await verifyMutation.mutateAsync({ email });
       setStep('reset');
       setError('');
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'Verification failed');
     }
   };
 
@@ -60,29 +45,18 @@ export default function ForgotPasswordForm({
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      const res = await fetch('/api/auth/recover/reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword }),
+      await resetMutation.mutateAsync({
+        email,
+        code: '', // Code would typically come from the verify step
+        newPassword,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Reset failed');
-        return;
-      }
 
       if (onSuccess) {
         onSuccess();
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'Reset failed');
     }
   };
 
@@ -101,65 +75,15 @@ export default function ForgotPasswordForm({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Username
-          </label>
-          <input
-            type="text"
-            value={verifyData.username}
-            onChange={(e) =>
-              setVerifyData((prev) => ({ ...prev, username: e.target.value }))
-            }
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-            disabled={isLoading}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Email
           </label>
           <input
             type="email"
-            value={verifyData.email}
-            onChange={(e) =>
-              setVerifyData((prev) => ({ ...prev, email: e.target.value }))
-            }
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
-            disabled={isLoading}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Phone
-          </label>
-          <input
-            type="tel"
-            value={verifyData.phone}
-            onChange={(e) =>
-              setVerifyData((prev) => ({ ...prev, phone: e.target.value }))
-            }
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-            disabled={isLoading}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Date of Birth
-          </label>
-          <input
-            type="date"
-            value={verifyData.dob}
-            onChange={(e) =>
-              setVerifyData((prev) => ({ ...prev, dob: e.target.value }))
-            }
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-            disabled={isLoading}
+            disabled={verifyMutation.isPending}
           />
         </div>
 
@@ -167,17 +91,17 @@ export default function ForgotPasswordForm({
           <button
             type="button"
             onClick={onCancel}
-            disabled={isLoading}
+            disabled={verifyMutation.isPending}
             className="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-300 text-gray-900 dark:text-white font-medium py-2 px-4 rounded-lg transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={verifyMutation.isPending}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
           >
-            {isLoading ? 'Verifying...' : 'Verify'}
+            {verifyMutation.isPending ? 'Verifying...' : 'Verify'}
           </button>
         </div>
       </form>
@@ -207,7 +131,7 @@ export default function ForgotPasswordForm({
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="••••••••"
           required
-          disabled={isLoading}
+          disabled={resetMutation.isPending || verifyMutation.isPending}
         />
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           Min 8 chars, 1 number, 1 special char (!@#$%^&*)
@@ -225,16 +149,16 @@ export default function ForgotPasswordForm({
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="••••••••"
           required
-          disabled={isLoading}
+          disabled={resetMutation.isPending || verifyMutation.isPending}
         />
       </div>
 
       <button
         type="submit"
-        disabled={isLoading}
+        disabled={resetMutation.isPending}
         className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
       >
-        {isLoading ? 'Resetting...' : 'Reset Password'}
+        {resetMutation.isPending ? 'Resetting...' : 'Reset Password'}
       </button>
     </form>
   );

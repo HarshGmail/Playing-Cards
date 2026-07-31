@@ -2,9 +2,9 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/authStore';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { useUIStore } from '@/lib/store/uiStore';
-import { useNotificationStore } from '@/lib/store/notificationStore';
+import { useNotificationsQuery } from '@/lib/queries/notifications';
 import Header from '@/components/layout/Header';
 import OfflineBanner from '@/components/layout/OfflineBanner';
 import Toaster from '@/components/ui/Toaster';
@@ -15,13 +15,9 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { user, isLoading, checkAuth } = useAuthStore();
+  const { user, isLoading } = useAuth(true);
   const { setTheme } = useUIStore();
-  const { fetchNotifications } = useNotificationStore();
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  const { data: notifications } = useNotificationsQuery(!!user);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -43,25 +39,6 @@ export default function AppLayout({
     }
   }, [setTheme]);
 
-  useEffect(() => {
-    // Poll notifications every 20 seconds; also refetch on regaining
-    // visibility/connectivity so a backgrounded tab catches up immediately.
-    if (!user) return;
-
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 20000);
-    const handleVisibility = () => {
-      if (!document.hidden) fetchNotifications();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('online', fetchNotifications);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('online', fetchNotifications);
-    };
-  }, [user, fetchNotifications]);
 
   if (isLoading) {
     return (

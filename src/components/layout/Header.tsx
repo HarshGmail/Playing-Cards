@@ -1,22 +1,26 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/authStore';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useLogoutMutation } from '@/lib/queries/auth';
+import { useNotificationsQuery } from '@/lib/queries/notifications';
 import { useUIStore } from '@/lib/store/uiStore';
-import { useNotificationStore } from '@/lib/store/notificationStore';
 import Link from 'next/link';
 import { Sun, Moon, LogOut, Menu } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Header() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuth();
+  const logoutMutation = useLogoutMutation();
   const { theme, setTheme } = useUIStore();
-  const { notifications, unreadCount } = useNotificationStore();
+  const { data: notifications = [] } = useNotificationsQuery(!!user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
   const handleLogout = async () => {
-    await logout();
+    await logoutMutation.mutateAsync();
     router.push('/');
   };
 

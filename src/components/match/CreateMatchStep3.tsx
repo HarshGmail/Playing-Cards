@@ -2,8 +2,17 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/authStore';
-import { useFriendsStore } from '@/lib/store/friendsStore';
+import { useAuth } from '@/lib/hooks/useAuth';
+import {
+  useFriendsQuery,
+  useAddFriendMutation,
+} from '@/lib/queries/friends';
+import {
+  useUserSearchQuery,
+  useResolveUserMutation,
+} from '@/lib/queries/users';
+import { useCreateMatchMutation } from '@/lib/queries/matches';
+import { useDebouncedValue } from '@/lib/hooks/useDebouncedValue';
 
 interface Step3Props {
   name: string;
@@ -27,50 +36,20 @@ export default function CreateMatchStep3({
   onBack,
 }: Step3Props) {
   const router = useRouter();
-  const { user } = useAuthStore();
-  const { friends, fetchFriends } = useFriendsStore();
+  const { user } = useAuth();
+  const { data: friends = [] } = useFriendsQuery();
+  const addFriendMutation = useAddFriendMutation();
+  const createMatchMutation = useCreateMatchMutation();
+  const resolveUserMutation = useResolveUserMutation();
   const [identifier, setIdentifier] = useState('');
   const [players, setPlayers] = useState<AddedPlayer[]>([]);
   const [spectators, setSpectators] = useState<AddedPlayer[]>([]);
   const [addError, setAddError] = useState('');
-  const [adding, setAdding] = useState(false);
   const [createError, setCreateError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<AddedPlayer[]>([]);
-  const [searching, setSearching] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedIdentifier = useDebouncedValue(identifier, 300);
+  const { data: suggestions = [], isLoading: searching } =
+    useUserSearchQuery(debouncedIdentifier);
 
-  useEffect(() => {
-    fetchFriends();
-  }, [fetchFriends]);
-
-  useEffect(() => {
-    const trimmed = identifier.trim();
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    if (!trimmed) {
-      setSuggestions([]);
-      return;
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(trimmed)}&limit=5`);
-        if (!res.ok) return;
-        const data = await res.json();
-        setSuggestions(data.results || []);
-      } catch {
-        // Ignore transient search failures — the exact-match Add button still works.
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [identifier]);
 
   const addPlayer = (found: AddedPlayer) => {
     if (found.id === user?.id) {
@@ -86,7 +65,6 @@ export default function CreateMatchStep3({
     setSpectators((prev) => prev.filter((p) => p.id !== found.id));
     setPlayers((prev) => [...prev, found]);
     setIdentifier('');
-    setSuggestions([]);
   };
 
   const addSpectator = (found: AddedPlayer) => {
@@ -106,7 +84,6 @@ export default function CreateMatchStep3({
     setAddError('');
     setSpectators((prev) => [...prev, found]);
     setIdentifier('');
-    setSuggestions([]);
   };
 
   const handleAddPlayer = async () => {
@@ -114,28 +91,11 @@ export default function CreateMatchStep3({
     if (!trimmed) return;
 
     setAddError('');
-    setAdding(true);
     try {
-      const res = await fetch('/api/users/resolve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: trimmed }),
-      });
-
-      if (res.status === 404) {
-        setAddError('No user found with that username, email, or phone.');
-        return;
-      }
-      if (!res.ok) {
-        throw new Error('Failed to look up user');
-      }
-
-      const data = await res.json();
-      addPlayer(data.user);
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : 'Failed to look up user');
-    } finally {
-      setAdding(false);
+      const user = await resolveUserMutation.mutateAsync({ identifier: trimmed });
+      addPlayer({ id: user.id, name: user.name, username: user.username });
+    } catch (err: any) {
+      setAddError(err.message || 'Failed to look up user');
     }
   };
 
@@ -153,31 +113,17 @@ export default function CreateMatchStep3({
 
   const handleCreate = async () => {
     setCreateError('');
-    setLoading(true);
     try {
-      const res = await fetch('/api/matches', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          creatorRole,
-          rankPreference,
-          players: players.map((p) => p.id),
-          tiebreakers,
-          spectatorIds: spectators.map((p) => p.id),
-        }),
+      const result = await createMatchMutation.mutateAsync({
+        name,
+        creatorRole: creatorRole as 'score-only' | 'score-and-play',
+        rankPreference: rankPreference as 'highest-first' | 'lowest-first',
+        tiebreakers,
+        roster: players.map((p) => ({ userId: p.id })),
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to create match');
-      }
-
-      const data = await res.json();
-      router.push(`/matches/${data.id}`);
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create match');
-      setLoading(false);
+      router.push(`/matches/${result.matchId}`);
+    } catch (err: any) {
+      setCreateError(err.message || 'Failed to create match');
     }
   };
 
@@ -212,10 +158,10 @@ export default function CreateMatchStep3({
             <button
               type="button"
               onClick={handleAddPlayer}
-              disabled={adding || !identifier.trim()}
+              disabled={resolveUserMutation.isPending || !identifier.trim()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
             >
-              {adding ? 'Adding...' : 'Add'}
+              {resolveUserMutation.isPending ? 'Adding...' : 'Add'}
             </button>
           </div>
 
@@ -355,17 +301,17 @@ export default function CreateMatchStep3({
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          disabled={loading}
+          disabled={createMatchMutation.isPending}
           className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition disabled:opacity-50"
         >
           Back
         </button>
         <button
           onClick={handleCreate}
-          disabled={loading || players.length === 0}
+          disabled={createMatchMutation.isPending || players.length === 0}
           className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition disabled:opacity-50"
         >
-          {loading ? 'Creating...' : 'Create Match'}
+          {createMatchMutation.isPending ? 'Creating...' : 'Create Match'}
         </button>
       </div>
     </div>

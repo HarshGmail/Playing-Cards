@@ -83,3 +83,42 @@ export interface AuthState {
   isLoading: boolean;
   error: string | null;
 }
+
+export interface Notification {
+  id: string;
+  type:
+    | 'friend-request'
+    | 'friend-accepted'
+    | 'join-request'
+    | 'join-approved'
+    | 'join-declined'
+    | 'added-to-match'
+    | 'match-ended';
+  payload: Record<string, unknown>;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface Friend {
+  id: string;
+  username: string;
+  name: string;
+  email: string;
+}
+
+export interface FriendRequest {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderUsername: string;
+  createdAt: string;
+}
+
+export interface UserStats {
+  totalMatches: number;
+  wins: number;
+  avgScore: number;
+  bestScore: number;
+  worstScore: number;
+  totalScore: number;
+}

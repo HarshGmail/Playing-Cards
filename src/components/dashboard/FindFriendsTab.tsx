@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useUserSearchQuery } from '@/lib/queries/users';
+import { useAddFriendMutation } from '@/lib/queries/friends';
+import { useDebouncedValue } from '@/lib/hooks/useDebouncedValue';
 import { useUIStore } from '@/lib/store/uiStore';
 
 interface FindFriendsTabProps {
@@ -10,43 +13,41 @@ interface FindFriendsTabProps {
 export default function FindFriendsTab({ onAddFriend }: FindFriendsTabProps) {
   const { addToast } = useUIStore();
   const [search, setSearch] = useState('');
-  const [results, setResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [removedUserIds, setRemovedUserIds] = useState<Set<string>>(new Set());
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  const handleSearch = async () => {
-    if (!search.trim()) return;
+  const { data: results = [], isLoading: isSearching } = useUserSearchQuery(debouncedSearch);
+  const { mutate: addFriend, isPending: isAddingFriend } = useAddFriendMutation();
 
-    setIsSearching(true);
-    try {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(search)}`);
-      if (!res.ok) throw new Error('Search failed');
-      const data = await res.json();
-      setResults(data.results || []);
-    } catch (err) {
-      addToast({
-        type: 'error',
-        message: 'Search failed. Try again.',
-      });
-    } finally {
-      setIsSearching(false);
-    }
-  };
+  const filteredResults = results.filter((r) => !removedUserIds.has(r.id));
 
-  const handleAddFriend = async (userId: string, name: string) => {
-    try {
-      await onAddFriend?.(userId, name);
-    } catch {
-      addToast({
-        type: 'error',
-        message: 'Could not send friend request. Try again.',
-      });
-      return;
-    }
-    addToast({
-      type: 'success',
-      message: 'Friend request sent!',
+  const handleAddFriend = (userId: string, name: string) => {
+    addFriend(userId, {
+      onSuccess: async () => {
+        if (onAddFriend) {
+          try {
+            await onAddFriend(userId, name);
+          } catch {
+            addToast({
+              type: 'error',
+              message: 'Could not send friend request. Try again.',
+            });
+            return;
+          }
+        }
+        addToast({
+          type: 'success',
+          message: 'Friend request sent!',
+        });
+        setRemovedUserIds((prev) => new Set(prev).add(userId));
+      },
+      onError: () => {
+        addToast({
+          type: 'error',
+          message: 'Could not send friend request. Try again.',
+        });
+      },
     });
-    setResults(results.filter((r) => r.id !== userId));
   };
 
   return (
@@ -56,22 +57,14 @@ export default function FindFriendsTab({ onAddFriend }: FindFriendsTabProps) {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           placeholder="Search by username..."
           className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <button
-          onClick={handleSearch}
-          disabled={isSearching}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
-        >
-          {isSearching ? 'Searching...' : 'Search'}
-        </button>
       </div>
 
-      {results.length > 0 && (
+      {filteredResults.length > 0 && (
         <div className="space-y-2">
-          {results.map((user) => (
+          {filteredResults.map((user) => (
             <div
               key={user.id}
               className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
@@ -86,7 +79,8 @@ export default function FindFriendsTab({ onAddFriend }: FindFriendsTabProps) {
               </div>
               <button
                 onClick={() => handleAddFriend(user.id, user.name)}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium"
+                disabled={isAddingFriend}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded text-sm font-medium"
               >
                 Add
               </button>
@@ -95,7 +89,7 @@ export default function FindFriendsTab({ onAddFriend }: FindFriendsTabProps) {
         </div>
       )}
 
-      {search && results.length === 0 && !isSearching && (
+      {debouncedSearch && filteredResults.length === 0 && !isSearching && (
         <p className="text-center text-gray-600 dark:text-gray-400 py-4">
           No users found.
         </p>

@@ -1,15 +1,15 @@
+'use client';
+
 import { User } from '@/types';
+import { useUserStatsQuery } from '@/lib/queries/users';
 
 interface SelfStatsCardProps {
   user: User;
-  stats?: {
-    matchesCreated: number;
-    matchesJoined: number;
-    matchesWon: number;
-  };
 }
 
-export default function SelfStatsCard({ user, stats }: SelfStatsCardProps) {
+export default function SelfStatsCard({ user }: SelfStatsCardProps) {
+  const { data: stats } = useUserStatsQuery(user.username);
+
   return (
     <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg p-6 border border-blue-200 dark:border-blue-700">
       <div className="flex items-center gap-4 mb-4">
@@ -30,21 +30,21 @@ export default function SelfStatsCard({ user, stats }: SelfStatsCardProps) {
         <div className="grid grid-cols-3 gap-2 pt-4 border-t border-blue-200 dark:border-blue-700">
           <div className="text-center">
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.matchesCreated}
+              {stats.totalMatches || 0}
             </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Created</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Total</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.matchesJoined}
-            </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Joined</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.matchesWon}
+              {stats.wins || 0}
             </p>
             <p className="text-xs text-gray-600 dark:text-gray-400">Won</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {stats.avgScore ? stats.avgScore.toFixed(1) : '0'}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Avg Score</p>
           </div>
         </div>
       )}
