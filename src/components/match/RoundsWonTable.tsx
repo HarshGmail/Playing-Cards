@@ -1,5 +1,7 @@
 'use client';
 
+import PlayerNameLink from '@/components/common/PlayerNameLink';
+
 interface RoundsWonEntry {
   playerId: string;
   name: string;
@@ -35,7 +37,12 @@ export default function RoundsWonTable({ entries }: RoundsWonTableProps) {
               {idx + 1}
             </div>
             <p className="font-medium text-gray-900 dark:text-white">
-              {entry.name}
+              <PlayerNameLink
+                userId={entry.playerId}
+                userName={entry.name}
+                displayName={entry.name}
+                className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+              />
               {entry.isDnf && (
                 <span className="text-xs text-gray-500 dark:text-gray-500 ml-1">(DNF)</span>
               )}

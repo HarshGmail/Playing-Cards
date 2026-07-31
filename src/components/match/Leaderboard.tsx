@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getPositionColor, PositionColorToken } from '@/lib/domain/positionColor';
 import Podium from '@/components/match/Podium';
+import PlayerNameLink from '@/components/common/PlayerNameLink';
 
 interface LeaderboardEntry {
   position: number;
@@ -104,7 +105,12 @@ export default function Leaderboard({ entries, compact = false, ended = false }:
                   {entry.isSharedPosition && <span className="text-sm ml-1">(tied)</span>}
                 </div>
                 <p className="font-semibold text-gray-900 dark:text-white truncate">
-                  {entry.name}
+                  <PlayerNameLink
+                    userId={entry.playerId}
+                    userName={entry.name}
+                    displayName={entry.name}
+                    className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                  />
                 </p>
                 <p className={`font-bold ${colors.text} ${compact ? 'text-sm' : 'text-lg'}`}>
                   {entry.total}
@@ -144,7 +150,12 @@ export default function Leaderboard({ entries, compact = false, ended = false }:
                 </div>
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white">
-                    {entry.name}
+                    <PlayerNameLink
+                      userId={entry.playerId}
+                      userName={entry.name}
+                      displayName={entry.name}
+                      className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                    />
                     {entry.isSharedPosition && (
                       <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(tied)</span>
                     )}

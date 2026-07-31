@@ -2,6 +2,7 @@
 
 import { buildScoreboardRows, computeRoundWinners, computeBracketCounts } from '@/lib/domain/scoreboard';
 import { getPositionColor, PositionColorToken } from '@/lib/domain/positionColor';
+import PlayerNameLink from '@/components/common/PlayerNameLink';
 
 interface LeaderboardEntry {
   playerId: string;
@@ -68,7 +69,12 @@ export default function Scoreboard({
                 key={row.playerId}
                 className="p-3 text-center font-semibold text-gray-900 dark:text-white min-w-16"
               >
-                {row.userName}{' '}
+                <PlayerNameLink
+                  userId={row.playerId}
+                  userName={row.userName}
+                  displayName={row.userName}
+                  className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                />{' '}
                 <span className="font-normal text-gray-500 dark:text-gray-400">
                   ({bracketCounts.get(row.playerId) ?? 0})
                 </span>
