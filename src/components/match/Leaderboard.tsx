@@ -20,6 +20,7 @@ interface LeaderboardEntry {
 
 interface LeaderboardProps {
   entries: LeaderboardEntry[];
+  compact?: boolean;
 }
 
 const COLOR_CLASSES: Record<PositionColorToken, { badge: string; text: string; ring: string }> = {
@@ -55,7 +56,7 @@ const COLOR_CLASSES: Record<PositionColorToken, { badge: string; text: string; r
   },
 };
 
-export default function Leaderboard({ entries }: LeaderboardProps) {
+export default function Leaderboard({ entries, compact = false }: LeaderboardProps) {
   const [gapMode, setGapMode] = useState<'interval' | 'leader'>('interval');
 
   useEffect(() => {
@@ -84,23 +85,25 @@ export default function Leaderboard({ entries }: LeaderboardProps) {
   const gapLabel = gapMode === 'interval' ? 'INTERVAL' : 'LEADER';
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div className={compact ? 'space-y-3' : 'space-y-4'}>
+      <div className={`grid grid-cols-3 gap-2 ${compact ? 'mb-4' : 'md:gap-4 mb-6'}`}>
         {podium.map((entry) => {
           const colors = COLOR_CLASSES[getPositionColor(entry.position, entry.isLast, entry.isDnf)];
           return (
             <div
               key={entry.playerId}
-              className={`p-4 bg-gradient-to-br rounded-lg border ${colors.ring}`}
+              className={`bg-gradient-to-br rounded-lg border ${colors.ring} ${compact ? 'p-2' : 'p-4'}`}
             >
-              <div className={`text-2xl font-bold ${colors.text}`}>
+              <div className={`font-bold ${colors.text} ${compact ? 'text-lg' : 'text-2xl'}`}>
                 #{entry.position}
                 {entry.isSharedPosition && <span className="text-sm ml-1">(tied)</span>}
               </div>
               <p className="font-semibold text-gray-900 dark:text-white truncate">
                 {entry.name}
               </p>
-              <p className={`text-lg font-bold ${colors.text}`}>{entry.total}</p>
+              <p className={`font-bold ${colors.text} ${compact ? 'text-sm' : 'text-lg'}`}>
+                {entry.total}
+              </p>
             </div>
           );
         })}
@@ -123,10 +126,14 @@ export default function Leaderboard({ entries }: LeaderboardProps) {
           return (
             <div
               key={entry.playerId}
-              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+              className={`flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg ${compact ? 'p-2' : 'p-3'}`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${colors.badge}`}>
+                <div
+                  className={`rounded-full flex items-center justify-center font-bold ${colors.badge} ${
+                    compact ? 'w-6 h-6 text-xs' : 'w-8 h-8 text-sm'
+                  }`}
+                >
                   {entry.position}
                 </div>
                 <div>

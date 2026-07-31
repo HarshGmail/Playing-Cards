@@ -21,6 +21,7 @@ export interface LeaderboardEntry {
   isDnf: boolean;
   isSharedPosition: boolean;
   isLast: boolean;
+  gamesWon: number;
 }
 
 function stdDev(values: number[]): number {
@@ -126,6 +127,7 @@ export function computeLeaderboard(
       isDnf,
       isSharedPosition,
       isLast,
+      gamesWon: 0, // Set by computeMatchLeaderboard, which has the per-round scores.
     };
   });
 }
@@ -170,6 +172,7 @@ export function computeMatchLeaderboard(
   // — both fall out naturally from only including rounds that actually
   // exist for that player, no zero-padding needed.
   const scoresByPlayer = new Map<string, { scores: number[]; isDnf: boolean }>();
+  const scoresByRound = new Map<number, Array<{ playerId: string; value: number }>>();
 
   roster.forEach((r) => {
     scoresByPlayer.set(r.userId, { scores: [], isDnf: r.status === 'dnf' });
@@ -184,13 +187,17 @@ export function computeMatchLeaderboard(
       continue;
     }
     entry.scores.push(score.value);
+    if (!scoresByRound.has(score.round)) scoresByRound.set(score.round, []);
+    scoresByRound.get(score.round)!.push({ playerId: score.playerId, value: score.value });
   }
 
   const aggregates = buildAggregates(scoresByPlayer);
   const leaderboard = computeLeaderboard(aggregates, rankPreference, tiebreakers);
+  const gamesWonByPlayer = computeGamesWon(Array.from(scoresByRound.values()), rankPreference);
 
   return leaderboard.map((entry) => ({
     ...entry,
+    gamesWon: gamesWonByPlayer.get(entry.playerId) ?? 0,
     name: roster.find((r) => r.userId === entry.playerId)?.userName || 'Unknown',
   }));
 }
