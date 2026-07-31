@@ -41,13 +41,24 @@ export default function DashboardPage() {
           m.creatorId !== user.id &&
           m.roster.some((r) => r.userId === user.id)
       ).length;
-      setStats({
+      setStats((prev) => ({
+        ...prev,
         matchesCreated: created,
         matchesJoined: joined,
-        matchesWon: 0,
-      });
+      }));
     }
   }, [matches, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const loadWins = async () => {
+      const res = await fetch(`/api/users/${user.username}/stats`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setStats((prev) => ({ ...prev, matchesWon: data.stats.wins }));
+    };
+    loadWins();
+  }, [user]);
 
   if (isLoading) {
     return (
