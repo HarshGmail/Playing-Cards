@@ -1,6 +1,6 @@
 'use client';
 
-import { buildScoreboardRows } from '@/lib/domain/scoreboard';
+import { buildScoreboardRows, computeRoundWinners, computeZeroCounts } from '@/lib/domain/scoreboard';
 import { getPositionColor, PositionColorToken } from '@/lib/domain/positionColor';
 
 interface LeaderboardEntry {
@@ -23,6 +23,7 @@ interface ScoreboardProps {
     userName: string;
   }>;
   leaderboard?: LeaderboardEntry[];
+  rankPreference?: 'highest-first' | 'lowest-first';
 }
 
 const TOTAL_CELL_CLASSES: Record<PositionColorToken, string> = {
@@ -34,7 +35,12 @@ const TOTAL_CELL_CLASSES: Record<PositionColorToken, string> = {
   'pos-dnf': 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500',
 };
 
-export default function Scoreboard({ rounds, players, leaderboard }: ScoreboardProps) {
+export default function Scoreboard({
+  rounds,
+  players,
+  leaderboard,
+  rankPreference = 'lowest-first',
+}: ScoreboardProps) {
   if (rounds.length === 0 || players.length === 0) {
     return (
       <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
@@ -48,6 +54,8 @@ export default function Scoreboard({ rounds, players, leaderboard }: ScoreboardP
   // across the columns and rounds down the rows.
   const rows = buildScoreboardRows(rounds, players);
   const entryByPlayer = new Map((leaderboard ?? []).map((e) => [e.playerId, e]));
+  const roundWinners = computeRoundWinners(rounds, rankPreference);
+  const zeroCounts = computeZeroCounts(rows);
 
   return (
     <div className="overflow-x-auto">
@@ -60,7 +68,10 @@ export default function Scoreboard({ rounds, players, leaderboard }: ScoreboardP
                 key={row.playerId}
                 className="p-3 text-center font-semibold text-gray-900 dark:text-white min-w-16"
               >
-                {row.userName}
+                {row.userName}{' '}
+                <span className="font-normal text-gray-500 dark:text-gray-400">
+                  ({zeroCounts.get(row.playerId) ?? 0})
+                </span>
               </th>
             ))}
           </tr>
@@ -72,11 +83,21 @@ export default function Scoreboard({ rounds, players, leaderboard }: ScoreboardP
               className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
             >
               <td className="p-3 font-medium text-gray-900 dark:text-white">R{round.round}</td>
-              {rows.map((row) => (
-                <td key={row.playerId} className="p-3 text-center text-gray-700 dark:text-gray-300">
-                  {row.cells[i] === null ? '-' : row.cells[i]}
-                </td>
-              ))}
+              {rows.map((row) => {
+                const isRoundWinner = roundWinners[i]?.has(row.playerId);
+                return (
+                  <td
+                    key={row.playerId}
+                    className={`p-3 text-center ${
+                      isRoundWinner
+                        ? 'text-green-600 dark:text-green-400 font-semibold'
+                        : 'text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    {row.cells[i] === null ? '-' : row.cells[i]}
+                  </td>
+                );
+              })}
             </tr>
           ))}
           <tr className="border-t-2 border-gray-300 dark:border-gray-600">

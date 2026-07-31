@@ -191,7 +191,12 @@ export default function MatchPage() {
             <Leaderboard entries={state.leaderboard} />
           )}
           {tab === 'scoreboard' && (
-            <Scoreboard rounds={rounds} players={match.roster} leaderboard={state?.leaderboard} />
+            <Scoreboard
+              rounds={rounds}
+              players={match.roster}
+              leaderboard={state?.leaderboard}
+              rankPreference={match.rankPreference}
+            />
           )}
           {tab === 'rounds' && (
             <SubmittedRounds
