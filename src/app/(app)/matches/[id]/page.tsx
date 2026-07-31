@@ -8,6 +8,7 @@ import Scoreboard from '@/components/match/Scoreboard';
 import RoundForm from '@/components/match/RoundForm';
 import SubmittedRounds from '@/components/match/SubmittedRounds';
 import RosterPanel from '@/components/match/RosterPanel';
+import ShareMatchButton from '@/components/match/ShareMatchButton';
 import JoinRequestsPanel from '@/components/match/JoinRequestsPanel';
 import EditRoundModal from '@/components/match/EditRoundModal';
 
@@ -150,15 +151,18 @@ export default function MatchPage() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {match.name}
           </h1>
-          {isCreator && match.status === 'active' && (
-            <button
-              onClick={handleEndMatch}
-              disabled={endingMatch}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition disabled:opacity-50 shrink-0"
-            >
-              {endingMatch ? 'Ending...' : 'End Match'}
-            </button>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {isCreator && <ShareMatchButton matchId={matchId} />}
+            {isCreator && match.status === 'active' && (
+              <button
+                onClick={handleEndMatch}
+                disabled={endingMatch}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition disabled:opacity-50 shrink-0"
+              >
+                {endingMatch ? 'Ending...' : 'End Match'}
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
           Round {match.roundsPlayed} • {match.roster.length} players • {match.status}
