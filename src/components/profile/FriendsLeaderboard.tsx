@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Users } from 'lucide-react';
+import PlayerNameLink from '@/components/common/PlayerNameLink';
 
 interface LeaderboardRow {
   userId: string;
@@ -99,7 +100,12 @@ export default function FriendsLeaderboard({ self }: FriendsLeaderboardProps) {
                   {idx + 1}
                 </div>
                 <p className="font-medium text-gray-900 dark:text-white">
-                  {row.name}
+                  <PlayerNameLink
+                    userId={row.userId}
+                    userName={row.username}
+                    displayName={row.name}
+                    className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                  />
                   {row.isSelf && (
                     <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(you)</span>
                   )}
