@@ -29,8 +29,6 @@ export const userKeys = {
   detail: (username: string) => [...userKeys.all, username] as const,
   stats: (username: string) => [...userKeys.all, username, 'stats'] as const,
   search: (term: string) => [...userKeys.all, 'search', term] as const,
-  leaderboard: (username: string) =>
-    [...userKeys.all, username, 'leaderboard'] as const,
 };
 
 export const joinKeys = {

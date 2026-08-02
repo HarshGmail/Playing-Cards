@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useMatchesQuery } from '@/lib/queries/matches';
-import { useFriendsQuery, useIncomingRequestsQuery } from '@/lib/queries/friends';
 import SelfStatsCard from '@/components/dashboard/SelfStatsCard';
 import IncomingRequestsPanel from '@/components/dashboard/IncomingRequestsPanel';
 import FriendsList from '@/components/dashboard/FriendsList';
@@ -14,8 +13,8 @@ import MatchListItem from '@/components/dashboard/MatchListItem';
 export default function DashboardPage() {
   const { user, isLoading } = useAuth(true);
   const { data: matches = [] } = useMatchesQuery();
-  const { data: friends = [] } = useFriendsQuery();
-  const { data: incomingRequests = [] } = useIncomingRequestsQuery();
+  // FriendsList and IncomingRequestsPanel each run their own query, so the page
+  // does not need to fetch friends or requests itself.
   const [tab, setTab] = useState<'friends' | 'find'>('friends');
 
   if (isLoading) {

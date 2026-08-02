@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { User, UserStats, Friend } from '@/types';
+import type { User } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
 import { userKeys, friendKeys } from './keys';
 
@@ -142,40 +142,3 @@ export function useResolveUserMutation() {
   });
 }
 
-interface FriendsLeaderboardEntry {
-  username: string;
-  name: string;
-  stats: {
-    totalMatches?: number;
-    wins?: number;
-    avgScore?: number;
-    bestScore?: number;
-    worstScore?: number;
-  };
-}
-
-export function useFriendsLeaderboardQuery(username: string) {
-  return useQuery({
-    queryKey: userKeys.leaderboard(username),
-    queryFn: async () => {
-      const friendsRes = await apiFetch<{ friends: Friend[] }>('/api/friends');
-      const friends = friendsRes.friends;
-
-      const statsPromises = friends.map((f) =>
-        apiFetch<UserStatsResponse>(`/api/users/${f.username}/stats`)
-          .then((res) => ({
-            username: f.username,
-            name: f.name,
-            stats: res.stats,
-          }))
-          .catch(() => ({
-            username: f.username,
-            name: f.name,
-            stats: {},
-          }))
-      );
-
-      return Promise.all(statsPromises);
-    },
-  });
-}

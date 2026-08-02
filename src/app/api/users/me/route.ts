@@ -9,11 +9,17 @@ import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * profilePicUrl is deliberately absent: the picture is owned by
+ * POST/DELETE /api/users/me/avatar, which uploads to Cloudinary and writes the
+ * resulting secure_url itself. Accepting it here let a client store any string
+ * z.string().url() would pass — and that includes `javascript:...`, since
+ * `new URL()` treats it as valid — which then gets rendered as an image source.
+ */
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   phone: z.string().max(20).optional(),
   dob: z.string().optional(),
-  profilePicUrl: z.string().url().optional().nullable(),
 });
 
 export async function GET(request: NextRequest) {
@@ -82,9 +88,6 @@ export const PATCH = createHandler(
     }
     if (payload.dob !== undefined) {
       updateFields.dob = payload.dob;
-    }
-    if (payload.profilePicUrl !== undefined) {
-      updateFields.profilePicUrl = payload.profilePicUrl;
     }
 
     const usersCol = await getUsers();
