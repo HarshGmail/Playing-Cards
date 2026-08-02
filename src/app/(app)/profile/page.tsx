@@ -1,59 +1,40 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import ProfileCard from '@/components/profile/ProfileCard';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import MedalsTable from '@/components/profile/MedalsTable';
 import FriendsLeaderboard from '@/components/profile/FriendsLeaderboard';
+import {
+  useMeUserQuery,
+  useUpdateMeMutation,
+  useUserStatsQuery,
+  useAvatarMutation,
+} from '@/lib/queries/users';
 import { Edit, Share } from 'lucide-react';
 
 export default function MyProfilePage() {
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [stats, setStats] = useState<any>(undefined);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await fetch('/api/users/me');
-        if (!res.ok) throw new Error('Failed to load profile');
-        const data = await res.json();
-        setUser(data.user);
+  const { data: user, isLoading, error } = useMeUserQuery();
+  // Keyed off the loaded user, so it stays idle until the username is known.
+  const { data: stats } = useUserStatsQuery(user?.username ?? '');
 
-        const statsRes = await fetch(`/api/users/${data.user.username}/stats`);
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setStats(statsData.stats);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load profile');
-        router.push('/');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [router]);
+  const updateMe = useUpdateMeMutation();
+  const avatarMutation = useAvatarMutation();
 
   const handleSaveProfile = async (data: { name: string; phone: string; dob: string }) => {
-    try {
-      const res = await fetch('/api/users/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Failed to save profile');
-      const result = await res.json();
-      setUser(result.user);
-      setShowEditModal(false);
-    } catch (err) {
-      throw err;
-    }
+    await updateMe.mutateAsync(data);
+    setShowEditModal(false);
+  };
+
+  /**
+   * Applies immediately rather than on Save — the avatar has its own endpoint.
+   * Returns the stored URL so the modal can drop its local preview.
+   */
+  const handleAvatarChange = async (file: File | null): Promise<string | null> => {
+    const updated = await avatarMutation.mutateAsync(file);
+    return updated.profilePicUrl ?? null;
   };
 
   const handleShareProfile = async () => {
@@ -66,7 +47,7 @@ export default function MyProfilePage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 flex items-center justify-center">
         <p className="text-gray-600 dark:text-gray-400">Loading profile...</p>
@@ -74,10 +55,13 @@ export default function MyProfilePage() {
     );
   }
 
+  // No redirect on failure: middleware already bounces unauthenticated requests
+  // away from this route, so an error here is a real fetch failure worth showing
+  // rather than a reason to silently navigate home.
   if (error || !user) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 flex items-center justify-center">
-        <p className="text-red-600">{error || 'Failed to load profile'}</p>
+        <p className="text-red-600">{error?.message || 'Failed to load profile'}</p>
       </div>
     );
   }
@@ -117,6 +101,7 @@ export default function MyProfilePage() {
             user={user}
             onClose={() => setShowEditModal(false)}
             onSave={handleSaveProfile}
+            onAvatarChange={handleAvatarChange}
           />
         )}
       </div>

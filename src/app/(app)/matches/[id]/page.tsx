@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { matchKeys } from '@/lib/queries/keys';
 import {
   useMatchQuery,
   useMatchStateQuery,
@@ -24,6 +26,7 @@ export default function MatchPage() {
   const params = useParams();
   const matchId = params.id as string;
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState('leaderboard');
   const [editingRound, setEditingRound] = useState<number | null>(null);
 
@@ -45,6 +48,15 @@ export default function MatchPage() {
 
   const handleRoundEdit = async (round: number, scores: any[]) => {
     await editRoundMutation.mutateAsync({ round, scores });
+  };
+
+  /**
+   * RosterPanel PATCHes the roster directly, outside the mutation hooks, so it
+   * has no cache of its own to invalidate. matchKeys.detail is a prefix of the
+   * state and rounds keys, so this one call refreshes all three.
+   */
+  const handleRosterChange = () => {
+    queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
   };
 
   const handleEndMatch = async () => {
@@ -161,6 +173,7 @@ export default function MatchPage() {
               matchId={matchId}
               roster={match.roster}
               isCreator={isCreator}
+              onChange={handleRosterChange}
             />
           )}
         </div>

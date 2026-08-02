@@ -5,6 +5,8 @@ export interface User {
   email: string;
   phone?: string;
   dob?: string;
+  /** Cloudinary `secure_url`, including its cache-busting version segment. */
+  profilePicUrl?: string | null;
 }
 
 export interface Match {
@@ -68,6 +70,8 @@ export interface LeaderboardEntry {
   isDnf: boolean;
   isSharedPosition: boolean;
   isLast: boolean;
+  /** Rounds this player won outright. Populated by computeMatchLeaderboard. */
+  gamesWon: number;
 }
 
 export interface MatchState {
@@ -104,13 +108,14 @@ export interface Friend {
   username: string;
   name: string;
   email: string;
+  profilePicUrl?: string | null;
 }
 
 export interface FriendRequest {
   id: string;
-  senderId: string;
-  senderName: string;
-  senderUsername: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUsername: string;
   createdAt: string;
 }
 

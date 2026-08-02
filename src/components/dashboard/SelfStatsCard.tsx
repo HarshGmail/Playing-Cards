@@ -30,21 +30,19 @@ export default function SelfStatsCard({ user }: SelfStatsCardProps) {
         <div className="grid grid-cols-3 gap-2 pt-4 border-t border-blue-200 dark:border-blue-700">
           <div className="text-center">
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.totalMatches || 0}
+              {stats.totalMatches}
             </p>
             <p className="text-xs text-gray-600 dark:text-gray-400">Total</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.wins || 0}
-            </p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.wins}</p>
             <p className="text-xs text-gray-600 dark:text-gray-400">Won</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.avgScore ? stats.avgScore.toFixed(1) : '0'}
+              {stats.averageRank.toFixed(1)}
             </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Avg Score</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Avg Rank</p>
           </div>
         </div>
       )}

@@ -88,6 +88,10 @@ export async function GET(
         gamesWon,
         totalRounds,
       },
+      // Returned alongside the stats because the hover preview in
+      // PlayerNameLink renders an avatar and this is the only request it makes.
+      // The user document is already loaded above, so this costs no extra query.
+      profilePicUrl: user.profilePicUrl,
     });
   } catch (err) {
     logError(requestId, err);

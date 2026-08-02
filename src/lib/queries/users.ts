@@ -1,21 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { User, UserStats, Friend } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
-import { userKeys } from './keys';
+import { userKeys, friendKeys } from './keys';
 
 interface UserResponse {
   user: User;
 }
 
+/**
+ * Mirrors what GET /api/users/[username]/stats actually returns. The previous
+ * declaration listed avgScore/bestScore/worstScore/totalScore/matchesWon, none
+ * of which that endpoint sends — consumers reading them silently got undefined.
+ */
 interface UserStatsResponse {
   stats: {
-    totalMatches?: number;
-    wins?: number;
-    avgScore?: number;
-    bestScore?: number;
-    worstScore?: number;
-    totalScore?: number;
-    matchesWon?: number;
+    wins: number;
+    totalMatches: number;
+    averageRank: number;
+    timesLeading: number;
+    gamesWon: number;
+    totalRounds: number;
   };
 }
 
@@ -46,6 +50,42 @@ export function useUpdateMeMutation() {
       }).then((res) => res.user),
     onSuccess: (user) => {
       queryClient.setQueryData(userKeys.me(), user);
+    },
+  });
+}
+
+/**
+ * Uploads a new profile picture, or clears it when passed null.
+ *
+ * Not folded into useUpdateMeMutation: the avatar has its own endpoint (it is
+ * multipart, not JSON) and applies immediately rather than on Save.
+ */
+export function useAvatarMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File | null) => {
+      if (!file) {
+        return apiFetch<UserResponse>('/api/users/me/avatar', {
+          method: 'DELETE',
+        }).then((res) => res.user);
+      }
+
+      const body = new FormData();
+      body.append('file', file);
+
+      // No Content-Type header — the browser must set the multipart boundary.
+      return apiFetch<UserResponse>('/api/users/me/avatar', {
+        method: 'POST',
+        body,
+      }).then((res) => res.user);
+    },
+    onSuccess: (user) => {
+      queryClient.setQueryData(userKeys.me(), user);
+      // The picture is denormalised into the friends list and any profile page
+      // keyed by username, so those caches are now stale.
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(user.username) });
+      queryClient.invalidateQueries({ queryKey: friendKeys.list() });
     },
   });
 }

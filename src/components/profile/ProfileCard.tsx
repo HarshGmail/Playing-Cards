@@ -1,6 +1,7 @@
 'use client';
 
-import { User, Mail, Phone, Cake } from 'lucide-react';
+import { Mail, Phone, Cake } from 'lucide-react';
+import Avatar from '@/components/common/Avatar';
 
 interface ProfileCardProps {
   user: {
@@ -21,9 +22,7 @@ export default function ProfileCard({ user, actions, isOwnProfile }: ProfileCard
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 space-y-4">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-            <User className="w-8 h-8 text-white" />
-          </div>
+          <Avatar name={user.name} profilePicUrl={user.profilePicUrl} size={64} />
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">@{user.username}</p>

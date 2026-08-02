@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Trophy, Star, Swords, ListOrdered } from 'lucide-react';
+import Avatar from '@/components/common/Avatar';
 
 interface PlayerStats {
   wins: number;
@@ -30,6 +30,7 @@ export default function PlayerNameLink({
 }: PlayerNameLinkProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
@@ -50,6 +51,7 @@ export default function PlayerNameLink({
           .then((res) => res.ok ? res.json() : null)
           .then((data) => {
             if (data?.stats) setStats(data.stats);
+            if (data?.profilePicUrl) setProfilePicUrl(data.profilePicUrl);
           })
           .finally(() => setLoading(false));
       }
@@ -60,13 +62,6 @@ export default function PlayerNameLink({
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setShowTooltip(false);
   };
-
-  const initials = displayName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
 
   return (
     <div className="relative inline-block" onMouseLeave={handleMouseLeave}>
@@ -95,9 +90,12 @@ export default function PlayerNameLink({
           ) : stats ? (
             <div className="space-y-3">
               <div className="flex items-center gap-3 border-b border-gray-200 dark:border-gray-700 pb-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">
-                  {initials}
-                </div>
+                <Avatar
+                  name={displayName}
+                  profilePicUrl={profilePicUrl}
+                  size={40}
+                  fallbackClassName="bg-blue-600 text-white"
+                />
                 <div>
                   <p className="font-semibold text-gray-900 dark:text-white">{displayName}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">@{userName}</p>

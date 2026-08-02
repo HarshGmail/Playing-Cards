@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useMatchesQuery } from '@/lib/queries/matches';
 import { useFriendsQuery, useIncomingRequestsQuery } from '@/lib/queries/friends';
-import { useUserStatsQuery } from '@/lib/queries/users';
 import SelfStatsCard from '@/components/dashboard/SelfStatsCard';
 import IncomingRequestsPanel from '@/components/dashboard/IncomingRequestsPanel';
 import FriendsList from '@/components/dashboard/FriendsList';
@@ -17,7 +16,6 @@ export default function DashboardPage() {
   const { data: matches = [] } = useMatchesQuery();
   const { data: friends = [] } = useFriendsQuery();
   const { data: incomingRequests = [] } = useIncomingRequestsQuery();
-  const { data: statsData } = useUserStatsQuery(user?.username || '');
   const [tab, setTab] = useState<'friends' | 'find'>('friends');
 
   if (isLoading) {
@@ -28,23 +26,10 @@ export default function DashboardPage() {
     );
   }
 
-  const matchesCreated = matches.filter((m) => m.creatorId === user?.id).length;
-  const matchesJoined = matches.filter(
-    (m) =>
-      m.creatorId !== user?.id &&
-      m.roster.some((r) => r.userId === user?.id)
-  ).length;
-  const matchesWon = statsData?.wins || 0;
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Self Stats */}
-      {user && (
-        <SelfStatsCard
-          user={user}
-          stats={{ matchesCreated, matchesJoined, matchesWon }}
-        />
-      )}
+      {user && <SelfStatsCard user={user} />}
 
       {/* Incoming Requests */}
       <IncomingRequestsPanel />

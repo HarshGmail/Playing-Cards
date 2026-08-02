@@ -14,7 +14,13 @@ interface MatchStateResponse {
 interface RoundsResponse {
   rounds: Array<{
     round: number;
-    scores: Array<{ playerId: string; value: number }>;
+    scores: Array<{
+      playerId: string;
+      value: number;
+      enteredBy: string;
+      /** Serialized from a BSON Date, so it arrives as an ISO string. */
+      enteredAt: string;
+    }>;
   }>;
 }
 
