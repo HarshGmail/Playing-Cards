@@ -29,7 +29,11 @@ export async function POST(request: NextRequest) {
     const parsed = createMatchSchema.safeParse(body);
     if (!parsed.success) {
       logApiResponse(requestId, 400, Date.now() - startTime);
-      return validationError(parsed.error.issues[0]?.message || 'Invalid input');
+      const issue = parsed.error.issues[0];
+      const field = issue?.path.join('.');
+      return validationError(
+        issue ? `${field ? `${field}: ` : ''}${issue.message}` : 'Invalid input'
+      );
     }
 
     const data = parsed.data;

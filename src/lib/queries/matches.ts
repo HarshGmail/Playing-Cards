@@ -12,17 +12,15 @@ interface CreateMatchRequest {
   creatorRole: 'score-only' | 'score-and-play';
   rankPreference: 'highest-first' | 'lowest-first';
   tiebreakers: string[];
-  roster: Array<{
-    userId?: string;
-    username?: string;
-    email?: string;
-    phone?: string;
-  }>;
+  players: string[];
+  spectatorIds?: string[];
 }
 
 interface CreateMatchResponse {
-  matchId: string;
-  code: string;
+  id: string;
+  name: string;
+  creatorId: string;
+  status: string;
 }
 
 export function useMatchesQuery() {

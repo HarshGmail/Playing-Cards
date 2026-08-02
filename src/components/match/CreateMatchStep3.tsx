@@ -119,9 +119,10 @@ export default function CreateMatchStep3({
         creatorRole: creatorRole as 'score-only' | 'score-and-play',
         rankPreference: rankPreference as 'highest-first' | 'lowest-first',
         tiebreakers,
-        roster: players.map((p) => ({ userId: p.id })),
+        players: players.map((p) => p.id),
+        spectatorIds: spectators.map((s) => s.id),
       });
-      router.push(`/matches/${result.matchId}`);
+      router.push(`/matches/${result.id}`);
     } catch (err: any) {
       setCreateError(err.message || 'Failed to create match');
     }
