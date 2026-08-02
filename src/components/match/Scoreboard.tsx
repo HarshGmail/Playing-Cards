@@ -3,6 +3,7 @@
 import { buildScoreboardRows, computeRoundWinners, computeBracketCounts } from '@/lib/domain/scoreboard';
 import { getPositionColor, PositionColorToken } from '@/lib/domain/positionColor';
 import PlayerNameLink from '@/components/common/PlayerNameLink';
+import type { PlayersById } from '@/types';
 
 interface LeaderboardEntry {
   playerId: string;
@@ -23,6 +24,8 @@ interface ScoreboardProps {
     userId: string;
     userName: string;
   }>;
+  /** Keyed by userId; scoreboard rows carry that as `playerId`. */
+  playersById: PlayersById;
   leaderboard?: LeaderboardEntry[];
   rankPreference?: 'highest-first' | 'lowest-first';
 }
@@ -39,6 +42,7 @@ const TOTAL_CELL_CLASSES: Record<PositionColorToken, string> = {
 export default function Scoreboard({
   rounds,
   players,
+  playersById,
   leaderboard,
   rankPreference = 'lowest-first',
 }: ScoreboardProps) {
@@ -71,8 +75,11 @@ export default function Scoreboard({
               >
                 <PlayerNameLink
                   userId={row.playerId}
-                  userName={row.userName}
+                  userName={playersById[row.playerId]?.username ?? ''}
                   displayName={row.userName}
+                  profilePicUrl={playersById[row.playerId]?.profilePicUrl}
+                  avatarSize={28}
+                  stacked
                   className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
                 />{' '}
                 <span className="font-normal text-gray-500 dark:text-gray-400">

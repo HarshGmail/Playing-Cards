@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
+import Avatar from '@/components/common/Avatar';
 
 interface JoinRequest {
   requestId: string;
   userId: string;
   userName: string;
   username: string;
+  profilePicUrl: string | null;
   createdAt: string;
 }
 
@@ -85,9 +87,16 @@ export default function JoinRequestsPanel({ matchId, isCreator }: JoinRequestsPa
             key={request.requestId}
             className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg"
           >
-            <div className="text-sm">
-              <p className="font-medium text-gray-900 dark:text-white">{request.userName}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">@{request.username}</p>
+            <div className="flex items-center gap-3 text-sm">
+              <Avatar
+                name={request.userName}
+                profilePicUrl={request.profilePicUrl}
+                size={32}
+              />
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">{request.userName}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">@{request.username}</p>
+              </div>
             </div>
             <div className="flex gap-2">
               <button

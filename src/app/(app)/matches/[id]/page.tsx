@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { matchKeys } from '@/lib/queries/keys';
+import type { PlayersById } from '@/types';
 import {
   useMatchQuery,
   useMatchStateQuery,
@@ -83,6 +84,25 @@ export default function MatchPage() {
   const playerNames = Object.fromEntries(
     match.roster.map((r: any) => [r.userId, r.userName])
   );
+
+  /**
+   * Identity for every player in this match, keyed by userId. Leaderboard
+   * entries, scoreboard rows and podium places all key on `playerId`, which *is*
+   * the roster userId, so this one record serves all of them.
+   *
+   * `username` is the real handle from the users collection — roster.userName is
+   * the display name and cannot be used to build profile links.
+   */
+  const playersById: PlayersById = Object.fromEntries(
+    match.roster.map((r: any) => [
+      r.userId,
+      {
+        name: r.userName,
+        username: r.username ?? '',
+        profilePicUrl: r.profilePicUrl ?? null,
+      },
+    ])
+  );
   const isCreator = !!user && match.creatorId === user.id;
   const tabs = isCreator && match.status === 'active'
     ? ['leaderboard', 'scoreboard', 'rounds', 'form', 'roster']
@@ -140,6 +160,7 @@ export default function MatchPage() {
               entries={state.leaderboard}
               rounds={rounds}
               players={match.roster}
+              playersById={playersById}
               rankPreference={match.rankPreference}
               ended={match.status === 'ended'}
             />
@@ -148,6 +169,7 @@ export default function MatchPage() {
             <Scoreboard
               rounds={rounds}
               players={match.roster}
+              playersById={playersById}
               leaderboard={state?.leaderboard}
               rankPreference={match.rankPreference}
             />
@@ -156,6 +178,7 @@ export default function MatchPage() {
             <SubmittedRounds
               rounds={rounds}
               playerNames={playerNames}
+              playersById={playersById}
               isCreator={isCreator}
               onEdit={setEditingRound}
             />

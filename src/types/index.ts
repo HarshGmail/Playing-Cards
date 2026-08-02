@@ -41,12 +41,36 @@ export interface MatchSummary {
 
 export interface RosterEntry {
   userId: string;
+  /**
+   * Display name, not the handle — denormalised onto the match document at join
+   * time. Do not build /profile/[username] links from this; use `username`.
+   */
   userName: string;
+  /**
+   * Optional because only GET /api/matches/[id] joins the users collection to
+   * supply it. The list endpoint returns rosters without these two fields.
+   */
+  username?: string;
+  profilePicUrl?: string | null;
   joinedAtRound: number;
   status: 'active' | 'dnf';
   dnfAfterRound: number | null;
   order: number;
 }
+
+/**
+ * Everything needed to render a player's identity: their face, their display
+ * name, and the handle to link to. Built once per match page from the joined
+ * roster and looked up by userId — which is what leaderboard entries, scoreboard
+ * rows and podium places all use as their `playerId`.
+ */
+export interface PlayerIdentity {
+  name: string;
+  username: string;
+  profilePicUrl: string | null;
+}
+
+export type PlayersById = Record<string, PlayerIdentity>;
 
 export interface Score {
   id: string;

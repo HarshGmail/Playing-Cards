@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getMatches } from '@/lib/db/collections';
+import { getMatches, getUsers } from '@/lib/db/collections';
 import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
@@ -51,6 +51,16 @@ export async function GET(
       return forbidden();
     }
 
+    // Joined at read time rather than denormalised onto the match document.
+    // roster.userName *is* denormalised, and that is why it drifted — it holds
+    // the display name, so it can't be used to link to /profile/[username].
+    // A picture also changes far more often than a name, and a denormalised copy
+    // would leave every past match showing a stale face.
+    const usersCol = await getUsers();
+    const rosterIds = match.roster.map((r) => new ObjectId(r.userId));
+    const users = await usersCol.find({ _id: { $in: rosterIds } }).toArray();
+    const usersById = new Map(users.map((u) => [u._id?.toString(), u]));
+
     logApiResponse(requestId, 200, Date.now() - startTime);
 
     return success({
@@ -62,14 +72,23 @@ export async function GET(
         rankPreference: match.rankPreference,
         status: match.status,
         tiebreakers: match.tiebreakers,
-        roster: match.roster.map((r) => ({
-          userId: r.userId,
-          userName: r.userName,
-          joinedAtRound: r.joinedAtRound,
-          status: r.status,
-          dnfAfterRound: r.dnfAfterRound,
-          order: r.order,
-        })),
+        roster: match.roster.map((r) => {
+          const u = usersById.get(r.userId);
+          return {
+            userId: r.userId,
+            // Display name. Kept from the roster so a since-deleted user still
+            // renders as they did when they played.
+            userName: r.userName,
+            // The real handle, for /profile/[username] links. Falls back to the
+            // empty string so callers can tell "no link possible" from a name.
+            username: u?.username ?? '',
+            profilePicUrl: u?.profilePicUrl ?? null,
+            joinedAtRound: r.joinedAtRound,
+            status: r.status,
+            dnfAfterRound: r.dnfAfterRound,
+            order: r.order,
+          };
+        }),
         spectators: (match.spectators ?? []).map((s) => ({
           userId: s.userId,
           userName: s.userName,

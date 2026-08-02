@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Avatar from '@/components/common/Avatar';
 
 interface RosterEntry {
   userId: string;
   userName: string;
+  profilePicUrl?: string | null;
   status: 'active' | 'dnf';
   dnfAfterRound: number | null;
 }
@@ -46,13 +48,16 @@ export default function RosterPanel({ matchId, roster, isCreator, onChange }: Ro
           key={entry.userId}
           className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
         >
-          <div>
-            <p className="font-medium text-gray-900 dark:text-white">{entry.userName}</p>
-            {entry.status === 'dnf' && (
-              <p className="text-xs text-gray-500 dark:text-gray-500">
-                Did Not Finish (after round {entry.dnfAfterRound})
-              </p>
-            )}
+          <div className="flex items-center gap-3">
+            <Avatar name={entry.userName} profilePicUrl={entry.profilePicUrl} size={36} />
+            <div>
+              <p className="font-medium text-gray-900 dark:text-white">{entry.userName}</p>
+              {entry.status === 'dnf' && (
+                <p className="text-xs text-gray-500 dark:text-gray-500">
+                  Did Not Finish (after round {entry.dnfAfterRound})
+                </p>
+              )}
+            </div>
           </div>
           {isCreator && (
             <button

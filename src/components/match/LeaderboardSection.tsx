@@ -6,6 +6,7 @@ import { Table, BarChart3 } from 'lucide-react';
 import Leaderboard from '@/components/match/Leaderboard';
 import RoundsWonTable from '@/components/match/RoundsWonTable';
 import { buildScoreboardRows } from '@/lib/domain/scoreboard';
+import type { PlayersById } from '@/types';
 
 const TotalsChart = dynamic(() => import('@/components/match/charts/TotalsChart'), { ssr: false });
 const RoundsWonChart = dynamic(() => import('@/components/match/charts/RoundsWonChart'), {
@@ -35,6 +36,8 @@ interface LeaderboardSectionProps {
   entries: LeaderboardEntry[];
   rounds: Array<{ round: number; scores: Array<{ playerId: string; value: number }> }>;
   players: Array<{ userId: string; userName: string }>;
+  /** Faces and handles keyed by userId, which is what `playerId` holds. */
+  playersById: PlayersById;
   rankPreference: 'highest-first' | 'lowest-first';
   ended?: boolean;
 }
@@ -89,6 +92,7 @@ export default function LeaderboardSection({
   entries,
   rounds,
   players,
+  playersById,
   rankPreference,
   ended = false,
 }: LeaderboardSectionProps) {
@@ -126,28 +130,28 @@ export default function LeaderboardSection({
 
       {view === 'table' ? (
         <div className="grid md:grid-cols-2 gap-4">
-          <Leaderboard entries={entries} compact ended={ended} />
-          <RoundsWonTable entries={entries} />
+          <Leaderboard entries={entries} playersById={playersById} compact ended={ended} />
+          <RoundsWonTable entries={entries} playersById={playersById} />
         </div>
       ) : (
         <div className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">Totals</h3>
-              <TotalsChart entries={entries} />
+              <TotalsChart entries={entries} playersById={playersById} />
             </div>
             <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">
                 Rounds Won
               </h3>
-              <RoundsWonChart entries={entries} />
+              <RoundsWonChart entries={entries} playersById={playersById} />
             </div>
           </div>
           <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">
               Score Trend
             </h3>
-            <ScoreTrendChart rounds={rounds} players={players} />
+            <ScoreTrendChart rounds={rounds} players={players} playersById={playersById} />
           </div>
         </div>
       )}

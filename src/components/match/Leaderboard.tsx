@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getPositionColor, PositionColorToken } from '@/lib/domain/positionColor';
 import Podium from '@/components/match/Podium';
 import PlayerNameLink from '@/components/common/PlayerNameLink';
+import type { PlayersById } from '@/types';
 
 interface LeaderboardEntry {
   position: number;
@@ -22,6 +23,8 @@ interface LeaderboardEntry {
 
 interface LeaderboardProps {
   entries: LeaderboardEntry[];
+  /** Keyed by userId; `entry.playerId` is a userId. */
+  playersById: PlayersById;
   compact?: boolean;
   ended?: boolean;
 }
@@ -59,7 +62,12 @@ const COLOR_CLASSES: Record<PositionColorToken, { badge: string; text: string; r
   },
 };
 
-export default function Leaderboard({ entries, compact = false, ended = false }: LeaderboardProps) {
+export default function Leaderboard({
+  entries,
+  playersById,
+  compact = false,
+  ended = false,
+}: LeaderboardProps) {
   const [gapMode, setGapMode] = useState<'interval' | 'leader'>('interval');
 
   useEffect(() => {
@@ -90,7 +98,7 @@ export default function Leaderboard({ entries, compact = false, ended = false }:
   return (
     <div className={compact ? 'space-y-3' : 'space-y-4'}>
       {ended ? (
-        <Podium entries={podium} />
+        <Podium entries={podium} playersById={playersById} />
       ) : (
         <div className={`grid grid-cols-3 gap-2 ${compact ? 'mb-4' : 'md:gap-4 mb-6'}`}>
           {podium.map((entry) => {
@@ -107,8 +115,9 @@ export default function Leaderboard({ entries, compact = false, ended = false }:
                 <p className="font-semibold text-gray-900 dark:text-white truncate">
                   <PlayerNameLink
                     userId={entry.playerId}
-                    userName={entry.name}
+                    userName={playersById[entry.playerId]?.username ?? ''}
                     displayName={entry.name}
+                    profilePicUrl={playersById[entry.playerId]?.profilePicUrl}
                     className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
                   />
                 </p>

@@ -1,6 +1,7 @@
 'use client';
 
 import PlayerNameLink from '@/components/common/PlayerNameLink';
+import type { PlayersById } from '@/types';
 
 interface RoundsWonEntry {
   playerId: string;
@@ -11,9 +12,10 @@ interface RoundsWonEntry {
 
 interface RoundsWonTableProps {
   entries: RoundsWonEntry[];
+  playersById: PlayersById;
 }
 
-export default function RoundsWonTable({ entries }: RoundsWonTableProps) {
+export default function RoundsWonTable({ entries, playersById }: RoundsWonTableProps) {
   if (entries.length === 0) {
     return (
       <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
@@ -39,8 +41,9 @@ export default function RoundsWonTable({ entries }: RoundsWonTableProps) {
             <p className="font-medium text-gray-900 dark:text-white">
               <PlayerNameLink
                 userId={entry.playerId}
-                userName={entry.name}
+                userName={playersById[entry.playerId]?.username ?? ''}
                 displayName={entry.name}
+                profilePicUrl={playersById[entry.playerId]?.profilePicUrl}
                 className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
               />
               {entry.isDnf && (

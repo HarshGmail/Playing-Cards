@@ -15,8 +15,24 @@ interface PlayerStats {
 
 interface PlayerNameLinkProps {
   userId: string;
+  /** The handle, not the display name — used for the link and the stats fetch. */
   userName: string;
   displayName: string;
+  /**
+   * Known picture, when the caller has one. Avoids waiting for the hover fetch,
+   * and is the only source for players whose stats request hasn't run.
+   */
+  profilePicUrl?: string | null;
+  /** Rendered avatar size in px. Small by default to suit dense table rows. */
+  avatarSize?: number;
+  /** Opt out where a layout has no room for it. */
+  showAvatar?: boolean;
+  /**
+   * Stack the avatar above the name instead of beside it. For narrow vertical
+   * containers like the scoreboard's per-player column headers, where an inline
+   * avatar forces the column wider or wraps the name.
+   */
+  stacked?: boolean;
   className?: string;
   showPreview?: boolean;
 }
@@ -25,12 +41,16 @@ export default function PlayerNameLink({
   userId,
   userName,
   displayName,
+  profilePicUrl,
+  avatarSize = 24,
+  showAvatar = true,
+  stacked = false,
   className = '',
   showPreview = true,
 }: PlayerNameLinkProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [stats, setStats] = useState<PlayerStats | null>(null);
-  const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
+  const [fetchedPicUrl, setFetchedPicUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
@@ -51,7 +71,7 @@ export default function PlayerNameLink({
           .then((res) => res.ok ? res.json() : null)
           .then((data) => {
             if (data?.stats) setStats(data.stats);
-            if (data?.profilePicUrl) setProfilePicUrl(data.profilePicUrl);
+            if (data?.profilePicUrl) setFetchedPicUrl(data.profilePicUrl);
           })
           .finally(() => setLoading(false));
       }
@@ -63,13 +83,29 @@ export default function PlayerNameLink({
     setShowTooltip(false);
   };
 
+  // Prefer what the caller passed; fall back to whatever the hover fetch found.
+  const picUrl = profilePicUrl ?? fetchedPicUrl;
+
   return (
     <div className="relative inline-block" onMouseLeave={handleMouseLeave}>
+      {/* Avatar sits inside the Link so the picture and name are one click
+          target that navigates to the profile, rather than two behaviours in the
+          same table cell. */}
       <Link
         href={`/profile/${userName}`}
-        className={`hover:underline cursor-pointer ${className}`}
+        className={`inline-flex align-middle hover:underline cursor-pointer ${
+          stacked ? 'flex-col items-center gap-1' : 'items-center gap-1.5'
+        } ${className}`}
         onMouseEnter={handleMouseEnter}
       >
+        {showAvatar && (
+          <Avatar
+            name={displayName}
+            profilePicUrl={picUrl}
+            size={avatarSize}
+            fallbackClassName="bg-blue-600 text-white"
+          />
+        )}
         {displayName}
       </Link>
 
@@ -92,7 +128,7 @@ export default function PlayerNameLink({
               <div className="flex items-center gap-3 border-b border-gray-200 dark:border-gray-700 pb-3">
                 <Avatar
                   name={displayName}
-                  profilePicUrl={profilePicUrl}
+                  profilePicUrl={picUrl}
                   size={40}
                   fallbackClassName="bg-blue-600 text-white"
                 />

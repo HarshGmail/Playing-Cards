@@ -8,6 +8,7 @@ interface LeaderboardRow {
   userId: string;
   name: string;
   username: string;
+  profilePicUrl: string | null;
   wins: number;
   gamesWon: number;
   totalRounds: number;
@@ -38,11 +39,15 @@ export default function FriendsLeaderboard({ self }: FriendsLeaderboardProps) {
       const withStats = await Promise.all(
         people.map(async (p) => {
           const statsRes = await fetch(`/api/users/${p.username}/stats`);
-          const stats = statsRes.ok ? (await statsRes.json()).stats : null;
+          // That endpoint returns profilePicUrl alongside stats, so the face
+          // costs no extra request here.
+          const body = statsRes.ok ? await statsRes.json() : null;
+          const stats = body?.stats ?? null;
           return {
             userId: p.id,
             name: p.name,
             username: p.username,
+            profilePicUrl: body?.profilePicUrl ?? null,
             wins: stats?.wins ?? 0,
             gamesWon: stats?.gamesWon ?? 0,
             totalRounds: stats?.totalRounds ?? 0,
@@ -104,6 +109,7 @@ export default function FriendsLeaderboard({ self }: FriendsLeaderboardProps) {
                     userId={row.userId}
                     userName={row.username}
                     displayName={row.name}
+                    profilePicUrl={row.profilePicUrl}
                     className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
                   />
                   {row.isSelf && (

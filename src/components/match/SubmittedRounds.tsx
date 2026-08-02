@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import Avatar from '@/components/common/Avatar';
+import type { PlayersById } from '@/types';
 
 interface SubmittedRoundsProps {
   rounds: Array<{
@@ -14,6 +16,7 @@ interface SubmittedRoundsProps {
     }>;
   }>;
   playerNames: Record<string, string>;
+  playersById: PlayersById;
   isCreator: boolean;
   onEdit?: (round: number) => void;
 }
@@ -21,6 +24,7 @@ interface SubmittedRoundsProps {
 export default function SubmittedRounds({
   rounds,
   playerNames,
+  playersById,
   isCreator,
   onEdit,
 }: SubmittedRoundsProps) {
@@ -77,7 +81,12 @@ export default function SubmittedRounds({
             <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 space-y-2">
               {round.scores.map((score, idx) => (
                 <div key={idx} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <span className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <Avatar
+                      name={playerNames[score.playerId] || 'Unknown'}
+                      profilePicUrl={playersById[score.playerId]?.profilePicUrl}
+                      size={24}
+                    />
                     {playerNames[score.playerId] || 'Unknown'}
                   </span>
                   <span className="font-medium text-gray-900 dark:text-white">{score.value}</span>

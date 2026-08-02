@@ -185,6 +185,7 @@ export async function GET(
           userId: r.userId,
           userName: user?.name || 'Unknown',
           username: user?.username || 'unknown',
+          profilePicUrl: user?.profilePicUrl ?? null,
           createdAt: r.createdAt,
         };
       }),

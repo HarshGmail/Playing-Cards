@@ -1,6 +1,8 @@
 'use client';
 
 import { Trophy, Medal } from 'lucide-react';
+import Avatar from '@/components/common/Avatar';
+import type { PlayersById } from '@/types';
 
 interface PodiumEntry {
   playerId: string;
@@ -12,6 +14,7 @@ interface PodiumEntry {
 
 interface PodiumProps {
   entries: PodiumEntry[];
+  playersById: PlayersById;
 }
 
 const BLOCK_STYLES: Record<number, { order: string; height: string; block: string; icon: JSX.Element }> = {
@@ -35,7 +38,7 @@ const BLOCK_STYLES: Record<number, { order: string; height: string; block: strin
   },
 };
 
-export default function Podium({ entries }: PodiumProps) {
+export default function Podium({ entries, playersById }: PodiumProps) {
   return (
     <div className="flex items-end justify-center gap-3 py-4">
       {entries.map((entry) => {
@@ -44,6 +47,12 @@ export default function Podium({ entries }: PodiumProps) {
         return (
           <div key={entry.playerId} className={`flex flex-col items-center w-28 ${style.order}`}>
             {style.icon}
+            <Avatar
+              name={entry.name}
+              profilePicUrl={playersById[entry.playerId]?.profilePicUrl}
+              size={40}
+              className="mt-1"
+            />
             <p className="font-semibold text-gray-900 dark:text-white text-center truncate w-full mt-1">
               {entry.name}
               {entry.isSharedPosition && (

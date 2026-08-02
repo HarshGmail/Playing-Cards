@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { avatarUrl } from '@/lib/cloudinaryUrl';
 
 interface AvatarProps {
   /** Used for the initials fallback and the img alt text. */
@@ -11,30 +12,6 @@ interface AvatarProps {
   /** Classes for the fallback circle, so each site can keep its own colour. */
   fallbackClassName?: string;
   className?: string;
-}
-
-/**
- * Cloudinary applies transformations named in the URL path, so one stored
- * original serves every size we need. Inserting them after `/upload/` avoids
- * having to rebuild the URL from a cloud name and public id — which also means
- * the version segment in the stored URL survives, and that segment is what
- * busts the CDN cache when a user replaces their picture.
- *
- * Non-Cloudinary values pass through untouched: the edit modal shows a local
- * `blob:` preview while an upload is in flight.
- */
-function withTransforms(url: string, size: number): string {
-  const marker = '/upload/';
-  const at = url.indexOf(marker);
-  if (!url.includes('res.cloudinary.com') || at === -1) return url;
-
-  const px = size * 2;
-  // g_face centres the crop on a detected face and falls back to the image
-  // centre when there isn't one; f_auto/q_auto let Cloudinary pick the format
-  // and compression per requesting browser.
-  const transforms = `w_${px},h_${px},c_fill,g_face,f_auto,q_auto`;
-
-  return `${url.slice(0, at + marker.length)}${transforms}/${url.slice(at + marker.length)}`;
 }
 
 function initialsOf(name: string): string {
@@ -80,7 +57,7 @@ export default function Avatar({
     // resizes, converts and CDN-serves these, so next/image would add a
     // remotePatterns config and consume optimization quota for no benefit.
     <img
-      src={withTransforms(profilePicUrl, size)}
+      src={avatarUrl(profilePicUrl, size)}
       alt={`${name}'s profile picture`}
       width={size}
       height={size}
