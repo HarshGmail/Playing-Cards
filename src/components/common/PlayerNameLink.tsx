@@ -61,6 +61,21 @@ export default function PlayerNameLink({
     };
   }, []);
 
+  // `userName` must be the handle, but callers reach for the display name because
+  // RosterEntry stores that under `userName` too — and both are `string`, so the
+  // type system cannot tell them apart. A handle never contains whitespace, so
+  // this catches the mix-up instead of letting it degrade quietly into a 404
+  // stats fetch and a /profile/<Display Name> link.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && /\s/.test(userName)) {
+      console.warn(
+        `PlayerNameLink: userName="${userName}" contains whitespace, so it looks ` +
+          `like a display name rather than a handle. Profile links and the hover ` +
+          `preview will both break. Pass the username from the joined roster.`
+      );
+    }
+  }, [userName]);
+
   const handleMouseEnter = () => {
     if (!showPreview) return;
     timeoutRef.current = setTimeout(() => {

@@ -161,8 +161,9 @@ export default function Leaderboard({
                   <p className="font-medium text-gray-900 dark:text-white">
                     <PlayerNameLink
                       userId={entry.playerId}
-                      userName={entry.name}
+                      userName={playersById[entry.playerId]?.username ?? ''}
                       displayName={entry.name}
+                      profilePicUrl={playersById[entry.playerId]?.profilePicUrl}
                       className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
                     />
                     {entry.isSharedPosition && (
