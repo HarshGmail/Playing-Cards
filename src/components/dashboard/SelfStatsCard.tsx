@@ -2,6 +2,7 @@
 
 import { User } from '@/types';
 import { useUserStatsQuery } from '@/lib/queries/users';
+import Avatar from '@/components/common/Avatar';
 
 interface SelfStatsCardProps {
   user: User;
@@ -13,9 +14,12 @@ export default function SelfStatsCard({ user }: SelfStatsCardProps) {
   return (
     <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg p-6 border border-blue-200 dark:border-blue-700">
       <div className="flex items-center gap-4 mb-4">
-        <div className="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center text-2xl font-bold">
-          {user.name.charAt(0).toUpperCase()}
-        </div>
+        <Avatar
+          name={user.name}
+          profilePicUrl={user.profilePicUrl}
+          size={64}
+          fallbackClassName="bg-blue-500 text-white"
+        />
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             {user.name}

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Table, BarChart3 } from 'lucide-react';
 import Leaderboard from '@/components/match/Leaderboard';
+import LeaderboardPodium from '@/components/match/LeaderboardPodium';
 import RoundsWonTable from '@/components/match/RoundsWonTable';
 import { buildScoreboardRows } from '@/lib/domain/scoreboard';
 import type { PlayersById } from '@/types';
@@ -100,6 +101,8 @@ export default function LeaderboardSection({
 
   const bestRound = findBestSingleRound(rounds, players, rankPreference);
   const mostConsistent = findMostConsistent(entries);
+  // DNF players are excluded, matching how the leaderboard rows order them last.
+  const podium = entries.filter((e) => !e.isDnf).slice(0, 3);
 
   return (
     <div className="space-y-4">
@@ -129,9 +132,14 @@ export default function LeaderboardSection({
       </div>
 
       {view === 'table' ? (
-        <div className="grid md:grid-cols-2 gap-4">
-          <Leaderboard entries={entries} playersById={playersById} compact ended={ended} />
-          <RoundsWonTable entries={entries} playersById={playersById} />
+        <div className="space-y-6">
+          {/* Spans both tables: the top three summarise the match rather than
+              belonging to the leaderboard column. */}
+          <LeaderboardPodium entries={podium} playersById={playersById} ended={ended} />
+          <div className="grid md:grid-cols-2 gap-4">
+            <Leaderboard entries={entries} playersById={playersById} compact />
+            <RoundsWonTable entries={entries} playersById={playersById} />
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
-import { userKeys, friendKeys } from './keys';
+import { userKeys, friendKeys, authKeys } from './keys';
 
 interface UserResponse {
   user: User;
@@ -86,6 +86,10 @@ export function useAvatarMutation() {
       // keyed by username, so those caches are now stale.
       queryClient.invalidateQueries({ queryKey: userKeys.detail(user.username) });
       queryClient.invalidateQueries({ queryKey: friendKeys.list() });
+      // The header and dashboard card read the session user from authKeys.me,
+      // a separate query with a ~16 minute staleTime — without this the new
+      // picture would not appear there until a full reload.
+      queryClient.invalidateQueries({ queryKey: authKeys.me() });
     },
   });
 }

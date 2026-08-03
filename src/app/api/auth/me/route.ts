@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
         email: user.email,
         phone: user.phone,
         dob: user.dob,
+        // Every surface driven by useAuth() reads the session user from here, so
+        // without this the header and dashboard card have no picture to render.
+        profilePicUrl: user.profilePicUrl ?? null,
       },
     });
   } catch (err) {

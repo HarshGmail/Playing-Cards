@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useLogoutMutation } from '@/lib/queries/auth';
 import { useNotificationsQuery } from '@/lib/queries/notifications';
 import { useUIStore } from '@/lib/store/uiStore';
+import Avatar from '@/components/common/Avatar';
 import Link from 'next/link';
 import { Sun, Moon, LogOut, Menu } from 'lucide-react';
 import { useState } from 'react';
@@ -73,7 +74,13 @@ export default function Header() {
 
           {/* User Menu */}
           <div className="hidden sm:flex items-center gap-2">
-            <Link href="/profile" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm">
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm"
+            >
+              {user && (
+                <Avatar name={user.name} profilePicUrl={user.profilePicUrl} size={28} />
+              )}
               {user?.name}
             </Link>
             <button
