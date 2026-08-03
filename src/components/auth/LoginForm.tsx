@@ -22,7 +22,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
     try {
       await loginMutation.mutateAsync({
-        email: identifier,
+        identifier,
         password,
       });
 

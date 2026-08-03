@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api/fetcher';
 import { authKeys } from './keys';
 
 interface LoginRequest {
-  email: string;
+  identifier: string;
   password: string;
 }
 
