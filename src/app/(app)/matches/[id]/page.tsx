@@ -104,6 +104,11 @@ export default function MatchPage() {
     ])
   );
   const isCreator = !!user && match.creatorId === user.id;
+  const pendingInvites = match.pendingInvites ?? [];
+  // The scorer alone is not a match. Rounds are rejected below two active
+  // players, so surface why rather than letting the form 409.
+  const activePlayerCount = match.roster.filter((r: any) => r.status === 'active').length;
+  const canScoreRound = activePlayerCount >= 2;
   const tabs = isCreator && match.status === 'active'
     ? ['leaderboard', 'scoreboard', 'rounds', 'form', 'roster']
     : ['leaderboard', 'scoreboard', 'rounds', 'roster'];
@@ -129,7 +134,9 @@ export default function MatchPage() {
           </div>
         </div>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Round {match.roundsPlayed} • {match.roster.length} players • {match.status}
+          Round {match.roundsPlayed} • {match.roster.length} players
+          {pendingInvites.length > 0 && ` • ${pendingInvites.length} invited`} •{' '}
+          {match.status}
         </p>
 
         {isCreator && (
@@ -184,17 +191,35 @@ export default function MatchPage() {
             />
           )}
           {tab === 'form' && isCreator && match.status === 'active' && (
-            <RoundForm
-              matchId={matchId}
-              round={match.roundsPlayed + 1}
-              players={match.roster}
-              onSubmit={handleRoundSubmit}
-            />
+            canScoreRound ? (
+              <RoundForm
+                matchId={matchId}
+                round={match.roundsPlayed + 1}
+                players={match.roster}
+                onSubmit={handleRoundSubmit}
+              />
+            ) : (
+              <div className="p-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="font-medium text-yellow-900 dark:text-yellow-300">
+                  Waiting for players
+                </p>
+                <p className="text-sm text-yellow-800/80 dark:text-yellow-300/80 mt-1">
+                  {pendingInvites.length > 0
+                    ? `${pendingInvites.length} invited player${
+                        pendingInvites.length === 1 ? '' : 's'
+                      } ${
+                        pendingInvites.length === 1 ? 'has' : 'have'
+                      } not accepted yet. A round needs at least two active players.`
+                    : 'A round needs at least two active players. Invite someone from the Roster tab or share the join link.'}
+                </p>
+              </div>
+            )
           )}
           {tab === 'roster' && (
             <RosterPanel
               matchId={matchId}
               roster={match.roster}
+              pendingInvites={pendingInvites}
               isCreator={isCreator}
               onChange={handleRosterChange}
             />

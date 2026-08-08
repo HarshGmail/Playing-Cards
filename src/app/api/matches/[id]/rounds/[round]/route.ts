@@ -4,6 +4,7 @@ import { getMatches, getScores } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { updateRoundSchema } from '@/lib/schemas/match';
+import { notifyRoundScored } from '@/lib/notifications/roundScored';
 import { withTransaction } from '@/lib/db/client';
 import { ObjectId } from 'mongodb';
 
@@ -150,6 +151,14 @@ export async function PUT(
         { session }
       );
     });
+
+    await notifyRoundScored({
+      match,
+      round: roundNum,
+      scores: parsed.data.scores,
+      scoredBy: userId,
+      edited: true,
+    }).catch((err) => logError(requestId, err));
 
     logApiResponse(requestId, 200, Date.now() - startTime);
 

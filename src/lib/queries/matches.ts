@@ -21,6 +21,8 @@ interface CreateMatchResponse {
   name: string;
   creatorId: string;
   status: string;
+  /** Players sent an invite. They are not on the roster until they accept. */
+  invitedCount: number;
 }
 
 export function useMatchesQuery() {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Avatar from '@/components/common/Avatar';
+import type { PendingInvite } from '@/types';
 
 interface RosterEntry {
   userId: string;
@@ -14,11 +15,19 @@ interface RosterEntry {
 interface RosterPanelProps {
   matchId: string;
   roster: RosterEntry[];
+  /** Invited players who have not answered. Not scoreable until they accept. */
+  pendingInvites?: PendingInvite[];
   isCreator: boolean;
   onChange: () => void;
 }
 
-export default function RosterPanel({ matchId, roster, isCreator, onChange }: RosterPanelProps) {
+export default function RosterPanel({
+  matchId,
+  roster,
+  pendingInvites = [],
+  isCreator,
+  onChange,
+}: RosterPanelProps) {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
 
@@ -76,6 +85,47 @@ export default function RosterPanel({ matchId, roster, isCreator, onChange }: Ro
           )}
         </div>
       ))}
+
+      {pendingInvites.length > 0 && (
+        <div className="pt-2">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Invited ({pendingInvites.length})
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            They join the roster — and can be scored — once they accept.
+          </p>
+          <div className="space-y-2">
+            {pendingInvites.map((invite) => (
+              <div
+                key={invite.inviteId}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-600"
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    name={invite.userName}
+                    profilePicUrl={invite.profilePicUrl}
+                    size={36}
+                    className="opacity-60"
+                  />
+                  <div>
+                    <p className="font-medium text-gray-700 dark:text-gray-300">
+                      {invite.userName}
+                    </p>
+                    {invite.username && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        @{invite.username}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                  Awaiting reply
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

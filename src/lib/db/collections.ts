@@ -82,6 +82,30 @@ export interface JoinRequest {
   respondedAt: Date | null;
 }
 
+/**
+ * A creator-initiated invitation to play in a match. Distinct from JoinRequest,
+ * which travels the other way (a player asking the creator to let them in).
+ *
+ * Invites exist so that being added to a match is never something that can
+ * happen *to* you: nothing lands on your career stats until you accept. Without
+ * this, a creator could assemble a roster of unwitting friends, make themselves
+ * scorer, enter whatever scores they liked and end the match — every player's
+ * stats moved by a game they never agreed to play.
+ *
+ * Share-link joins deliberately skip this: following the link *is* the consent.
+ */
+export interface MatchInvite {
+  _id?: { toString(): string };
+  matchId: string;
+  /** The invitee. */
+  userId: string;
+  /** The creator who sent it. */
+  invitedBy: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: Date;
+  respondedAt: Date | null;
+}
+
 export interface ShareLink {
   _id?: { toString(): string };
   matchId: string;
@@ -103,10 +127,21 @@ export interface Notification {
     | 'join-approved'
     | 'join-declined'
     | 'added-to-match'
-    | 'match-ended';
+    | 'match-ended'
+    | 'match-invite'
+    | 'match-invite-accepted'
+    | 'match-invite-declined'
+    | 'round-scored';
   payload: Record<string, unknown>;
   read: boolean;
   createdAt: Date;
+  /**
+   * When set, a TTL index deletes this notification at that instant. Used for
+   * high-volume per-round chatter, which is only interesting for a day.
+   * `null` means keep forever — MongoDB's TTL monitor skips documents whose
+   * indexed field is not a Date, so a null here is never collected.
+   */
+  expiresAt: Date | null;
 }
 
 export async function getUsers(): Promise<Collection<User>> {
@@ -137,6 +172,11 @@ export async function getFriendRequests(): Promise<Collection<FriendRequest>> {
 export async function getJoinRequests(): Promise<Collection<JoinRequest>> {
   const db = await getDb();
   return db.collection<JoinRequest>('joinRequests');
+}
+
+export async function getMatchInvites(): Promise<Collection<MatchInvite>> {
+  const db = await getDb();
+  return db.collection<MatchInvite>('matchInvites');
 }
 
 export async function getShareLinks(): Promise<Collection<ShareLink>> {

@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/api/auth';
 import { getMatches, getUsers } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError, conflict } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
+import { invitePlayersToMatch } from '@/lib/domain/matchInvites';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
@@ -14,8 +15,12 @@ const addPlayerSchema = z.object({
 
 /**
  * POST /api/matches/[id]/roster
- * Add a player to the match mid-game.
- * Only creator can add players. Player joins at next round.
+ * Invite a player to the match mid-game.
+ *
+ * Only the creator can invite, and the invite only becomes a roster entry when
+ * the invitee accepts — the same rule that applies at creation time. Gating one
+ * and not the other would be no gate at all: a creator could open with an empty
+ * roster and fill it here instead.
  */
 export async function POST(
   request: NextRequest,
@@ -69,7 +74,17 @@ export async function POST(
       return forbidden();
     }
 
+    if (match.status === 'ended') {
+      logApiResponse(requestId, 409, Date.now() - startTime);
+      return conflict('Match has ended');
+    }
+
     const newUserId = parsed.data.userId;
+
+    if (!ObjectId.isValid(newUserId)) {
+      logApiResponse(requestId, 404, Date.now() - startTime);
+      return error('User not found', 'USER_NOT_FOUND', 404);
+    }
 
     // Check player is not already in roster
     if (match.roster.some((r) => r.userId === newUserId)) {
@@ -86,25 +101,15 @@ export async function POST(
       return error('User not found', 'USER_NOT_FOUND', 404);
     }
 
-    // Add player to roster
-    const newRosterEntry = {
-      userId: newUserId,
-      userName: user.name,
-      joinedAtRound: match.roundsPlayed + 1,
-      status: 'active' as const,
-      dnfAfterRound: null,
-      order: match.roster.length,
-    };
+    const creator = await usersCol.findOne({ _id: new ObjectId(userId) });
 
-    await matchesCol.updateOne(
-      { _id: new ObjectId(params.id) },
-      {
-        $push: {
-          roster: newRosterEntry,
-        },
-        $inc: { version: 1 },
-      }
-    );
+    const invited = await invitePlayersToMatch({
+      matchId: params.id,
+      matchName: match.name,
+      invitedBy: userId,
+      invitedByName: creator?.name || '',
+      userIds: [newUserId],
+    });
 
     logApiResponse(requestId, 201, Date.now() - startTime);
 
@@ -113,8 +118,11 @@ export async function POST(
         matchId: params.id,
         userId: newUserId,
         userName: user.name,
-        joinedAtRound: match.roundsPlayed + 1,
-        version: match.version + 1,
+        inviteId: invited[0]?.inviteId ?? null,
+        status: 'pending',
+        // The roster is unchanged until the invitee accepts, so the match
+        // version has not moved.
+        version: match.version,
       },
       201
     );

@@ -5,6 +5,7 @@ import {
   getFriendships,
   getFriendRequests,
   getJoinRequests,
+  getMatchInvites,
   getShareLinks,
   getNotifications,
 } from './collections';
@@ -42,6 +43,13 @@ export async function ensureIndexes(): Promise<void> {
   await joinRequests.createIndex({ matchId: 1, status: 1 });
   await joinRequests.createIndex({ userId: 1, status: 1 });
 
+  const matchInvites = await getMatchInvites();
+  await matchInvites.createIndex({ userId: 1, status: 1 });
+  await matchInvites.createIndex({ matchId: 1, status: 1 });
+  // One invite per person per match — re-inviting reuses the existing document
+  // rather than stacking duplicates in the invitee's notification list.
+  await matchInvites.createIndex({ matchId: 1, userId: 1 }, { unique: true });
+
   const shareLinks = await getShareLinks();
   await shareLinks.createIndex({ code: 1 }, { unique: true });
   await shareLinks.createIndex(
@@ -51,4 +59,7 @@ export async function ensureIndexes(): Promise<void> {
 
   const notifications = await getNotifications();
   await notifications.createIndex({ userId: 1, read: 1, createdAt: -1 });
+  // Per-round notifications carry an expiresAt a day out and are swept by this
+  // index. Everything else stores null there, which the TTL monitor ignores.
+  await notifications.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 }

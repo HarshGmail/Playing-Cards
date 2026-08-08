@@ -18,10 +18,40 @@ export interface Match {
   status: 'active' | 'ended';
   tiebreakers: string[];
   roster: RosterEntry[];
+  /**
+   * Players the creator has invited who have not answered yet. They are not on
+   * the roster and cannot be scored — only GET /api/matches/[id] returns this.
+   */
+  pendingInvites?: PendingInvite[];
   roundsPlayed: number;
   version: number;
   createdAt: string;
   endedAt: string | null;
+}
+
+/** An outstanding invitation, as seen from inside the match. */
+export interface PendingInvite {
+  inviteId: string;
+  userId: string;
+  userName: string;
+  username: string;
+  profilePicUrl: string | null;
+  invitedAt: string;
+}
+
+/** An outstanding invitation, as seen by the person invited. */
+export interface MatchInvite {
+  id: string;
+  matchId: string;
+  matchName: string;
+  matchStatus: 'active' | 'ended';
+  roundsPlayed: number;
+  playerCount: number;
+  invitedBy: string;
+  invitedByName: string;
+  invitedByUsername: string;
+  invitedByProfilePicUrl: string | null;
+  createdAt: string;
 }
 
 /**
@@ -112,16 +142,22 @@ export interface AuthState {
   error: string | null;
 }
 
+export type NotificationType =
+  | 'friend-request'
+  | 'friend-accepted'
+  | 'join-request'
+  | 'join-approved'
+  | 'join-declined'
+  | 'added-to-match'
+  | 'match-ended'
+  | 'match-invite'
+  | 'match-invite-accepted'
+  | 'match-invite-declined'
+  | 'round-scored';
+
 export interface Notification {
   id: string;
-  type:
-    | 'friend-request'
-    | 'friend-accepted'
-    | 'join-request'
-    | 'join-approved'
-    | 'join-declined'
-    | 'added-to-match'
-    | 'match-ended';
+  type: NotificationType;
   payload: Record<string, unknown>;
   read: boolean;
   createdAt: string;

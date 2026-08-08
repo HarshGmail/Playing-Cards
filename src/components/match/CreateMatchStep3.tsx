@@ -131,9 +131,11 @@ export default function CreateMatchStep3({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-medium text-gray-900 dark:text-white mb-1">Add players</h2>
+        <h2 className="font-medium text-gray-900 dark:text-white mb-1">Invite players</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Search by username or name, or enter an exact email/phone to add them.
+          Search by username or name, or enter an exact email/phone. Each player gets an
+          invite and joins the match once they accept — you can start scoring as soon as
+          one of them does. Spectators are added straight away.
         </p>
 
         <div className="relative">
@@ -227,7 +229,7 @@ export default function CreateMatchStep3({
             </div>
           ))}
           {players.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">No players added yet.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">No players invited yet.</p>
           )}
         </div>
 

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useMatchesQuery } from '@/lib/queries/matches';
 import SelfStatsCard from '@/components/dashboard/SelfStatsCard';
 import IncomingRequestsPanel from '@/components/dashboard/IncomingRequestsPanel';
+import MatchInvitesPanel from '@/components/dashboard/MatchInvitesPanel';
 import FriendsList from '@/components/dashboard/FriendsList';
 import FindFriendsTab from '@/components/dashboard/FindFriendsTab';
 import MatchListItem from '@/components/dashboard/MatchListItem';
@@ -29,6 +30,9 @@ export default function DashboardPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Self Stats */}
       {user && <SelfStatsCard user={user} />}
+
+      {/* Match Invites — above friend requests: these gate an active game. */}
+      <MatchInvitesPanel />
 
       {/* Incoming Requests */}
       <IncomingRequestsPanel />

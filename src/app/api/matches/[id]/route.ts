@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getMatches, getUsers } from '@/lib/db/collections';
+import { getMatchInvites, getMatches, getUsers } from '@/lib/db/collections';
 import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
@@ -57,8 +57,20 @@ export async function GET(
     // A picture also changes far more often than a name, and a denormalised copy
     // would leave every past match showing a stale face.
     const usersCol = await getUsers();
+
+    // Invitees who have not answered yet. Surfaced so the roster reads as
+    // "3 playing, 2 asked" rather than silently omitting people the creator
+    // believes they added.
+    const invitesCol = await getMatchInvites();
+    const pendingInvites = await invitesCol
+      .find({ matchId: params.id, status: 'pending' })
+      .toArray();
+
     const rosterIds = match.roster.map((r) => new ObjectId(r.userId));
-    const users = await usersCol.find({ _id: { $in: rosterIds } }).toArray();
+    const inviteeIds = pendingInvites.map((i) => new ObjectId(i.userId));
+    const users = await usersCol
+      .find({ _id: { $in: [...rosterIds, ...inviteeIds] } })
+      .toArray();
     const usersById = new Map(users.map((u) => [u._id?.toString(), u]));
 
     logApiResponse(requestId, 200, Date.now() - startTime);
@@ -87,6 +99,17 @@ export async function GET(
             status: r.status,
             dnfAfterRound: r.dnfAfterRound,
             order: r.order,
+          };
+        }),
+        pendingInvites: pendingInvites.map((invite) => {
+          const u = usersById.get(invite.userId);
+          return {
+            inviteId: invite._id?.toString(),
+            userId: invite.userId,
+            userName: u?.name ?? 'Unknown',
+            username: u?.username ?? '',
+            profilePicUrl: u?.profilePicUrl ?? null,
+            invitedAt: invite.createdAt,
           };
         }),
         spectators: (match.spectators ?? []).map((s) => ({

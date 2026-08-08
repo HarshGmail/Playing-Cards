@@ -4,6 +4,7 @@ import { getMatches, getScores } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { submitRoundSchema } from '@/lib/schemas/match';
+import { notifyRoundScored } from '@/lib/notifications/roundScored';
 import { withTransaction } from '@/lib/db/client';
 import { ObjectId } from 'mongodb';
 
@@ -69,6 +70,19 @@ export async function POST(
       .filter((r) => r.status === 'active')
       .map((r) => r.userId);
 
+    // A one-player match is not a match, it is a scorer typing their own
+    // results in. Invited players are absent from the roster until they accept,
+    // so this is the state a freshly created match sits in — and rounds scored
+    // there would land on the creator's career stats unopposed.
+    if (activePlayerIds.length < 2) {
+      logApiResponse(requestId, 409, Date.now() - startTime);
+      return error(
+        'A round needs at least two active players — wait for your invites to be accepted.',
+        'NOT_ENOUGH_PLAYERS',
+        409
+      );
+    }
+
     const submittedPlayerIds = new Set(parsed.data.scores.map((s) => s.playerId));
 
     // Check that all active players have scores
@@ -113,6 +127,14 @@ export async function POST(
         { session }
       );
     });
+
+    await notifyRoundScored({
+      match,
+      round: nextRound,
+      scores: parsed.data.scores,
+      scoredBy: userId,
+      edited: false,
+    }).catch((err) => logError(requestId, err));
 
     logApiResponse(requestId, 201, Date.now() - startTime);
 

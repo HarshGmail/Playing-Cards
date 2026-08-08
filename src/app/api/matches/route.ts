@@ -4,6 +4,8 @@ import { createMatchSchema } from '@/lib/schemas/match';
 import { success, validationError, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
+import { invitePlayersToMatch } from '@/lib/domain/matchInvites';
+import { notifyUsers } from '@/lib/notifications/create';
 import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
@@ -40,8 +42,16 @@ export async function POST(request: NextRequest) {
     const matchesCol = await getMatches();
     const usersCol = await getUsers();
 
-    // Get all players including creator
-    const playerIds = [userId, ...data.players];
+    // Invited players are validated here but not rostered: they join only once
+    // they accept. See invitePlayersToMatch for why.
+    const invitedIds = Array.from(new Set(data.players)).filter((id) => id !== userId);
+    const playerIds = [userId, ...invitedIds];
+
+    if (playerIds.some((id) => !ObjectId.isValid(id))) {
+      logApiResponse(requestId, 400, Date.now() - startTime);
+      return error('Some players not found', 'INVALID_PLAYERS', 400);
+    }
+
     const players = await usersCol
       .find({ _id: { $in: playerIds.map((id) => new ObjectId(id)) } })
       .toArray();
@@ -51,18 +61,25 @@ export async function POST(request: NextRequest) {
       return error('Some players not found', 'INVALID_PLAYERS', 400);
     }
 
-    // Create roster entries
-    const roster = playerIds.map((playerId, idx) => {
-      const player = players.find((p) => p._id?.toString() === playerId);
-      return {
-        userId: playerId,
-        userName: player?.name || '',
+    if (invitedIds.length === 0) {
+      logApiResponse(requestId, 400, Date.now() - startTime);
+      return error('Invite at least one other player', 'INVALID_PLAYERS', 400);
+    }
+
+    const creator = players.find((p) => p._id?.toString() === userId);
+
+    // The roster starts as the creator alone. Every invitee is appended by the
+    // accept handler, in the order they accept.
+    const roster = [
+      {
+        userId,
+        userName: creator?.name || '',
         joinedAtRound: 1,
         status: 'active' as const,
         dnfAfterRound: null,
-        order: idx,
-      };
-    });
+        order: 0,
+      },
+    ];
 
     // Spectators can't also be players — drop any overlap rather than erroring.
     const spectatorIds = data.spectatorIds.filter((id) => !playerIds.includes(id));
@@ -99,15 +116,34 @@ export async function POST(request: NextRequest) {
     };
 
     const result = await matchesCol.insertOne(matchDoc);
+    const matchId = result.insertedId.toString();
+
+    const invited = await invitePlayersToMatch({
+      matchId,
+      matchName: matchDoc.name,
+      invitedBy: userId,
+      invitedByName: creator?.name || '',
+      userIds: invitedIds,
+    });
+
+    // Spectating is read-only and touches nobody's stats, so it needs no accept
+    // step — but the invitee should still hear about it.
+    await notifyUsers(spectatorIds, 'added-to-match', {
+      matchId,
+      matchName: matchDoc.name,
+      role: 'spectator',
+      invitedByName: creator?.name || '',
+    }).catch((err) => logError(requestId, err));
 
     logApiResponse(requestId, 201, Date.now() - startTime);
 
     return success(
       {
-        id: result.insertedId.toString(),
+        id: matchId,
         name: matchDoc.name,
         creatorId: matchDoc.creatorId,
         status: matchDoc.status,
+        invitedCount: invited.length,
       },
       201
     );
