@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Calculator } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useLocalStorageRoundScores } from '@/lib/hooks/useLocalStorageRoundScores';
+import ScoreCalculatorModal from './ScoreCalculatorModal';
 
 interface RoundFormProps {
   matchId: string;
@@ -12,9 +14,20 @@ interface RoundFormProps {
     userName: string;
   }>;
   onSubmit: (scores: Array<{ playerId: string; value: number }>) => Promise<void>;
+  /**
+   * Whether the card-based score calculator applies. It encodes Least Count's
+   * rules, so it has no business appearing on a match of some other game.
+   */
+  showCalculator?: boolean;
 }
 
-export default function RoundForm({ matchId, round, players, onSubmit }: RoundFormProps) {
+export default function RoundForm({
+  matchId,
+  round,
+  players,
+  onSubmit,
+  showCalculator = false,
+}: RoundFormProps) {
   const { user } = useAuth();
   const { loadSavedScores, saveScores, clearSavedScores } = useLocalStorageRoundScores({
     matchId,
@@ -29,6 +42,7 @@ export default function RoundForm({ matchId, round, players, onSubmit }: RoundFo
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [calculatingFor, setCalculatingFor] = useState<string | null>(null);
 
   useEffect(() => {
     saveScores(scores);
@@ -73,6 +87,18 @@ export default function RoundForm({ matchId, round, players, onSubmit }: RoundFo
             <label className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300">
               {player.userName}
             </label>
+            {showCalculator && (
+              <button
+                type="button"
+                onClick={() => setCalculatingFor(player.userId)}
+                disabled={loading}
+                title={`Work out ${player.userName}'s score from their cards`}
+                aria-label={`Work out ${player.userName}'s score from their cards`}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition disabled:opacity-50"
+              >
+                <Calculator className="w-5 h-5" />
+              </button>
+            )}
             <input
               type="number"
               min="0"
@@ -96,6 +122,19 @@ export default function RoundForm({ matchId, round, players, onSubmit }: RoundFo
       >
         {loading ? 'Submitting...' : 'Submit Round'}
       </button>
+
+      {calculatingFor && (
+        <ScoreCalculatorModal
+          playerName={
+            players.find((p) => p.userId === calculatingFor)?.userName ?? 'player'
+          }
+          onClose={() => setCalculatingFor(null)}
+          onUse={(score) => {
+            handleScoreChange(calculatingFor, String(score));
+            setCalculatingFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }

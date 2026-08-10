@@ -113,6 +113,15 @@ laid 4-sequence is free, and any valid 3-card sequence or set still in hand is f
 > Example: laid sequence on the table, one completed set and one completed sequence in
 > hand, and three loose cards `5♥ 6♥ 5♦`. Score = 5 + 6 + 5 = **16**.
 
+Groups are **exactly three cards**. A four-card run left in your hand is therefore three
+free cards and one loose one — so it pays to check whether that fourth card fits into one
+of your other groups instead.
+
+> Example: holding `3♠ 4♠ 5♠ 6♠` `9♥ 9♣ 9♦` `K♠ 2♦`. Reading the run as `3♠ 4♠ 5♠`
+> leaves `6♠ K♠ 2♦` loose for 6 + 10 + 2 = **18**. Reading it as `4♠ 5♠ 6♠` instead
+> leaves `3♠ K♠ 2♦` for 3 + 10 + 2 = **15**. Same cards, three points, decided purely by
+> which end of the run you give up. The app works this out for you.
+
 **3. A player who never laid a 4-card pure sequence scores the full face value of all 13
 cards.** No credit for anything — not sequences, not sets, and wilds count at face value
 since the player didn't know they were wild.
@@ -142,6 +151,11 @@ Not yet settled — decide these before building rule-aware features:
 
 - **Invalid show.** What happens if a player declares and the hand doesn't check out? A
   penalty score, forced play-on, or an instant loss for the round?
+- **Does a losing hand need a sequence to get credit?** Declaring requires one of the three
+  groups to be a sequence. It is not settled whether that also applies when scoring a
+  hand that didn't declare — i.e. whether a player holding two sets and three loose cards
+  gets credit for both sets. The app currently assumes **no**: every valid group counts,
+  sequence or not.
 - **Dropping.** Is there any way to fold early for a fixed penalty, or must every player
   play to the end of the round?
 - **Leftover wilds.** A player who laid their sequence and holds an unused wild at

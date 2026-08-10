@@ -25,7 +25,7 @@ import ShareMatchButton from '@/components/match/ShareMatchButton';
 import JoinRequestsPanel from '@/components/match/JoinRequestsPanel';
 import EditRoundModal from '@/components/match/EditRoundModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { gameDisplayName, rulesPathFor } from '@/lib/games/catalog';
+import { gameDisplayName, rulesPathFor, toGameType } from '@/lib/games/catalog';
 
 export default function MatchPage() {
   const params = useParams();
@@ -118,6 +118,9 @@ export default function MatchPage() {
   // carry a free-text label and have no rules page to link to.
   const gameName = gameDisplayName(match.gameType, match.gameLabel);
   const rulesPath = rulesPathFor(match.gameType);
+  // The score calculator encodes Least Count's rules, so it must not appear on
+  // a match of some other game.
+  const isLeastCount = toGameType(match.gameType) === 'least-count';
   // The scorer alone is not a match. Rounds are rejected below two active
   // players, so surface why rather than letting the form 409.
   const activePlayerCount = match.roster.filter((r: any) => r.status === 'active').length;
@@ -224,6 +227,7 @@ export default function MatchPage() {
                 round={match.roundsPlayed + 1}
                 players={match.roster}
                 onSubmit={handleRoundSubmit}
+                showCalculator={isLeastCount}
               />
             ) : (
               <div className="p-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
