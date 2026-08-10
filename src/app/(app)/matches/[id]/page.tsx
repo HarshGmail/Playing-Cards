@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useUIStore } from '@/lib/store/uiStore';
 import { matchKeys } from '@/lib/queries/keys';
 import type { PlayersById } from '@/types';
 import {
@@ -22,14 +23,17 @@ import RosterPanel from '@/components/match/RosterPanel';
 import ShareMatchButton from '@/components/match/ShareMatchButton';
 import JoinRequestsPanel from '@/components/match/JoinRequestsPanel';
 import EditRoundModal from '@/components/match/EditRoundModal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export default function MatchPage() {
   const params = useParams();
   const matchId = params.id as string;
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { addToast } = useUIStore();
   const [tab, setTab] = useState('leaderboard');
   const [editingRound, setEditingRound] = useState<number | null>(null);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
 
   const { data: match, isLoading: matchLoading, error: matchError } = useMatchQuery(matchId);
   const { data: state, isLoading: stateLoading } = useMatchStateQuery(matchId);
@@ -60,9 +64,12 @@ export default function MatchPage() {
     queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
   };
 
-  const handleEndMatch = async () => {
-    if (!confirm('End this match? No more rounds can be added afterward.')) return;
-    await endMatchMutation.mutateAsync();
+  const handleEndMatch = () => {
+    endMatchMutation.mutate(undefined, {
+      onSuccess: () => setConfirmingEnd(false),
+      onError: () =>
+        addToast({ type: 'error', message: 'Could not end the match. Try again.' }),
+    });
   };
 
   if (loading) {
@@ -124,7 +131,7 @@ export default function MatchPage() {
             {isCreator && <ShareMatchButton matchId={matchId} />}
             {isCreator && match.status === 'active' && (
               <button
-                onClick={handleEndMatch}
+                onClick={() => setConfirmingEnd(true)}
                 disabled={endMatchMutation.isPending}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition disabled:opacity-50 shrink-0"
               >
@@ -226,6 +233,17 @@ export default function MatchPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmingEnd}
+        title="End this match?"
+        message="No more rounds can be added afterward."
+        confirmLabel={endMatchMutation.isPending ? 'Ending...' : 'End Match'}
+        destructive
+        busy={endMatchMutation.isPending}
+        onConfirm={handleEndMatch}
+        onCancel={() => setConfirmingEnd(false)}
+      />
 
       {editingRound !== null && (() => {
         const roundData = rounds.find((r) => r.round === editingRound);
