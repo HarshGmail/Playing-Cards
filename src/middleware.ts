@@ -16,7 +16,11 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === '/' ||
     request.nextUrl.pathname === '/forgot-password' ||
     publicAuthRoutes.includes(request.nextUrl.pathname) ||
-    request.nextUrl.pathname.startsWith('/join/');
+    request.nextUrl.pathname.startsWith('/join/') ||
+    // Game rules are readable without an account so the link can be shared with
+    // a new player before they sign up.
+    request.nextUrl.pathname === '/rules' ||
+    request.nextUrl.pathname.startsWith('/rules/');
 
   if (isPublicRoute) {
     return NextResponse.next();

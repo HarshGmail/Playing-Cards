@@ -7,7 +7,7 @@ import { useNotificationsQuery } from '@/lib/queries/notifications';
 import { useUIStore } from '@/lib/store/uiStore';
 import Avatar from '@/components/common/Avatar';
 import Link from 'next/link';
-import { Sun, Moon, LogOut, Menu } from 'lucide-react';
+import { Sun, Moon, LogOut, Menu, BookOpen } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Header() {
@@ -39,6 +39,15 @@ export default function Header() {
         </Link>
 
         <div className="flex items-center gap-4">
+          {/* Game Rules */}
+          <Link
+            href="/rules"
+            className="hidden sm:flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          >
+            <BookOpen className="w-4 h-4" />
+            Rules
+          </Link>
+
           {/* Notifications Bell */}
           <Link href="/notifications" className="relative">
             <button className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2">
@@ -99,6 +108,13 @@ export default function Header() {
         <div className="sm:hidden border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-4 py-3 space-y-2">
           <Link href="/profile" className="block text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2">
             {user?.name} (@{user?.username})
+          </Link>
+          <Link
+            href="/rules"
+            onClick={() => setIsMenuOpen(false)}
+            className="block text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2"
+          >
+            Game rules
           </Link>
           <button
             onClick={handleLogout}

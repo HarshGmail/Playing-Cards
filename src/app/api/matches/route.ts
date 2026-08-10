@@ -104,6 +104,8 @@ export async function POST(request: NextRequest) {
       creatorId: userId,
       creatorRole: data.creatorRole,
       rankPreference: data.rankPreference,
+      gameType: data.gameType,
+      gameLabel: data.gameLabel,
       status: 'active',
       deletedAt: null,
       tiebreakers: data.tiebreakers,

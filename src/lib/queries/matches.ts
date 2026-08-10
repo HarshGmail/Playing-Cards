@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MatchSummary } from '@/types';
+import type { GameType, MatchSummary } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
 import { matchKeys } from './keys';
 
@@ -11,6 +11,9 @@ interface CreateMatchRequest {
   name: string;
   creatorRole: 'score-only' | 'score-and-play';
   rankPreference: 'highest-first' | 'lowest-first';
+  gameType: GameType;
+  /** Only meaningful when gameType is 'other'; the API drops it otherwise. */
+  gameLabel?: string;
   tiebreakers: string[];
   players: string[];
   spectatorIds?: string[];

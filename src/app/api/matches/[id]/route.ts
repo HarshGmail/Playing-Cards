@@ -3,6 +3,7 @@ import { getMatchInvites, getMatches, getUsers } from '@/lib/db/collections';
 import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
+import { toGameType } from '@/lib/games/catalog';
 import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
@@ -82,6 +83,8 @@ export async function GET(
         creatorId: match.creatorId,
         creatorRole: match.creatorRole,
         rankPreference: match.rankPreference,
+        gameType: toGameType(match.gameType),
+        gameLabel: match.gameLabel ?? null,
         status: match.status,
         tiebreakers: match.tiebreakers,
         roster: match.roster.map((r) => {

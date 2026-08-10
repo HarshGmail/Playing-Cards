@@ -2,6 +2,8 @@
 
 A modern, real-time score tracking app for card games. Built with Next.js 15, TypeScript, MongoDB, and Tailwind CSS.
 
+**Game rules:** [docs/LEAST_COUNT.md](docs/LEAST_COUNT.md) — the house variant this app was built to track.
+
 ## 🎯 Status: Production-Ready MVP Complete
 
 **Build Status:** ✅ Passing  

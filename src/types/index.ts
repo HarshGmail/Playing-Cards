@@ -1,3 +1,7 @@
+import type { GameType } from '@/lib/games/catalog';
+
+export type { GameType };
+
 export interface User {
   id: string;
   name: string;
@@ -15,6 +19,14 @@ export interface Match {
   creatorId: string;
   creatorRole: 'score-only' | 'score-and-play';
   rankPreference: 'highest-first' | 'lowest-first';
+  /**
+   * Absent on matches created before the field existed. Resolve it with
+   * toGameType() / gameDisplayName() from lib/games/catalog.ts rather than
+   * reading it raw.
+   */
+  gameType?: GameType;
+  /** Free-text game name, present only when gameType is 'other'. */
+  gameLabel?: string | null;
   status: 'active' | 'ended';
   tiebreakers: string[];
   roster: RosterEntry[];

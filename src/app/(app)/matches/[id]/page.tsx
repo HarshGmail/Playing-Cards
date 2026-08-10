@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -24,6 +25,7 @@ import ShareMatchButton from '@/components/match/ShareMatchButton';
 import JoinRequestsPanel from '@/components/match/JoinRequestsPanel';
 import EditRoundModal from '@/components/match/EditRoundModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { gameDisplayName, rulesPathFor } from '@/lib/games/catalog';
 
 export default function MatchPage() {
   const params = useParams();
@@ -112,6 +114,10 @@ export default function MatchPage() {
   );
   const isCreator = !!user && match.creatorId === user.id;
   const pendingInvites = match.pendingInvites ?? [];
+  // Matches predating the gameType field resolve to Least Count; 'other' games
+  // carry a free-text label and have no rules page to link to.
+  const gameName = gameDisplayName(match.gameType, match.gameLabel);
+  const rulesPath = rulesPathFor(match.gameType);
   // The scorer alone is not a match. Rounds are rejected below two active
   // players, so surface why rather than letting the form 409.
   const activePlayerCount = match.roster.filter((r: any) => r.status === 'active').length;
@@ -141,9 +147,21 @@ export default function MatchPage() {
           </div>
         </div>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Round {match.roundsPlayed} • {match.roster.length} players
+          {gameName} • Round {match.roundsPlayed} • {match.roster.length} players
           {pendingInvites.length > 0 && ` • ${pendingInvites.length} invited`} •{' '}
           {match.status}
+          {rulesPath && (
+            <>
+              {' • '}
+              <Link
+                href={rulesPath}
+                target="_blank"
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Rules
+              </Link>
+            </>
+          )}
         </p>
 
         {isCreator && (

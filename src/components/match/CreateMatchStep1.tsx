@@ -1,16 +1,37 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { GAMES, GAME_TYPES, type GameType } from '@/lib/games/catalog';
 
 interface Step1Props {
-  onNext: (data: { name: string; creatorRole: string; rankPreference: string }) => void;
+  onNext: (data: {
+    name: string;
+    creatorRole: string;
+    rankPreference: string;
+    gameType: GameType;
+    gameLabel?: string;
+  }) => void;
 }
 
 export default function CreateMatchStep1({ onNext }: Step1Props) {
   const [name, setName] = useState('');
   const [creatorRole, setCreatorRole] = useState('score-only');
-  const [rankPreference, setRankPreference] = useState('highest-first');
+  const [gameType, setGameType] = useState<GameType>('least-count');
+  const [gameLabel, setGameLabel] = useState('');
+  const [rankPreference, setRankPreference] = useState<string>(
+    GAMES['least-count'].defaultRankPreference
+  );
   const [error, setError] = useState('');
+
+  const selectedGame = GAMES[gameType];
+
+  // Picking a game prefills the ranking direction it is normally played with —
+  // Least Count is always lowest-wins — but leaves the field editable.
+  const handleGameChange = (next: GameType) => {
+    setGameType(next);
+    setRankPreference(GAMES[next].defaultRankPreference);
+  };
 
   const handleNext = () => {
     if (!name.trim()) {
@@ -21,7 +42,17 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
       setError('Match name must be 3-50 characters');
       return;
     }
-    onNext({ name, creatorRole, rankPreference });
+    if (gameType === 'other' && !gameLabel.trim()) {
+      setError('Name the game you are playing');
+      return;
+    }
+    onNext({
+      name,
+      creatorRole,
+      rankPreference,
+      gameType,
+      gameLabel: gameType === 'other' ? gameLabel.trim() : undefined,
+    });
   };
 
   return (
@@ -44,6 +75,55 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Game
+        </label>
+        <select
+          value={gameType}
+          onChange={(e) => handleGameChange(e.target.value as GameType)}
+          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+        >
+          {GAME_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {GAMES[type].label}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          {selectedGame.blurb}
+          {selectedGame.rulesPath && (
+            <>
+              {' '}
+              <Link
+                href={selectedGame.rulesPath}
+                target="_blank"
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Read the rules
+              </Link>
+            </>
+          )}
+        </p>
+      </div>
+
+      {gameType === 'other' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Which game?
+          </label>
+          <input
+            type="text"
+            value={gameLabel}
+            onChange={(e) => setGameLabel(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleNext()}
+            placeholder="e.g., Bluff, Rummy, Teen Patti"
+            maxLength={50}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+          />
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Your Role
         </label>
         <select
@@ -52,7 +132,7 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
         >
           <option value="score-only">Score keeper (not playing)</option>
-          <option value="score-and-play">Score keeper & player</option>
+          <option value="score-and-play">Score keeper &amp; player</option>
         </select>
       </div>
 

@@ -13,11 +13,14 @@ import {
 } from '@/lib/queries/users';
 import { useCreateMatchMutation } from '@/lib/queries/matches';
 import { useDebouncedValue } from '@/lib/hooks/useDebouncedValue';
+import type { GameType } from '@/lib/games/catalog';
 
 interface Step3Props {
   name: string;
   creatorRole: string;
   rankPreference: string;
+  gameType: GameType;
+  gameLabel?: string;
   tiebreakers: string[];
   onBack: () => void;
 }
@@ -32,6 +35,8 @@ export default function CreateMatchStep3({
   name,
   creatorRole,
   rankPreference,
+  gameType,
+  gameLabel,
   tiebreakers,
   onBack,
 }: Step3Props) {
@@ -118,6 +123,8 @@ export default function CreateMatchStep3({
         name,
         creatorRole: creatorRole as 'score-only' | 'score-and-play',
         rankPreference: rankPreference as 'highest-first' | 'lowest-first',
+        gameType,
+        gameLabel,
         tiebreakers,
         players: players.map((p) => p.id),
         spectatorIds: spectators.map((s) => s.id),

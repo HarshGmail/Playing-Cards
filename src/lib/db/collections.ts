@@ -35,6 +35,14 @@ export interface Match {
   creatorId: string;
   creatorRole: 'score-only' | 'score-and-play';
   rankPreference: 'highest-first' | 'lowest-first';
+  /**
+   * Which game is being played. Optional because matches created before this
+   * field existed predate it — read them through toGameType() in
+   * lib/games/catalog.ts, which resolves absent values to 'least-count'.
+   */
+  gameType?: 'least-count' | 'other';
+  /** Free-text game name, set only when gameType is 'other'. */
+  gameLabel?: string | null;
   status: 'active' | 'ended';
   deletedAt: Date | null;
   tiebreakers: string[];

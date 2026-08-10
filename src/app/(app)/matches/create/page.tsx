@@ -4,13 +4,16 @@ import { useState } from 'react';
 import CreateMatchStep1 from '@/components/match/CreateMatchStep1';
 import CreateMatchStep2 from '@/components/match/CreateMatchStep2';
 import CreateMatchStep3 from '@/components/match/CreateMatchStep3';
+import type { GameType } from '@/lib/games/catalog';
 
 export default function CreateMatchPage() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     creatorRole: 'score-only',
-    rankPreference: 'highest-first' as 'highest-first' | 'lowest-first',
+    rankPreference: 'lowest-first' as 'highest-first' | 'lowest-first',
+    gameType: 'least-count' as GameType,
+    gameLabel: undefined as string | undefined,
     tiebreakers: [] as string[],
   });
 
@@ -18,6 +21,8 @@ export default function CreateMatchPage() {
     name: string;
     creatorRole: string;
     rankPreference: string;
+    gameType: GameType;
+    gameLabel?: string;
   }) => {
     setFormData((prev) => ({
       ...prev,
@@ -83,6 +88,8 @@ export default function CreateMatchPage() {
               name={formData.name}
               creatorRole={formData.creatorRole}
               rankPreference={formData.rankPreference}
+              gameType={formData.gameType}
+              gameLabel={formData.gameLabel}
               tiebreakers={formData.tiebreakers}
               onBack={() => setStep(2)}
             />
