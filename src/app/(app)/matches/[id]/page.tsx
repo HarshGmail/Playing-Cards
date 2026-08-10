@@ -129,8 +129,8 @@ export default function MatchPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-start justify-between gap-4 mb-2">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             {match.name}
           </h1>
           <div className="flex items-center gap-2 shrink-0">
@@ -139,14 +139,14 @@ export default function MatchPage() {
               <button
                 onClick={() => setConfirmingEnd(true)}
                 disabled={endMatchMutation.isPending}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition disabled:opacity-50 shrink-0"
+                className="px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm sm:text-base transition disabled:opacity-50 shrink-0"
               >
                 {endMatchMutation.isPending ? 'Ending...' : 'End Match'}
               </button>
             )}
           </div>
         </div>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6">
           {gameName} • Round {match.roundsPlayed} • {match.roster.length} players
           {pendingInvites.length > 0 && ` • ${pendingInvites.length} invited`} •{' '}
           {match.status}
@@ -170,20 +170,22 @@ export default function MatchPage() {
           </div>
         )}
 
-        <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
-          {tabs.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 font-medium transition-colors ${
-                tab === t
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
+        <div className="mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 min-w-min">
+            {tabs.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-3 sm:px-4 py-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${
+                  tab === t
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-6">
