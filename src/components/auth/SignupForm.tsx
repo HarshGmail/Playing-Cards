@@ -45,6 +45,8 @@ export default function SignupForm({ onSuccess }: SignupFormProps) {
         name: formData.name,
         username: formData.username,
         email: formData.email,
+        phone: formData.phone,
+        dob: formData.dob,
         password: formData.password,
       });
 

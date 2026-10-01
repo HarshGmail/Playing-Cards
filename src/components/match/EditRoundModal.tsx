@@ -13,8 +13,13 @@ interface EditRoundModalProps {
     userName: string;
   }>;
   existingScores: Array<{ playerId: string; value: number }>;
+  initialDnfPlayerIds: string[];
+  canUndoDnf: boolean;
   onClose: () => void;
-  onSave: (scores: Array<{ playerId: string; value: number }>) => Promise<void>;
+  onSave: (
+    scores: Array<{ playerId: string; value: number }>,
+    dnfPlayerIds: string[]
+  ) => Promise<void>;
 }
 
 export default function EditRoundModal({
@@ -22,6 +27,8 @@ export default function EditRoundModal({
   round,
   players,
   existingScores,
+  initialDnfPlayerIds,
+  canUndoDnf,
   onClose,
   onSave,
 }: EditRoundModalProps) {
@@ -39,8 +46,30 @@ export default function EditRoundModal({
     if (saved) return saved;
     return Object.fromEntries(players.map((p) => [p.userId, String(byPlayerId.get(p.userId) ?? '')]));
   });
+  const [dnfPlayerIds, setDnfPlayerIds] = useState<Set<string>>(
+    () => new Set(initialDnfPlayerIds)
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const scoringPlayers = players.filter((p) => !dnfPlayerIds.has(p.userId));
+  const hasMissingScore = scoringPlayers.some((p) => !scores[p.userId]);
+  const hasNoScoringPlayer = scoringPlayers.length === 0;
+
+  const isDnfLocked = (playerId: string) =>
+    !canUndoDnf && initialDnfPlayerIds.includes(playerId);
+
+  const toggleDnf = (playerId: string) => {
+    setDnfPlayerIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(playerId)) {
+        next.delete(playerId);
+      } else {
+        next.add(playerId);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     saveScores(scores);
@@ -54,18 +83,22 @@ export default function EditRoundModal({
   };
 
   const handleSave = async () => {
-    if (Object.values(scores).some((s) => s === '')) {
-      setError('All players must have scores');
+    if (hasMissingScore) {
+      setError('Every player not marked DNF needs a score');
+      return;
+    }
+    if (hasNoScoringPlayer) {
+      setError('At least one player must have a score');
       return;
     }
 
     setLoading(true);
     try {
-      const scoresArray = players.map((p) => ({
+      const scoresArray = scoringPlayers.map((p) => ({
         playerId: p.userId,
         value: parseInt(scores[p.userId]),
       }));
-      await onSave(scoresArray);
+      await onSave(scoresArray, Array.from(dnfPlayerIds));
       clearSavedScores();
       onClose();
     } catch (err) {
@@ -88,24 +121,51 @@ export default function EditRoundModal({
         </div>
 
         <div className="space-y-3">
-          {players.map((player) => (
-            <div key={player.userId} className="flex items-center gap-3">
-              <label className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-                {player.userName}
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="99999"
-                value={scores[player.userId]}
-                onChange={(e) => handleScoreChange(player.userId, e.target.value)}
-                placeholder="0"
-                disabled={loading}
-                className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50"
-              />
-            </div>
-          ))}
+          {players.map((player) => {
+            const isDnf = dnfPlayerIds.has(player.userId);
+            return (
+              <div key={player.userId} className="flex items-center gap-3">
+                <label className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {player.userName}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => toggleDnf(player.userId)}
+                  disabled={loading || isDnfLocked(player.userId)}
+                  aria-pressed={isDnf}
+                  title={
+                    isDnfLocked(player.userId)
+                      ? 'A DNF can only be undone on the latest round'
+                      : `Mark ${player.userName} as Did Not Finish from this round`
+                  }
+                  className={`px-2 py-1 text-xs font-semibold rounded border transition disabled:opacity-50 ${
+                    isDnf
+                      ? 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-400'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  DNF
+                </button>
+                <input
+                  type="number"
+                  min="0"
+                  max="99999"
+                  value={isDnf ? '' : scores[player.userId] ?? ''}
+                  onChange={(e) => handleScoreChange(player.userId, e.target.value)}
+                  placeholder={isDnf ? '—' : '0'}
+                  disabled={loading || isDnf}
+                  className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50"
+                />
+              </div>
+            );
+          })}
         </div>
+
+        {dnfPlayerIds.size > 0 && (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            DNF players get no score from this round onward, and any later scores they have are removed.
+          </p>
+        )}
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -119,7 +179,7 @@ export default function EditRoundModal({
           </button>
           <button
             onClick={handleSave}
-            disabled={loading || Object.values(scores).some((s) => s === '')}
+            disabled={loading || hasMissingScore || hasNoScoringPlayer}
             className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
           >
             {loading ? 'Saving...' : 'Save Changes'}

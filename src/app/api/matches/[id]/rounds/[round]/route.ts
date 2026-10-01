@@ -80,28 +80,6 @@ export async function PUT(
       return error('Round does not exist', 'ROUND_NOT_FOUND', 404);
     }
 
-    // Verify all active players have scores and no extra players
-    const activePlayerIds = match.roster
-      .filter((r) => r.status === 'active')
-      .map((r) => r.userId);
-
-    const submittedPlayerIds = new Set(parsed.data.scores.map((s) => s.playerId));
-
-    for (const playerId of activePlayerIds) {
-      if (!submittedPlayerIds.has(playerId)) {
-        logApiResponse(requestId, 400, Date.now() - startTime);
-        return error('Missing scores for active players', 'INCOMPLETE_SCORES', 400);
-      }
-    }
-
-    for (const playerId of submittedPlayerIds) {
-      if (!activePlayerIds.includes(playerId)) {
-        logApiResponse(requestId, 400, Date.now() - startTime);
-        return error('Scores for non-active players', 'INVALID_PLAYERS', 400);
-      }
-    }
-
-    // Update scores for this round
     const scoresCol = await getScores();
 
     // Get existing scores for this round to maintain edit history
@@ -116,12 +94,89 @@ export async function PUT(
       existingScores.map((s) => [s.playerId, s])
     );
 
+    const { scores: scoreUpdates, dnfPlayerIds } = parsed.data;
+    const droppedOutAtThisRound = match.roster
+      .filter((r) => r.status === 'dnf' && r.dnfAfterRound === roundNum - 1)
+      .map((r) => r.userId);
+    const roundPlayerIds = new Set([...existingByPlayerId.keys(), ...droppedOutAtThisRound]);
+    const scoredPlayerIds = scoreUpdates.map((s) => s.playerId);
+    const submittedPlayerIds = [...scoredPlayerIds, ...dnfPlayerIds];
+
+    const coversEveryRoundPlayer =
+      submittedPlayerIds.length === roundPlayerIds.size &&
+      new Set(submittedPlayerIds).size === roundPlayerIds.size &&
+      submittedPlayerIds.every((id) => roundPlayerIds.has(id));
+
+    if (!coversEveryRoundPlayer) {
+      logApiResponse(requestId, 400, Date.now() - startTime);
+      return error(
+        'Each player in this round needs either a score or DNF',
+        'INCOMPLETE_SCORES',
+        400
+      );
+    }
+
+    const rejoiningPlayerIds = scoredPlayerIds.filter((id) => !existingByPlayerId.has(id));
+    const newlyDnfPlayerIds = dnfPlayerIds.filter((id) => existingByPlayerId.has(id));
+
+    if (rejoiningPlayerIds.length > 0 && roundNum !== match.roundsPlayed) {
+      logApiResponse(requestId, 400, Date.now() - startTime);
+      return error(
+        'A DNF can only be undone on the latest round',
+        'DNF_UNDO_NOT_LATEST',
+        400
+      );
+    }
+
     // Update each score with edit history, and bump version, atomically
     await withTransaction(async (session) => {
-      for (const scoreUpdate of parsed.data.scores) {
+      for (const playerId of newlyDnfPlayerIds) {
+        await scoresCol.deleteMany(
+          { matchId: params.id, playerId, round: { $gte: roundNum } },
+          { session }
+        );
+        await matchesCol.updateOne(
+          { _id: new ObjectId(params.id), 'roster.userId': playerId },
+          {
+            $set: {
+              'roster.$.status': 'dnf',
+              'roster.$.dnfAfterRound': roundNum - 1,
+            },
+          },
+          { session }
+        );
+      }
+
+      for (const playerId of rejoiningPlayerIds) {
+        await matchesCol.updateOne(
+          { _id: new ObjectId(params.id), 'roster.userId': playerId },
+          {
+            $set: {
+              'roster.$.status': 'active',
+              'roster.$.dnfAfterRound': null,
+            },
+          },
+          { session }
+        );
+      }
+
+      for (const scoreUpdate of scoreUpdates) {
         const existing = existingByPlayerId.get(scoreUpdate.playerId);
 
-        if (existing) {
+        if (!existing) {
+          await scoresCol.insertOne(
+            {
+              matchId: params.id,
+              round: roundNum,
+              playerId: scoreUpdate.playerId,
+              value: scoreUpdate.value,
+              enteredBy: userId,
+              enteredAt: new Date(),
+              editHistory: [],
+            },
+            { session }
+          );
+        } else {
           const editEntry = {
             from: existing.value,
             to: scoreUpdate.value,

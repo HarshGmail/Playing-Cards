@@ -126,6 +126,48 @@ describe('ranking', () => {
     expect(leaderboard.filter(e => e.isLast).length).toBe(1);
   });
 
+  it('ranks DNF players below every active player regardless of score', () => {
+    const scoresByPlayer = new Map([
+      ['p1', { scores: [50, 50], isDnf: false }],
+      ['p2', { scores: [5], isDnf: true, dnfAfterRound: 1 }],
+      ['p3', { scores: [40, 40], isDnf: false }],
+    ]);
+
+    const aggregates = buildAggregates(scoresByPlayer);
+    const leaderboard = computeLeaderboard(aggregates, 'lowest-first', []);
+
+    expect(leaderboard.map(e => e.playerId)).toEqual(['p3', 'p1', 'p2']);
+    expect(leaderboard.map(e => e.position)).toEqual([1, 2, 3]);
+  });
+
+  it('ranks the earliest DNF dead last and later DNFs above them', () => {
+    const scoresByPlayer = new Map([
+      ['p1', { scores: [10, 10, 10], isDnf: false }],
+      ['early', { scores: [0], isDnf: true, dnfAfterRound: 1 }],
+      ['late', { scores: [90, 90], isDnf: true, dnfAfterRound: 2 }],
+      ['p2', { scores: [20, 20, 20], isDnf: false }],
+    ]);
+
+    const aggregates = buildAggregates(scoresByPlayer);
+    const leaderboard = computeLeaderboard(aggregates, 'lowest-first', []);
+
+    expect(leaderboard.map(e => e.playerId)).toEqual(['p1', 'p2', 'late', 'early']);
+    expect(leaderboard.map(e => e.position)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('breaks a tie between DNFs from the same round by score', () => {
+    const scoresByPlayer = new Map([
+      ['p1', { scores: [10, 10], isDnf: false }],
+      ['worse', { scores: [60], isDnf: true, dnfAfterRound: 1 }],
+      ['better', { scores: [15], isDnf: true, dnfAfterRound: 1 }],
+    ]);
+
+    const aggregates = buildAggregates(scoresByPlayer);
+    const leaderboard = computeLeaderboard(aggregates, 'lowest-first', []);
+
+    expect(leaderboard.map(e => e.playerId)).toEqual(['p1', 'better', 'worse']);
+  });
+
   it('should handle zero-state (no rounds)', () => {
     const scoresByPlayer = new Map([
       ['p1', { scores: [], isDnf: false }],

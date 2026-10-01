@@ -51,13 +51,6 @@ export default function Leaderboard({
     );
   }
 
-  // Active players keep their sorted order; DNF players are always rendered
-  // last, though their position number/frozen total reflect where they'd
-  // rank if they'd kept playing.
-  const active = entries.filter((e) => !e.isDnf);
-  const dnf = entries.filter((e) => e.isDnf);
-  const displayOrder = [...active, ...dnf];
-
   const gapLabel = gapMode === 'interval' ? 'INTERVAL' : 'LEADER';
 
   return (
@@ -72,7 +65,7 @@ export default function Leaderboard({
       </div>
 
       <div className="space-y-2">
-        {displayOrder.map((entry) => {
+        {entries.map((entry) => {
           const colors = POSITION_CLASSES[getPositionColor(entry.position, entry.isLast, entry.isDnf)];
           const gapValue = gapMode === 'interval' ? entry.gapToAhead : entry.gapToLeader;
 

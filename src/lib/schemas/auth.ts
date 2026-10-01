@@ -1,14 +1,15 @@
 import { z } from 'zod';
 
 export const signupSchema = z.object({
-  name: z.string().min(1).max(100),
+  name: z.string().trim().min(1).max(100),
   username: z
     .string()
+    .trim()
     .min(3)
     .max(20)
     .regex(/^[a-z0-9_]+$/, 'Username must contain only lowercase letters, numbers, and underscores'),
-  email: z.string().email(),
-  phone: z.string().regex(/^\+?[0-9]{10,}$/, 'Invalid phone number'),
+  email: z.string().trim().email(),
+  phone: z.string().trim().regex(/^\+?[0-9]{10,}$/, 'Invalid phone number'),
   dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   password: z
     .string()
@@ -18,7 +19,7 @@ export const signupSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  identifier: z.string().min(1),
+  identifier: z.string().trim().min(1),
   password: z.string().min(1),
 });
 

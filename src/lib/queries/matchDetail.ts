@@ -93,13 +93,15 @@ export function useEditRoundMutation(matchId: string) {
     mutationFn: ({
       round,
       scores,
+      dnfPlayerIds,
     }: {
       round: number;
+      dnfPlayerIds: string[];
     } & SubmitRoundRequest) =>
       apiFetch<void>(`/api/matches/${matchId}/rounds/${round}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scores }),
+        body: JSON.stringify({ scores, dnfPlayerIds }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });

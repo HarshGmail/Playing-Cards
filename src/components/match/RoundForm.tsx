@@ -55,8 +55,10 @@ export default function RoundForm({
     }));
   };
 
+  const hasMissingScore = players.some((p) => !scores[p.userId]);
+
   const handleSubmit = async () => {
-    if (Object.values(scores).some((s) => s === '')) {
+    if (hasMissingScore) {
       setError('All players must have scores');
       return;
     }
@@ -103,7 +105,7 @@ export default function RoundForm({
               type="number"
               min="0"
               max="99999"
-              value={scores[player.userId]}
+              value={scores[player.userId] ?? ''}
               onChange={(e) => handleScoreChange(player.userId, e.target.value)}
               placeholder="0"
               disabled={loading}
@@ -117,7 +119,7 @@ export default function RoundForm({
 
       <button
         onClick={handleSubmit}
-        disabled={loading || Object.values(scores).some((s) => s === '')}
+        disabled={loading || hasMissingScore}
         className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
       >
         {loading ? 'Submitting...' : 'Submit Round'}

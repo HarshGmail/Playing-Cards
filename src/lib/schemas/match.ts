@@ -32,12 +32,15 @@ export const submitRoundSchema = z.object({
 });
 
 export const updateRoundSchema = z.object({
-  scores: z.array(
-    z.object({
-      playerId: z.string(),
-      value: z.number().int().min(0).max(99999),
-    })
-  ),
+  scores: z
+    .array(
+      z.object({
+        playerId: z.string(),
+        value: z.number().int().min(0).max(99999),
+      })
+    )
+    .min(1, 'At least one player must have a score'),
+  dnfPlayerIds: z.array(z.string()).optional().default([]),
 });
 
 export type CreateMatchInput = z.infer<typeof createMatchSchema>;

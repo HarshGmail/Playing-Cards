@@ -17,6 +17,8 @@ interface SignupRequest {
   username: string;
   name: string;
   email: string;
+  phone: string;
+  dob: string;
   password: string;
 }
 

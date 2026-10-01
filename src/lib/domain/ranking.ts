@@ -6,6 +6,7 @@ export interface PlayerAggregate {
   average: number;
   stdDev: number;
   isDnf: boolean;
+  dnfAfterRound: number | null;
 }
 
 export interface LeaderboardEntry {
@@ -37,7 +38,7 @@ export function computeLeaderboard(
   rankPreference: 'highest-first' | 'lowest-first',
   tiebreakers: string[]
 ): LeaderboardEntry[] {
-  const comparator = (a: PlayerAggregate, b: PlayerAggregate) => {
+  const scoreComparator = (a: PlayerAggregate, b: PlayerAggregate) => {
     // Primary sort: total
     const totalCompare =
       rankPreference === 'highest-first'
@@ -66,6 +67,15 @@ export function computeLeaderboard(
     }
 
     return 0;
+  };
+
+  const comparator = (a: PlayerAggregate, b: PlayerAggregate) => {
+    if (a.isDnf !== b.isDnf) return a.isDnf ? 1 : -1;
+    if (a.isDnf && b.isDnf) {
+      const dropoutCompare = (b.dnfAfterRound ?? 0) - (a.dnfAfterRound ?? 0);
+      if (dropoutCompare !== 0) return dropoutCompare;
+    }
+    return scoreComparator(a, b);
   };
 
   const sorted = [...aggregates].sort(comparator);
@@ -171,11 +181,15 @@ export function computeMatchLeaderboard(
   // after a DNF are excluded so their total/average freeze at the DNF point
   // — both fall out naturally from only including rounds that actually
   // exist for that player, no zero-padding needed.
-  const scoresByPlayer = new Map<string, { scores: number[]; isDnf: boolean }>();
+  const scoresByPlayer = new Map<string, PlayerScores>();
   const scoresByRound = new Map<number, Array<{ playerId: string; value: number }>>();
 
   roster.forEach((r) => {
-    scoresByPlayer.set(r.userId, { scores: [], isDnf: r.status === 'dnf' });
+    scoresByPlayer.set(r.userId, {
+      scores: [],
+      isDnf: r.status === 'dnf',
+      dnfAfterRound: r.dnfAfterRound,
+    });
   });
 
   const sortedScores = [...scores].sort((a, b) => a.round - b.round);
@@ -202,8 +216,14 @@ export function computeMatchLeaderboard(
   }));
 }
 
+interface PlayerScores {
+  scores: number[];
+  isDnf: boolean;
+  dnfAfterRound?: number | null;
+}
+
 export function buildAggregates(
-  scoresByPlayer: Map<string, { scores: number[]; isDnf: boolean }>
+  scoresByPlayer: Map<string, PlayerScores>
 ): PlayerAggregate[] {
   return Array.from(scoresByPlayer.entries()).map(([playerId, data]) => {
     const scores = data.scores;
@@ -220,6 +240,7 @@ export function buildAggregates(
       average,
       stdDev: std,
       isDnf: data.isDnf,
+      dnfAfterRound: data.dnfAfterRound ?? null,
     };
   });
 }

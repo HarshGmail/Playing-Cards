@@ -53,8 +53,8 @@ export default function MatchPage() {
     setTab('leaderboard');
   };
 
-  const handleRoundEdit = async (round: number, scores: any[]) => {
-    await editRoundMutation.mutateAsync({ round, scores });
+  const handleRoundEdit = async (round: number, scores: any[], dnfPlayerIds: string[]) => {
+    await editRoundMutation.mutateAsync({ round, scores, dnfPlayerIds });
   };
 
   /**
@@ -123,8 +123,8 @@ export default function MatchPage() {
   const isLeastCount = toGameType(match.gameType) === 'least-count';
   // The scorer alone is not a match. Rounds are rejected below two active
   // players, so surface why rather than letting the form 409.
-  const activePlayerCount = match.roster.filter((r: any) => r.status === 'active').length;
-  const canScoreRound = activePlayerCount >= 2;
+  const activePlayers = match.roster.filter((r: any) => r.status === 'active');
+  const canScoreRound = activePlayers.length >= 2;
   const tabs = isCreator && match.status === 'active'
     ? ['leaderboard', 'scoreboard', 'rounds', 'form', 'roster']
     : ['leaderboard', 'scoreboard', 'rounds', 'roster'];
@@ -225,7 +225,7 @@ export default function MatchPage() {
               <RoundForm
                 matchId={matchId}
                 round={match.roundsPlayed + 1}
-                players={match.roster}
+                players={activePlayers}
                 onSubmit={handleRoundSubmit}
                 showCalculator={isLeastCount}
               />
@@ -272,14 +272,23 @@ export default function MatchPage() {
       {editingRound !== null && (() => {
         const roundData = rounds.find((r) => r.round === editingRound);
         if (!roundData) return null;
+        const scoredPlayerIds = new Set(roundData.scores.map((s) => s.playerId));
+        const droppedOutAtThisRound = match.roster.filter(
+          (r: any) => r.status === 'dnf' && r.dnfAfterRound === editingRound - 1
+        );
+        const roundPlayers = match.roster.filter(
+          (r: any) => scoredPlayerIds.has(r.userId) || droppedOutAtThisRound.includes(r)
+        );
         return (
           <EditRoundModal
             matchId={matchId}
             round={editingRound}
-            players={match.roster}
+            players={roundPlayers}
             existingScores={roundData.scores}
+            initialDnfPlayerIds={droppedOutAtThisRound.map((r: any) => r.userId)}
+            canUndoDnf={editingRound === match.roundsPlayed}
             onClose={() => setEditingRound(null)}
-            onSave={(scores) => handleRoundEdit(editingRound, scores)}
+            onSave={(scores, dnfPlayerIds) => handleRoundEdit(editingRound, scores, dnfPlayerIds)}
           />
         );
       })()}
