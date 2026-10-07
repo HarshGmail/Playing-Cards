@@ -5,6 +5,7 @@ import { success, notFound, unauthorized, error, forbidden, validationError } fr
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
+import { notifyFriendRequestAccepted } from '@/lib/notifications/friends';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +95,12 @@ export async function POST(
         },
       }
     );
+
+    if (action === 'accept') {
+      await notifyFriendRequestAccepted(friendRequest.fromUserId, userId).catch((err) =>
+        logError(requestId, err)
+      );
+    }
 
     logApiResponse(requestId, 200, Date.now() - startTime);
 

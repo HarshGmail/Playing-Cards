@@ -4,6 +4,7 @@ import { success, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { createHandler } from '@/lib/api/handler';
+import { notifyFriendRequestSent } from '@/lib/notifications/friends';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
@@ -126,6 +127,10 @@ export const POST = createHandler(
         },
       },
       { upsert: true, returnDocument: 'after' }
+    );
+
+    await notifyFriendRequestSent(userId, toUserId, updated?._id?.toString()).catch((err) =>
+      logError('send-friend-request', err)
     );
 
     return success(

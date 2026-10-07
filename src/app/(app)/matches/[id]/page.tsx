@@ -25,12 +25,16 @@ import ShareMatchButton from '@/components/match/ShareMatchButton';
 import JoinRequestsPanel from '@/components/match/JoinRequestsPanel';
 import EditRoundModal from '@/components/match/EditRoundModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import Confetti from '@/components/effects/Confetti';
+import { useMatchCelebration } from '@/components/effects/useMatchCelebration';
 import { gameDisplayName, rulesPathFor, toGameType } from '@/lib/games/catalog';
+
+const CONFETTI_AFTER_CEREMONY_MS = 900;
 
 export default function MatchPage() {
   const params = useParams();
   const matchId = params.id as string;
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const { addToast } = useUIStore();
   const [tab, setTab] = useState('leaderboard');
@@ -47,6 +51,18 @@ export default function MatchPage() {
 
   const loading = matchLoading || stateLoading || roundsLoading;
   const error = matchError?.message || '';
+
+  const viewerWon =
+    match?.status === 'ended' &&
+    !!user &&
+    !!state?.leaderboard.some(
+      (entry) => entry.playerId === user.id && entry.position === 1 && !entry.isDnf
+    );
+  const celebrating = useMatchCelebration({
+    matchId,
+    ready: !loading && !authLoading && !!match && !!state,
+    viewerWon,
+  });
 
   const handleRoundSubmit = async (scores: any[]) => {
     await submitRoundMutation.mutateAsync({ scores });
@@ -194,6 +210,8 @@ export default function MatchPage() {
         <div className="space-y-6">
           {tab === 'leaderboard' && state && (
             <LeaderboardSection
+              key={matchId}
+              matchId={matchId}
               entries={state.leaderboard}
               rounds={rounds}
               players={match.roster}
@@ -257,6 +275,8 @@ export default function MatchPage() {
           )}
         </div>
       </div>
+
+      <Confetti active={celebrating} delayMs={CONFETTI_AFTER_CEREMONY_MS} />
 
       <ConfirmDialog
         open={confirmingEnd}

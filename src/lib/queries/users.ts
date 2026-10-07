@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { User } from '@/types';
+import type { PlayerStatsSummary, User } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
 import { userKeys, friendKeys, authKeys } from './keys';
 
@@ -7,20 +7,15 @@ interface UserResponse {
   user: User;
 }
 
-/**
- * Mirrors what GET /api/users/[username]/stats actually returns. The previous
- * declaration listed avgScore/bestScore/worstScore/totalScore/matchesWon, none
- * of which that endpoint sends — consumers reading them silently got undefined.
- */
+export type UserStats = PlayerStatsSummary & {
+  wins: number;
+  totalMatches: number;
+  totalRounds: number;
+};
+
 interface UserStatsResponse {
-  stats: {
-    wins: number;
-    totalMatches: number;
-    averageRank: number;
-    timesLeading: number;
-    gamesWon: number;
-    totalRounds: number;
-  };
+  stats: UserStats;
+  profilePicUrl?: string | null;
 }
 
 interface UpdateUserRequest {

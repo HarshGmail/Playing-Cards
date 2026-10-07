@@ -28,8 +28,19 @@ export interface SpectatorEntry {
   userName: string;
 }
 
+export interface MatchStanding {
+  playerId: string;
+  position: number;
+  total: number;
+  gamesWon: number;
+  roundsPlayed: number;
+  isDnf: boolean;
+  isSharedPosition: boolean;
+}
+
 export interface Match {
   _id?: { toString(): string };
+  standings?: MatchStanding[];
   name: string;
   nameLower: string;
   creatorId: string;
@@ -139,7 +150,8 @@ export interface Notification {
     | 'match-invite'
     | 'match-invite-accepted'
     | 'match-invite-declined'
-    | 'round-scored';
+    | 'round-scored'
+    | 'match-won';
   payload: Record<string, unknown>;
   read: boolean;
   createdAt: Date;
@@ -150,6 +162,47 @@ export interface Notification {
    * indexed field is not a Date, so a null here is never collected.
    */
   expiresAt: Date | null;
+}
+
+export interface PodiumCounts {
+  first: number;
+  second: number;
+  third: number;
+}
+
+export interface PlayerStats {
+  _id?: { toString(): string };
+  userId: string;
+  rating: number;
+  peakRating: number;
+  ratedMatches: number;
+  matchesPlayed: number;
+  matchWins: number;
+  podiums: PodiumCounts;
+  gamesWon: number;
+  gamesPlayed: number;
+  winPct: number;
+  averageRank: number;
+  updatedAt: Date;
+}
+
+export interface PushSubscriptionDoc {
+  _id?: { toString(): string };
+  userId: string;
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  userAgent: string | null;
+  createdAt: Date;
+}
+
+export async function getPlayerStats(): Promise<Collection<PlayerStats>> {
+  const db = await getDb();
+  return db.collection<PlayerStats>('playerStats');
+}
+
+export async function getPushSubscriptions(): Promise<Collection<PushSubscriptionDoc>> {
+  const db = await getDb();
+  return db.collection<PushSubscriptionDoc>('pushSubscriptions');
 }
 
 export async function getUsers(): Promise<Collection<User>> {

@@ -1,73 +1,202 @@
 'use client';
 
-import { Trophy, Star, Swords, ListOrdered } from 'lucide-react';
+import { Trophy, Crown, Medal, Swords, ListOrdered, Gauge, Percent, Hash, TrendingUp } from 'lucide-react';
+import type { ReactNode } from 'react';
+import MedalIconRow from '@/components/profile/MedalIconRow';
+import RatingHelpLink from '@/components/rating/RatingHelpLink';
+import { formatWinPct, getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
+import type { UserStats } from '@/lib/queries/users';
 
 interface MedalsTableProps {
-  stats?: {
-    wins: number;
-    totalMatches: number;
-    averageRank: number;
-    timesLeading: number;
-    gamesWon: number;
-    totalRounds: number;
-  };
+  stats?: UserStats;
 }
 
-export default function MedalsTable({
-  stats = { wins: 0, totalMatches: 0, averageRank: 0, timesLeading: 0, gamesWon: 0, totalRounds: 0 },
-}: MedalsTableProps) {
+const STARTING_RATING = 1200;
+
+const EMPTY_STATS: UserStats = {
+  rating: STARTING_RATING,
+  peakRating: STARTING_RATING,
+  ratedMatches: 0,
+  matchesPlayed: 0,
+  matchWins: 0,
+  podiums: { first: 0, second: 0, third: 0 },
+  gamesWon: 0,
+  gamesPlayed: 0,
+  winPct: 0,
+  averageRank: 0,
+  globalRank: null,
+  wins: 0,
+  totalMatches: 0,
+  totalRounds: 0,
+};
+
+const CARD_BASE_CLASSES =
+  'rounded-xl p-4 text-center border transition duration-200 hover:-translate-y-0.5 hover:shadow-md';
+
+interface StatTileProps {
+  label: string;
+  value: ReactNode;
+  icon: ReactNode;
+  toneClasses: string;
+  valueClassName: string;
+}
+
+function StatTile({ label, value, icon, toneClasses, valueClassName }: StatTileProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+    <div className={`${CARD_BASE_CLASSES} ${toneClasses}`}>
+      <div className={`text-2xl sm:text-3xl font-bold flex items-center justify-center gap-1.5 ${valueClassName}`}>
+        {value}
+        {icon}
+      </div>
+      <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">{label}</p>
+    </div>
+  );
+}
+
+interface TrophyShelfProps {
+  title: string;
+  count: number;
+  children: ReactNode;
+  toneClasses: string;
+}
+
+function TrophyShelf({ title, count, children, toneClasses }: TrophyShelfProps) {
+  return (
+    <div className={`${CARD_BASE_CLASSES} text-left ${toneClasses}`}>
+      <div className="flex items-baseline justify-between mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">
+          {title}
+        </p>
+        <span className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{count}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+export default function MedalsTable({ stats = EMPTY_STATS }: MedalsTableProps) {
+  const tier = getRatingTier(stats.rating);
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
         <Trophy className="w-5 h-5 text-yellow-600 dark:text-yellow-500" />
-        Stats & Achievements
+        Trophy Cabinet
       </h3>
 
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-        <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-900/40 rounded-lg text-center">
-          <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-500">
-            {stats.wins}
+      <div className="rounded-xl p-4 sm:p-5 mb-4 border border-yellow-200 dark:border-yellow-800/60 bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 dark:from-yellow-900/20 dark:via-amber-900/10 dark:to-orange-900/20 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+            Rating
+            <RatingHelpLink className="normal-case tracking-normal" />
+          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-4xl font-extrabold text-gray-900 dark:text-white tabular-nums">
+              {Math.round(stats.rating)}
+            </span>
+            <span
+              className={`text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${TIER_BADGE_CLASSES[tier]}`}
+            >
+              {tier}
+            </span>
           </div>
-          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Wins</p>
         </div>
+        <div className="flex gap-6 text-sm">
+          <div>
+            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+              <TrendingUp className="w-3.5 h-3.5" />
+              Peak
+            </p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
+              {Math.round(stats.peakRating)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+              <Hash className="w-3.5 h-3.5" />
+              Global rank
+            </p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
+              {stats.globalRank === null ? '-' : `#${stats.globalRank}`}
+            </p>
+          </div>
+        </div>
+      </div>
 
-        <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40 rounded-lg text-center">
-          <div className="text-3xl font-bold text-blue-600 dark:text-blue-500">
-            {stats.totalMatches}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <TrophyShelf
+          title="Match wins"
+          count={stats.matchWins}
+          toneClasses="border-yellow-200 dark:border-yellow-800/60 bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-yellow-900/20 dark:to-amber-900/30"
+        >
+          <MedalIconRow
+            count={stats.matchWins}
+            icon={Crown}
+            iconClassName="text-yellow-500 fill-yellow-400"
+            label="match wins"
+          />
+        </TrophyShelf>
+        <TrophyShelf
+          title="Game wins"
+          count={stats.gamesWon}
+          toneClasses="border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-50 to-yellow-100 dark:from-amber-900/20 dark:to-yellow-900/30"
+        >
+          <MedalIconRow
+            count={stats.gamesWon}
+            icon={Medal}
+            iconClassName="text-yellow-500 fill-yellow-300"
+            label="game wins"
+          />
+        </TrophyShelf>
+        <TrophyShelf
+          title="Silver & Bronze"
+          count={stats.podiums.second + stats.podiums.third}
+          toneClasses="border-gray-200 dark:border-gray-700 bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-800 dark:to-slate-800/60"
+        >
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <Medal className="w-5 h-5 text-slate-400 fill-slate-300" />
+              <span className="font-bold tabular-nums">{stats.podiums.second}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">silver</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <Medal className="w-5 h-5 text-orange-500 fill-orange-400" />
+              <span className="font-bold tabular-nums">{stats.podiums.third}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">bronze</span>
+            </div>
           </div>
-          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Matches</p>
-        </div>
+        </TrophyShelf>
+      </div>
 
-        <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/40 rounded-lg text-center">
-          <div className="text-3xl font-bold text-purple-600 dark:text-purple-500">
-            {stats.averageRank.toFixed(1)}
-          </div>
-          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Avg Rank</p>
-        </div>
-
-        <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-900/40 rounded-lg text-center">
-          <div className="text-3xl font-bold text-orange-600 dark:text-orange-500 flex items-center justify-center gap-1">
-            {stats.timesLeading}
-            <Star className="w-5 h-5" />
-          </div>
-          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Leading</p>
-        </div>
-
-        <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40 rounded-lg text-center">
-          <div className="text-3xl font-bold text-green-600 dark:text-green-500 flex items-center justify-center gap-1">
-            {stats.gamesWon}
-            <Swords className="w-5 h-5" />
-          </div>
-          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Games Won</p>
-        </div>
-
-        <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800 rounded-lg text-center">
-          <div className="text-3xl font-bold text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1">
-            {stats.totalRounds}
-            <ListOrdered className="w-5 h-5" />
-          </div>
-          <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">Games Played</p>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatTile
+          label="Win %"
+          value={formatWinPct(stats.winPct)}
+          icon={<Percent className="w-4 h-4" />}
+          toneClasses="border-green-200 dark:border-green-800/60 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40"
+          valueClassName="text-green-600 dark:text-green-500"
+        />
+        <StatTile
+          label="Matches"
+          value={stats.matchesPlayed}
+          icon={<Swords className="w-4 h-4" />}
+          toneClasses="border-blue-200 dark:border-blue-800/60 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40"
+          valueClassName="text-blue-600 dark:text-blue-500"
+        />
+        <StatTile
+          label="Avg Rank"
+          value={stats.averageRank.toFixed(1)}
+          icon={<Gauge className="w-4 h-4" />}
+          toneClasses="border-purple-200 dark:border-purple-800/60 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/40"
+          valueClassName="text-purple-600 dark:text-purple-500"
+        />
+        <StatTile
+          label="Games Played"
+          value={stats.gamesPlayed}
+          icon={<ListOrdered className="w-4 h-4" />}
+          toneClasses="border-gray-200 dark:border-gray-700 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800"
+          valueClassName="text-gray-600 dark:text-gray-400"
+        />
       </div>
     </div>
   );

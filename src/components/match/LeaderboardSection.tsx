@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { LayoutGroup, MotionConfig } from 'framer-motion';
 import { Table, BarChart3 } from 'lucide-react';
 import Leaderboard from '@/components/match/Leaderboard';
 import LeaderboardPodium from '@/components/match/LeaderboardPodium';
 import RoundsWonTable from '@/components/match/RoundsWonTable';
+import { useRankTransition } from '@/components/match/useRankTransition';
 import { buildScoreboardRows } from '@/lib/domain/scoreboard';
 import type { PlayersById } from '@/types';
 
@@ -34,6 +36,7 @@ interface LeaderboardEntry {
 }
 
 interface LeaderboardSectionProps {
+  matchId: string;
   entries: LeaderboardEntry[];
   rounds: Array<{ round: number; scores: Array<{ playerId: string; value: number }> }>;
   players: Array<{ userId: string; userName: string }>;
@@ -90,7 +93,8 @@ function findMostConsistent(entries: LeaderboardEntry[]) {
 }
 
 export default function LeaderboardSection({
-  entries,
+  matchId,
+  entries: latestEntries,
   rounds,
   players,
   playersById,
@@ -98,6 +102,7 @@ export default function LeaderboardSection({
   ended = false,
 }: LeaderboardSectionProps) {
   const [view, setView] = useState<'table' | 'chart'>('table');
+  const { entries, changes } = useRankTransition(matchId, latestEntries);
 
   const bestRound = findBestSingleRound(rounds, players, rankPreference);
   const mostConsistent = findMostConsistent(entries);
@@ -135,11 +140,20 @@ export default function LeaderboardSection({
         <div className="space-y-6">
           {/* Spans both tables: the top three summarise the match rather than
               belonging to the leaderboard column. */}
-          <LeaderboardPodium entries={podium} playersById={playersById} ended={ended} />
-          <div className="grid md:grid-cols-2 gap-4">
-            <Leaderboard entries={entries} playersById={playersById} compact />
-            <RoundsWonTable entries={entries} playersById={playersById} />
-          </div>
+          <MotionConfig reducedMotion="user">
+            <LayoutGroup id={`leaderboard-${matchId}`}>
+              <LeaderboardPodium
+                entries={podium}
+                playersById={playersById}
+                changes={changes}
+                ended={ended}
+              />
+              <div className="grid md:grid-cols-2 gap-4">
+                <Leaderboard entries={entries} playersById={playersById} changes={changes} compact />
+                <RoundsWonTable entries={entries} playersById={playersById} />
+              </div>
+            </LayoutGroup>
+          </MotionConfig>
         </div>
       ) : (
         <div className="space-y-4">

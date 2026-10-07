@@ -26,8 +26,6 @@ logs/
 next-env.d.ts
 tsconfig.tsbuildinfo
 *.tsbuildinfo
-FILES_CREATED.txt
-IMPLEMENTATION_SUMMARY.md
 
 # Environment variables
 .env

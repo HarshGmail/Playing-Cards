@@ -3,6 +3,7 @@
 import { User } from '@/types';
 import { useUserStatsQuery } from '@/lib/queries/users';
 import Avatar from '@/components/common/Avatar';
+import { formatWinPct } from '@/lib/domain/ratingTier';
 
 interface SelfStatsCardProps {
   user: User;
@@ -34,19 +35,19 @@ export default function SelfStatsCard({ user }: SelfStatsCardProps) {
         <div className="grid grid-cols-3 gap-2 pt-4 border-t border-blue-200 dark:border-blue-700">
           <div className="text-center">
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.totalMatches}
+              {Math.round(stats.rating)}
             </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Total</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Rating</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.wins}</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Won</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.matchWins}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Match wins</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.averageRank.toFixed(1)}
+              {formatWinPct(stats.winPct)}
             </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Avg Rank</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Win %</p>
           </div>
         </div>
       )}

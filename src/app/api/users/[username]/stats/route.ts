@@ -1,17 +1,41 @@
 import { NextRequest } from 'next/server';
-import { getUsers, getMatches, getScores } from '@/lib/db/collections';
+import { getUsers, getPlayerStats, PlayerStats } from '@/lib/db/collections';
 import { success, notFound, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
-import { computeMatchLeaderboard } from '@/lib/domain/ranking';
+import { ZERO_PLAYER_STATS } from '@/lib/domain/playerStats';
+import { strictlyAheadFilter } from '@/lib/stats/leaderboard';
+import type { PlayerStatsSummary } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/users/[username]/stats
- * Aggregate match stats (wins, matches played, average rank, times leading)
- * across every match the user has played at least one round in.
- */
+function toSummary(doc: PlayerStats | null, globalRank: number | null): PlayerStatsSummary {
+  const source = doc ?? ZERO_PLAYER_STATS;
+  return {
+    rating: source.rating,
+    peakRating: source.peakRating,
+    ratedMatches: source.ratedMatches,
+    matchesPlayed: source.matchesPlayed,
+    matchWins: source.matchWins,
+    podiums: { ...source.podiums },
+    gamesWon: source.gamesWon,
+    gamesPlayed: source.gamesPlayed,
+    winPct: source.winPct,
+    averageRank: source.averageRank,
+    globalRank,
+  };
+}
+
+async function globalRankOf(doc: PlayerStats | null): Promise<number | null> {
+  if (!doc || doc.gamesPlayed <= 0) return null;
+  const playerStatsCol = await getPlayerStats();
+  const rankedAhead = await playerStatsCol.countDocuments({
+    gamesPlayed: { $gt: 0 },
+    ...strictlyAheadFilter('rating', doc),
+  });
+  return rankedAhead + 1;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { username: string } }
@@ -32,66 +56,30 @@ export async function GET(
     });
 
     const usersCol = await getUsers();
-    const user = await usersCol.findOne({ username: params.username });
+    const user = await usersCol.findOne(
+      { username: params.username },
+      { projection: { profilePicUrl: 1 } }
+    );
 
     if (!user) {
       logApiResponse(requestId, 404, Date.now() - startTime);
       return notFound();
     }
 
-    const targetUserId = user._id!.toString();
-
-    const matchesCol = await getMatches();
-    const matches = await matchesCol
-      .find({ 'roster.userId': targetUserId, deletedAt: null, roundsPlayed: { $gte: 1 } })
-      .toArray();
-
-    const scoresCol = await getScores();
-
-    let wins = 0;
-    let timesLeading = 0;
-    let gamesWon = 0;
-    let totalRounds = 0;
-    const ranks: number[] = [];
-
-    for (const match of matches) {
-      const scores = await scoresCol.find({ matchId: match._id!.toString() }).toArray();
-      const leaderboard = computeMatchLeaderboard(
-        match.roster,
-        scores,
-        match.rankPreference,
-        match.tiebreakers
-      );
-
-      const entry = leaderboard.find((e) => e.playerId === targetUserId);
-      if (!entry || entry.isDnf) continue;
-
-      ranks.push(entry.position);
-      gamesWon += entry.gamesWon;
-      totalRounds += entry.roundsPlayed;
-      if (entry.position === 1) {
-        if (match.status === 'ended') wins += 1;
-        else timesLeading += 1;
-      }
-    }
-
-    const averageRank = ranks.length > 0 ? ranks.reduce((a, b) => a + b, 0) / ranks.length : 0;
+    const playerStatsCol = await getPlayerStats();
+    const statsDoc = await playerStatsCol.findOne({ userId: user._id!.toString() });
+    const summary = toSummary(statsDoc, await globalRankOf(statsDoc));
 
     logApiResponse(requestId, 200, Date.now() - startTime);
 
     return success({
       stats: {
-        wins,
-        totalMatches: matches.length,
-        averageRank,
-        timesLeading,
-        gamesWon,
-        totalRounds,
+        ...summary,
+        wins: summary.matchWins,
+        totalMatches: summary.matchesPlayed,
+        totalRounds: summary.gamesPlayed,
       },
-      // Returned alongside the stats because the hover preview in
-      // PlayerNameLink renders an avatar and this is the only request it makes.
-      // The user document is already loaded above, so this costs no extra query.
-      profilePicUrl: user.profilePicUrl,
+      profilePicUrl: user.profilePicUrl ?? null,
     });
   } catch (err) {
     logError(requestId, err);

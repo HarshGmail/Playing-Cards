@@ -3,17 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { useMatchesQuery } from '@/lib/queries/matches';
 import SelfStatsCard from '@/components/dashboard/SelfStatsCard';
 import IncomingRequestsPanel from '@/components/dashboard/IncomingRequestsPanel';
 import MatchInvitesPanel from '@/components/dashboard/MatchInvitesPanel';
 import FriendsList from '@/components/dashboard/FriendsList';
 import FindFriendsTab from '@/components/dashboard/FindFriendsTab';
-import MatchListItem from '@/components/dashboard/MatchListItem';
+import MatchCalendar from '@/components/calendar/MatchCalendar';
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth(true);
-  const { data: matches = [] } = useMatchesQuery();
   // FriendsList and IncomingRequestsPanel each run their own query, so the page
   // does not need to fetch friends or requests itself.
   const [tab, setTab] = useState<'friends' | 'find'>('friends');
@@ -59,21 +57,7 @@ export default function DashboardPage() {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Your Matches
           </h2>
-          <div className="space-y-3">
-            {matches.length > 0 ? (
-              matches.slice(0, 10).map((match) => (
-                <MatchListItem
-                  key={match.id}
-                  match={match}
-                  isCreator={match.creatorId === user?.id}
-                />
-              ))
-            ) : (
-              <p className="text-gray-600 dark:text-gray-400 py-8 text-center">
-                No matches yet.
-              </p>
-            )}
-          </div>
+          <MatchCalendar currentUserId={user?.id} />
         </div>
 
         {/* Friends Sidebar */}

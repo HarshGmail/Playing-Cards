@@ -79,6 +79,57 @@ export interface MatchSummary {
   roundsPlayed: number;
   roster: RosterEntry[];
   version: number;
+  createdAt: string;
+  endedAt: string | null;
+  gameType?: GameType;
+  gameLabel?: string | null;
+  leader: MatchLeader | null;
+}
+
+export interface MatchLeader {
+  playerId: string;
+  name: string;
+  total: number;
+  isTied: boolean;
+}
+
+export interface PodiumCounts {
+  first: number;
+  second: number;
+  third: number;
+}
+
+export interface PlayerStatsSummary {
+  rating: number;
+  peakRating: number;
+  ratedMatches: number;
+  matchesPlayed: number;
+  matchWins: number;
+  podiums: PodiumCounts;
+  gamesWon: number;
+  gamesPlayed: number;
+  winPct: number;
+  averageRank: number;
+  globalRank: number | null;
+}
+
+export type LeaderboardScope = 'friends' | 'global';
+export type LeaderboardMetric = 'rating' | 'winPct';
+
+export interface LeaderboardRow {
+  rank: number;
+  userId: string;
+  name: string;
+  username: string;
+  profilePicUrl: string | null;
+  rating: number;
+  winPct: number;
+  matchWins: number;
+  podiums: PodiumCounts;
+  gamesWon: number;
+  gamesPlayed: number;
+  matchesPlayed: number;
+  isSelf: boolean;
 }
 
 export interface RosterEntry {
@@ -165,7 +216,8 @@ export type NotificationType =
   | 'match-invite'
   | 'match-invite-accepted'
   | 'match-invite-declined'
-  | 'round-scored';
+  | 'round-scored'
+  | 'match-won';
 
 export interface Notification {
   id: string;

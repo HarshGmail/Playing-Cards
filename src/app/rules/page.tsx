@@ -37,6 +37,17 @@ export default function RulesIndexPage() {
           </li>
         ))}
       </ul>
+
+      <h2 className="mt-10 text-xl font-bold text-gray-900 dark:text-white">Rankings</h2>
+      <Link
+        href="/rules/rating"
+        className="mt-3 block rounded-lg border border-gray-200 dark:border-gray-800 p-4 hover:border-blue-500 dark:hover:border-blue-500 transition"
+      >
+        <span className="font-semibold text-gray-900 dark:text-white">How rating works</span>
+        <span className="block mt-1 text-sm text-gray-600 dark:text-gray-400">
+          The chess-style number on your profile and the leaderboards, explained.
+        </span>
+      </Link>
     </div>
   );
 }

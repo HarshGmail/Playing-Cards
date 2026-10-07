@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import ProfileCard from '@/components/profile/ProfileCard';
 import MedalsTable from '@/components/profile/MedalsTable';
-import FriendsLeaderboard from '@/components/profile/FriendsLeaderboard';
+import Leaderboard from '@/components/profile/Leaderboard';
+import { useUserStatsQuery } from '@/lib/queries/users';
 import { UserPlus, UserCheck, UserMinus } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -13,7 +14,7 @@ export default function ProfilePage() {
   const username = params.username as string;
   const { user: viewer } = useAuth();
   const [user, setUser] = useState<any>(null);
-  const [stats, setStats] = useState<any>(undefined);
+  const { data: stats } = useUserStatsQuery(username);
   const [friendStatus, setFriendStatus] = useState<'none' | 'pending' | 'friend'>('none');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,12 +26,6 @@ export default function ProfilePage() {
         if (!res.ok) throw new Error('User not found');
         const data = await res.json();
         setUser(data.user);
-
-        const statsRes = await fetch(`/api/users/${username}/stats`);
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setStats(statsData.stats);
-        }
 
         // Check friend status
         const friendsRes = await fetch('/api/friends');
@@ -130,11 +125,7 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <ProfileCard user={user} actions={friendButton} />
         <MedalsTable stats={stats} />
-        {viewer && viewer.username === username && (
-          <FriendsLeaderboard
-            self={{ id: viewer.id, name: viewer.name, username: viewer.username }}
-          />
-        )}
+        {viewer && viewer.username === username && <Leaderboard />}
       </div>
     </div>
   );

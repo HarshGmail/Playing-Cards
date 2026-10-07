@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#4c1d95">
+  <title>Offline - Playing Cards</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #111827;
+      color: #f9fafb;
+      text-align: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+    main { max-width: 22rem; }
+    .suit { font-size: 4rem; line-height: 1; color: #a78bfa; }
+    h1 { font-size: 1.5rem; margin: 1rem 0 0.5rem; }
+    p { color: #9ca3af; margin: 0 0 1.5rem; }
+    button {
+      background: #7c3aed;
+      color: #fff;
+      border: 0;
+      border-radius: 0.5rem;
+      padding: 0.65rem 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="suit">&spades;</div>
+    <h1>You are offline</h1>
+    <p>Playing Cards needs a connection to load your matches. Check your network and try again.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </main>
+</body>
+</html>

@@ -1,16 +1,26 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import Link from 'next/link';
 import Avatar from '@/components/common/Avatar';
+import { formatWinPct } from '@/lib/domain/ratingTier';
+import type { UserStats } from '@/lib/queries/users';
 
-interface PlayerStats {
-  wins: number;
-  totalMatches: number;
-  averageRank: number;
-  timesLeading: number;
-  gamesWon: number;
-  totalRounds: number;
+const HOVER_PREVIEW_DELAY_MS = 300;
+const TOUCH_DEVICE_QUERY = '(hover: none)';
+
+function useIsTouchDevice(): boolean {
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia(TOUCH_DEVICE_QUERY);
+    setIsTouch(query.matches);
+    const handleChange = (event: MediaQueryListEvent) => setIsTouch(event.matches);
+    query.addEventListener('change', handleChange);
+    return () => query.removeEventListener('change', handleChange);
+  }, []);
+
+  return isTouch;
 }
 
 interface PlayerNameLinkProps {
@@ -49,11 +59,12 @@ export default function PlayerNameLink({
   showPreview = true,
 }: PlayerNameLinkProps) {
   const [showTooltip, setShowTooltip] = useState(false);
-  const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [stats, setStats] = useState<UserStats | null>(null);
   const [fetchedPicUrl, setFetchedPicUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const isTouchDevice = useIsTouchDevice();
 
   useEffect(() => {
     return () => {
@@ -76,27 +87,53 @@ export default function PlayerNameLink({
     }
   }, [userName]);
 
+  const loadStats = () => {
+    if (stats) return;
+    setLoading(true);
+    fetch(`/api/users/${userName}/stats`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.stats) setStats(data.stats);
+        if (data?.profilePicUrl) setFetchedPicUrl(data.profilePicUrl);
+      })
+      .finally(() => setLoading(false));
+  };
+
   const handleMouseEnter = () => {
-    if (!showPreview) return;
+    if (!showPreview || isTouchDevice) return;
     timeoutRef.current = setTimeout(() => {
       setShowTooltip(true);
-      if (!stats) {
-        setLoading(true);
-        fetch(`/api/users/${userName}/stats`)
-          .then((res) => res.ok ? res.json() : null)
-          .then((data) => {
-            if (data?.stats) setStats(data.stats);
-            if (data?.profilePicUrl) setFetchedPicUrl(data.profilePicUrl);
-          })
-          .finally(() => setLoading(false));
-      }
-    }, 300);
+      loadStats();
+    }, HOVER_PREVIEW_DELAY_MS);
+  };
+
+  const closePreview = () => setShowTooltip(false);
+
+  const handleAvatarClick = (event: ReactMouseEvent) => {
+    if (!showPreview || !isTouchDevice) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (showTooltip) {
+      closePreview();
+      return;
+    }
+    setShowTooltip(true);
+    loadStats();
   };
 
   const handleMouseLeave = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setShowTooltip(false);
   };
+
+  useEffect(() => {
+    if (!showTooltip) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closePreview();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showTooltip]);
 
   // Prefer what the caller passed; fall back to whatever the hover fetch found.
   const picUrl = profilePicUrl ?? fetchedPicUrl;
@@ -114,20 +151,36 @@ export default function PlayerNameLink({
         onMouseEnter={handleMouseEnter}
       >
         {showAvatar && (
-          <Avatar
-            name={displayName}
-            profilePicUrl={picUrl}
-            size={avatarSize}
-            fallbackClassName="bg-blue-600 text-white"
-          />
+          <span className="inline-flex" onClick={handleAvatarClick}>
+            <Avatar
+              name={displayName}
+              profilePicUrl={picUrl}
+              size={avatarSize}
+              fallbackClassName="bg-blue-600 text-white"
+            />
+          </span>
         )}
         {displayName}
       </Link>
 
+      {showPreview && showTooltip && isTouchDevice && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40"
+          onClick={closePreview}
+          aria-hidden="true"
+        />
+      )}
+
       {showPreview && showTooltip && (
         <div
           ref={tooltipRef}
-          className="absolute z-50 left-0 top-full mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-4 pointer-events-auto"
+          role="dialog"
+          aria-label={`${displayName} stats`}
+          className={
+            isTouchDevice
+              ? 'fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl border-t border-gray-200 dark:border-gray-700 p-5 pb-8'
+              : 'absolute z-50 left-0 top-full mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-4 pointer-events-auto'
+          }
           onMouseEnter={() => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             setShowTooltip(true);
@@ -155,29 +208,29 @@ export default function PlayerNameLink({
 
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
+                  <div className="text-lg font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    {Math.round(stats.rating)}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Rating</p>
+                </div>
+                <div>
                   <div className="text-lg font-bold text-yellow-600 dark:text-yellow-500 flex items-center justify-center">
-                    {stats.wins}
+                    {stats.matchWins}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Wins</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Match wins</p>
                 </div>
                 <div>
-                  <div className="text-lg font-bold text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                    {stats.gamesWon}
+                  <div className="text-lg font-bold text-green-600 dark:text-green-400 flex items-center justify-center">
+                    {formatWinPct(stats.winPct)}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Games Won</p>
-                </div>
-                <div>
-                  <div className="text-lg font-bold text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                    {stats.averageRank.toFixed(1)}
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Avg Rank</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Win %</p>
                 </div>
               </div>
 
               <Link
                 href={`/profile/${userName}`}
                 className="block text-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-medium transition"
-                onClick={() => setShowTooltip(false)}
+                onClick={closePreview}
               >
                 View Profile
               </Link>

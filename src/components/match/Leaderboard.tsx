@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import type { RankChanges } from '@/lib/domain/rankChanges';
 import { getPositionColor } from '@/lib/domain/positionColor';
 import { POSITION_CLASSES } from '@/components/match/positionClasses';
 import PlayerNameLink from '@/components/common/PlayerNameLink';
+import { MovedRowFlash, RANK_SPRING, RankDeltaChip } from '@/components/match/rankEffects';
 import type { PlayersById } from '@/types';
 
 interface LeaderboardEntry {
@@ -25,6 +28,7 @@ interface LeaderboardProps {
   entries: LeaderboardEntry[];
   /** Keyed by userId; `entry.playerId` is a userId. */
   playersById: PlayersById;
+  changes: RankChanges;
   compact?: boolean;
 }
 
@@ -32,6 +36,7 @@ interface LeaderboardProps {
 export default function Leaderboard({
   entries,
   playersById,
+  changes,
   compact = false,
 }: LeaderboardProps) {
   const [gapMode, setGapMode] = useState<'interval' | 'leader'>('interval');
@@ -68,13 +73,17 @@ export default function Leaderboard({
         {entries.map((entry) => {
           const colors = POSITION_CLASSES[getPositionColor(entry.position, entry.isLast, entry.isDnf)];
           const gapValue = gapMode === 'interval' ? entry.gapToAhead : entry.gapToLeader;
+          const change = changes.get(entry.playerId);
 
           return (
-            <div
+            <motion.div
               key={entry.playerId}
-              className={`flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg ${compact ? 'p-2' : 'p-3'}`}
+              layout="position"
+              transition={RANK_SPRING}
+              className={`relative flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg ${compact ? 'p-2' : 'p-3'}`}
             >
-              <div className="flex items-center gap-3">
+              <MovedRowFlash change={change} />
+              <div className="relative flex items-center gap-3">
                 <div
                   className={`rounded-full flex items-center justify-center font-bold ${colors.badge} ${
                     compact ? 'w-6 h-6 text-xs' : 'w-8 h-8 text-sm'
@@ -82,7 +91,7 @@ export default function Leaderboard({
                 >
                   {entry.position}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium text-gray-900 dark:text-white">
                     <PlayerNameLink
                       userId={entry.playerId}
@@ -94,13 +103,14 @@ export default function Leaderboard({
                     {entry.isSharedPosition && (
                       <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(tied)</span>
                     )}
+                    <RankDeltaChip change={change} className="ml-1.5 align-middle" />
                   </p>
                   {entry.isDnf && (
                     <p className="text-xs text-gray-500 dark:text-gray-500">Did Not Finish</p>
                   )}
                 </div>
               </div>
-              <div className="text-right">
+              <div className="relative text-right">
                 <p className="font-bold text-gray-900 dark:text-white">{entry.total}</p>
                 <p
                   key={`${entry.playerId}-${gapMode}`}
@@ -113,7 +123,7 @@ export default function Leaderboard({
                     : `+${gapValue}`}
                 </p>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>

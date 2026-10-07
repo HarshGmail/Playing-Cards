@@ -8,6 +8,8 @@ import {
   getMatchInvites,
   getShareLinks,
   getNotifications,
+  getPlayerStats,
+  getPushSubscriptions,
 } from './collections';
 
 export async function ensureIndexes(): Promise<void> {
@@ -21,6 +23,7 @@ export async function ensureIndexes(): Promise<void> {
   await matches.createIndex({ 'roster.userId': 1, status: 1 });
   await matches.createIndex({ nameLower: 1 });
   await matches.createIndex({ deletedAt: 1 });
+  await matches.createIndex({ 'roster.userId': 1, createdAt: -1 });
 
   const scores = await getScores();
   await scores.createIndex(
@@ -62,4 +65,13 @@ export async function ensureIndexes(): Promise<void> {
   // Per-round notifications carry an expiresAt a day out and are swept by this
   // index. Everything else stores null there, which the TTL monitor ignores.
   await notifications.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+  const playerStats = await getPlayerStats();
+  await playerStats.createIndex({ userId: 1 }, { unique: true });
+  await playerStats.createIndex({ rating: -1 });
+  await playerStats.createIndex({ winPct: -1, gamesPlayed: -1 });
+
+  const pushSubscriptions = await getPushSubscriptions();
+  await pushSubscriptions.createIndex({ endpoint: 1 }, { unique: true });
+  await pushSubscriptions.createIndex({ userId: 1 });
 }

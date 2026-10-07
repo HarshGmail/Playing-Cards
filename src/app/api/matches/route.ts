@@ -7,6 +7,9 @@ import { requireAuth } from '@/lib/api/auth';
 import { invitePlayersToMatch } from '@/lib/domain/matchInvites';
 import { notifyUsers } from '@/lib/notifications/create';
 import { ObjectId } from 'mongodb';
+import { leaderOf } from '@/lib/domain/playerStats';
+import { toGameType } from '@/lib/games/catalog';
+import type { MatchSummary } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -156,6 +159,54 @@ export async function POST(request: NextRequest) {
   }
 }
 
+const MATCH_SUMMARY_PROJECTION = {
+  name: 1,
+  creatorId: 1,
+  status: 1,
+  roundsPlayed: 1,
+  roster: 1,
+  version: 1,
+  createdAt: 1,
+  endedAt: 1,
+  gameType: 1,
+  gameLabel: 1,
+  standings: 1,
+} as const;
+
+function parseDateParam(value: string | null): Date | null | undefined {
+  if (value === null) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function createdAtRange(from: Date | undefined, to: Date | undefined) {
+  if (!from && !to) return {};
+  return {
+    createdAt: {
+      ...(from ? { $gte: from } : {}),
+      ...(to ? { $lt: to } : {}),
+    },
+  };
+}
+
+async function loadRosterIdentities(matches: Match[]) {
+  const rosterIds = Array.from(
+    new Set(matches.flatMap((m) => m.roster.map((r) => r.userId)))
+  ).filter((id) => ObjectId.isValid(id));
+  if (rosterIds.length === 0) return new Map<string, { username: string; profilePicUrl: string | null }>();
+
+  const usersCol = await getUsers();
+  const users = await usersCol
+    .find(
+      { _id: { $in: rosterIds.map((id) => new ObjectId(id)) } },
+      { projection: { username: 1, profilePicUrl: 1 } }
+    )
+    .toArray();
+  return new Map(
+    users.map((u) => [u._id!.toString(), { username: u.username, profilePicUrl: u.profilePicUrl ?? null }])
+  );
+}
+
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID?.() || Date.now().toString();
   const startTime = Date.now();
@@ -169,33 +220,53 @@ export async function GET(request: NextRequest) {
 
     const { userId } = authResult;
 
-    logApiRequest(requestId, 'GET /api/matches', userId, {});
+    const fromParam = request.nextUrl.searchParams.get('from');
+    const toParam = request.nextUrl.searchParams.get('to');
+    logApiRequest(requestId, 'GET /api/matches', userId, { from: fromParam, to: toParam });
+
+    const from = parseDateParam(fromParam);
+    const to = parseDateParam(toParam);
+    if (from === null || to === null) {
+      logApiResponse(requestId, 400, Date.now() - startTime);
+      return validationError('from and to must be ISO dates');
+    }
 
     const matchesCol = await getMatches();
     const matches = await matchesCol
-      .find({
-        $or: [
-          { creatorId: userId },
-          { 'roster.userId': userId },
-        ],
-        deletedAt: null,
-      })
+      .find(
+        {
+          $or: [
+            { creatorId: userId },
+            { 'roster.userId': userId },
+          ],
+          deletedAt: null,
+          ...createdAtRange(from, to),
+        },
+        { projection: MATCH_SUMMARY_PROJECTION }
+      )
       .sort({ createdAt: -1 })
       .toArray();
 
+    const identities = await loadRosterIdentities(matches);
+
+    const summaries: MatchSummary[] = matches.map((m) => ({
+      id: m._id!.toString(),
+      name: m.name,
+      creatorId: m.creatorId,
+      status: m.status,
+      roundsPlayed: m.roundsPlayed,
+      roster: m.roster.map((r) => ({ ...r, ...identities.get(r.userId) })),
+      version: m.version,
+      createdAt: m.createdAt.toISOString(),
+      endedAt: m.endedAt ? m.endedAt.toISOString() : null,
+      gameType: toGameType(m.gameType),
+      gameLabel: m.gameLabel ?? null,
+      leader: leaderOf(m.standings, m.roster),
+    }));
+
     logApiResponse(requestId, 200, Date.now() - startTime);
 
-    return success({
-      matches: matches.map((m) => ({
-        id: m._id?.toString(),
-        name: m.name,
-        creatorId: m.creatorId,
-        status: m.status,
-        roundsPlayed: m.roundsPlayed,
-        roster: m.roster,
-        version: m.version,
-      })),
-    });
+    return success({ matches: summaries });
   } catch (err) {
     logError(requestId, err);
     logApiResponse(requestId, 500, Date.now() - startTime);

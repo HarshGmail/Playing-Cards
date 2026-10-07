@@ -1,6 +1,8 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import PlayerNameLink from '@/components/common/PlayerNameLink';
+import { RANK_SPRING } from '@/components/match/rankEffects';
 import type { PlayersById } from '@/types';
 
 interface RoundsWonEntry {
@@ -30,8 +32,10 @@ export default function RoundsWonTable({ entries, playersById }: RoundsWonTableP
     <div className="space-y-2">
       <h3 className="font-semibold text-gray-900 dark:text-white text-sm px-1">Rounds Won</h3>
       {sorted.map((entry, idx) => (
-        <div
+        <motion.div
           key={entry.playerId}
+          layout="position"
+          transition={RANK_SPRING}
           className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg"
         >
           <div className="flex items-center gap-3">
@@ -52,7 +56,7 @@ export default function RoundsWonTable({ entries, playersById }: RoundsWonTableP
             </p>
           </div>
           <p className="font-bold text-gray-900 dark:text-white">{entry.gamesWon}</p>
-        </div>
+        </motion.div>
       ))}
     </div>
   );

@@ -3,9 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useLogoutMutation } from '@/lib/queries/auth';
-import { useNotificationsQuery } from '@/lib/queries/notifications';
 import { useUIStore } from '@/lib/store/uiStore';
 import Avatar from '@/components/common/Avatar';
+import NotificationBell from './NotificationBell';
 import Link from 'next/link';
 import { Sun, Moon, LogOut, Menu, BookOpen } from 'lucide-react';
 import { useState } from 'react';
@@ -15,10 +15,7 @@ export default function Header() {
   const { user } = useAuth();
   const logoutMutation = useLogoutMutation();
   const { theme, setTheme } = useUIStore();
-  const { data: notifications = [] } = useNotificationsQuery(!!user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
@@ -48,17 +45,7 @@ export default function Header() {
             Rules
           </Link>
 
-          {/* Notifications Bell */}
-          <Link href="/notifications" className="relative">
-            <button className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2">
-              🔔
-              {unreadCount > 0 && (
-                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-          </Link>
+          <NotificationBell enabled={!!user} />
 
           {/* Theme Toggle */}
           <button

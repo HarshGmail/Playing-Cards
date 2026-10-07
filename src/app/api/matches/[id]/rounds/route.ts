@@ -7,6 +7,7 @@ import { submitRoundSchema } from '@/lib/schemas/match';
 import { notifyRoundScored } from '@/lib/notifications/roundScored';
 import { withTransaction } from '@/lib/db/client';
 import { ObjectId } from 'mongodb';
+import { onRoundsChanged } from '@/lib/events/matchEvents';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,6 +136,8 @@ export async function POST(
       scoredBy: userId,
       edited: false,
     }).catch((err) => logError(requestId, err));
+
+    await onRoundsChanged(params.id).catch((err) => logError(requestId, err));
 
     logApiResponse(requestId, 201, Date.now() - startTime);
 

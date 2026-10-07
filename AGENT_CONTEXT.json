@@ -1,0 +1,47 @@
+{
+  "rules": {
+    "noComments": "NEVER write code comments (no //, no /* */, no JSDoc) in new or edited code. Leave existing comments untouched. Use descriptive names, named constants and small named helpers instead.",
+    "style": "Next 14 app router, TS strict, Tailwind with dark: variants, React Query v5, lucide-react icons. Match surrounding file conventions. Prefer pure functions in src/lib/domain/* with vitest tests next to them (*.test.ts). Small focused components; reuse Avatar, PlayerNameLink, POSITION_CLASSES, getPositionColor.",
+    "ownership": "Only edit files listed under your agent key in 'owners'. Need a change elsewhere? Do not make it; list it in your final report under 'requests'.",
+    "verify": "Typecheck with: npx tsc --noEmit -p . 2>&1 | grep -E '<your paths>' (other agents work in parallel, ignore their errors). Run your tests with: npx vitest run <path>. Do NOT run next build or next dev.",
+    "db": "Run scripts against the real DB with: npm run db:script -- scripts/<file>.ts (handles corp CA + DNS). The user allows reading and adding fields/collections. Never delete user data.",
+    "report": "Final message: <=15 lines. Files touched, what is done, any 'requests' for other owners, anything not done."
+  },
+
+  "stack": {
+    "dirs": "src/app (pages + api routes), src/components/<area>, src/lib/{domain,db,queries,api,notifications,hooks,store}, src/types/index.ts (client types), src/lib/db/collections.ts (DB types + collection getters)",
+    "apiPattern": "See src/app/api/users/[username]/stats/route.ts: requireAuth -> logApiRequest -> db -> success()/error() from lib/api/respond. export const dynamic = 'force-dynamic'.",
+    "clientFetch": "apiFetch<T>(url) from src/lib/api/fetcher.ts; query keys in src/lib/queries/keys.ts",
+    "installedPkgs": "framer-motion@11, canvas-confetti (+types), web-push (+types), tsx (dev). Already installed; do not npm install anything else without listing it in requests.",
+    "terminology": "A 'match' is a whole session; a 'game' is one round inside it. 'Match win' = finished 1st in an ended match. 'Game win' = best score in a single round (entry.gamesWon). gamesPlayed = rounds played."
+  },
+
+  "data": {
+    "Match.standings": "Optional MatchStanding[] cached on the match doc (collections.ts). Same order as computeMatchLeaderboard output. Recomputed by onRoundsChanged/onMatchEnded. Lets lists show leader/winner without loading scores.",
+    "playerStats": "Collection 'playerStats', one doc per user (PlayerStats in collections.ts): rating, peakRating, ratedMatches, matchesPlayed, matchWins, podiums{first,second,third}, gamesWon, gamesPlayed, winPct (0..1 = gamesWon/gamesPlayed), averageRank. Rebuilt on match end. Only ended matches count toward rating/podiums; matchesPlayed/gamesWon/gamesPlayed count every match with >=1 round where player is not DNF.",
+    "pushSubscriptions": "Collection 'pushSubscriptions' (PushSubscriptionDoc in collections.ts), unique by endpoint.",
+    "indexes": "src/lib/db/indexes.ts already lists indexes for the new collections; ensureIndexes() is called by scripts/backfill-stats.ts."
+  },
+
+  "contracts": {
+    "events": "src/lib/events/matchEvents.ts exports onRoundsChanged(matchId) and onMatchEnded(matchId). Already wired into round submit/edit routes and the end-match PATCH. Currently stubs.",
+    "rating": "Multi-player Elo. Start 1200. For each ended match in endedAt order, compare every pair of non-DNF players by final position (win 1 / tie 0.5 / loss 0). K = BASE_K * roundsWeight(roundsPlayed) / (n-1). roundsWeight grows with rounds (e.g. 3 rounds ~0.6, 10 rounds ~1.3, capped ~2) so a win in a long match earns more. DNF players count as last place.",
+    "statsApi": "GET /api/users/[username]/stats -> { stats: PlayerStatsSummary & { wins, totalMatches, totalRounds }, profilePicUrl }. Legacy aliases: wins=matchWins, totalMatches=matchesPlayed, totalRounds=gamesPlayed. timesLeading is REMOVED. Reads one playerStats doc (+ a countDocuments for globalRank). Missing doc -> zeros with rating 1200.",
+    "leaderboardApi": "GET /api/leaderboard?scope=friends|global&metric=rating|winPct&limit=50 -> { rows: LeaderboardRow[], self: LeaderboardRow | null }. friends = viewer + their friends (always include viewer). global = top N among users with gamesPlayed>0; self = viewer's row (with true rank) even when outside top N. rating sort: rating desc, matchWins desc, name. winPct sort: winPct desc, gamesPlayed desc, name. Must be 3 queries max, no per-user loops hitting the DB.",
+    "matchesApi": "GET /api/matches?from=ISO&to=ISO (both optional; filter createdAt in [from,to)) returns MatchSummary[] (src/types/index.ts) incl. createdAt, endedAt, gameType, gameLabel, leader (from standings[0] of non-DNF; isTied when standings[0].isSharedPosition; null when no rounds). Sorted createdAt desc. Without from/to keeps current behaviour.",
+    "matchWonNotification": "type 'match-won', sent by onMatchEnded to every player with position 1 (ties included). payload: { matchId, matchName, roundsPlayed, ratingDelta: number|null, newRating: number|null }. Click target: /matches/{matchId}?celebrate=1",
+    "celebrateParam": "Match page shows confetti burst when ?celebrate=1, and also once per browser per match (localStorage key 'celebrated:<matchId>') when the match is ended and the viewer finished 1st.",
+    "notificationTtl": "Every notification gets expiresAt <= 2 days after createdAt (round-scored keeps 1 day). Existing rows with expiresAt null get createdAt+2d via a migration script.",
+    "push": "notifyMany() in src/lib/notifications/create.ts fans out web-push to the recipients' pushSubscriptions after inserting, fire-and-forget, deleting subscriptions that return 404/410. Message text comes from a shared pure formatter so the in-app list and the push body match.",
+    "leaderboardQueryKey": "leaderboardKeys.list(scope, metric) in src/lib/queries/keys.ts (already added)."
+  },
+
+  "owners": {
+    "stats": "src/lib/domain/rating.ts(+test), src/lib/domain/playerStats.ts(+test), src/lib/stats/**, src/lib/events/matchEvents.ts, src/app/api/users/[username]/stats/route.ts, src/app/api/leaderboard/**, src/app/api/matches/route.ts (GET only), scripts/backfill-stats.ts",
+    "profile": "src/components/profile/**, src/app/(app)/profile/**, src/components/common/PlayerNameLink.tsx, src/components/common/Avatar.tsx, src/components/common/ImageLightbox.tsx, src/lib/queries/users.ts, src/lib/queries/leaderboard.ts, src/components/dashboard/SelfStatsCard.tsx",
+    "matchFx": "src/components/match/**, src/app/(app)/matches/[id]/page.tsx, src/components/effects/**, src/lib/domain/rankChanges.ts(+test), tailwind.config.js, src/styles/globals.css",
+    "calendar": "src/components/calendar/**, src/lib/domain/calendar.ts(+test), src/lib/queries/calendar.ts, src/lib/queries/matches.ts, src/app/(app)/dashboard/page.tsx, src/components/dashboard/MatchListItem.tsx",
+    "notifyPwa": "src/lib/notifications/**, src/app/api/notifications/**, src/app/api/push/**, src/lib/push/**, src/app/(app)/notifications/page.tsx, src/components/layout/**, src/components/pwa/**, src/app/layout.tsx, src/app/(app)/layout.tsx, public/**, next.config.js, scripts/notifications-ttl.ts, .env.local (append VAPID keys only)",
+    "lead": "src/types/index.ts, src/lib/db/collections.ts, src/lib/db/indexes.ts, src/lib/queries/keys.ts, package.json, AGENT_CONTEXT.json, src/middleware.ts"
+  }
+}

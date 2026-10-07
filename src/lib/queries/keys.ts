@@ -36,6 +36,11 @@ export const userKeys = {
   search: (term: string) => [...userKeys.all, 'search', term] as const,
 };
 
+export const leaderboardKeys = {
+  all: ['leaderboard'] as const,
+  list: (scope: string, metric: string) => [...leaderboardKeys.all, scope, metric] as const,
+};
+
 export const joinKeys = {
   all: ['join'] as const,
   validate: (code: string) => [...joinKeys.all, 'validate', code] as const,

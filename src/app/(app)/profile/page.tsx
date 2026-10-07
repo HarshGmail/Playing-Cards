@@ -4,7 +4,7 @@ import { useState } from 'react';
 import ProfileCard from '@/components/profile/ProfileCard';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import MedalsTable from '@/components/profile/MedalsTable';
-import FriendsLeaderboard from '@/components/profile/FriendsLeaderboard';
+import Leaderboard from '@/components/profile/Leaderboard';
 import {
   useMeUserQuery,
   useUpdateMeMutation,
@@ -94,7 +94,7 @@ export default function MyProfilePage() {
 
         <MedalsTable stats={stats} />
 
-        <FriendsLeaderboard self={{ id: user.id, name: user.name, username: user.username }} />
+        <Leaderboard />
 
         {showEditModal && (
           <ProfileEditModal

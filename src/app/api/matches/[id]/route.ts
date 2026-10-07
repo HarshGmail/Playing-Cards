@@ -5,6 +5,7 @@ import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { toGameType } from '@/lib/games/catalog';
 import { ObjectId } from 'mongodb';
+import { onMatchEnded } from '@/lib/events/matchEvents';
 
 export const dynamic = 'force-dynamic';
 
@@ -187,6 +188,8 @@ export async function PATCH(
       { _id: new ObjectId(params.id) },
       { $set: { status: 'ended', endedAt }, $inc: { version: 1 } }
     );
+
+    await onMatchEnded(params.id).catch((err) => logError(requestId, err));
 
     logApiResponse(requestId, 200, Date.now() - startTime);
     return success({ matchId: params.id, status: 'ended', endedAt });

@@ -516,10 +516,9 @@ npm test
 ## 📞 Support
 
 For issues or questions:
-1. Check the spec document (HAIKU_BUILD_PROMPT.md)
-2. Review API endpoint documentation above
-3. Check component examples in `src/components/`
-4. Run unit tests to verify domain logic
+1. Review API endpoint documentation above
+2. Check component examples in `src/components/`
+3. Run unit tests to verify domain logic
 
 ---
 
