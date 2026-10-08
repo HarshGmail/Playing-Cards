@@ -15,6 +15,7 @@ import {
   useSubmitRoundMutation,
   useEditRoundMutation,
   useEndMatchMutation,
+  useResumeMatchMutation,
 } from '@/lib/queries/matchDetail';
 import LeaderboardSection from '@/components/match/LeaderboardSection';
 import Scoreboard from '@/components/match/Scoreboard';
@@ -40,6 +41,7 @@ export default function MatchPage() {
   const [tab, setTab] = useState('leaderboard');
   const [editingRound, setEditingRound] = useState<number | null>(null);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
+  const [confirmingResume, setConfirmingResume] = useState(false);
 
   const { data: match, isLoading: matchLoading, error: matchError } = useMatchQuery(matchId);
   const { data: state, isLoading: stateLoading } = useMatchStateQuery(matchId);
@@ -48,6 +50,7 @@ export default function MatchPage() {
   const submitRoundMutation = useSubmitRoundMutation(matchId);
   const editRoundMutation = useEditRoundMutation(matchId);
   const endMatchMutation = useEndMatchMutation(matchId);
+  const resumeMatchMutation = useResumeMatchMutation(matchId);
 
   const loading = matchLoading || stateLoading || roundsLoading;
   const error = matchError?.message || '';
@@ -87,6 +90,14 @@ export default function MatchPage() {
       onSuccess: () => setConfirmingEnd(false),
       onError: () =>
         addToast({ type: 'error', message: 'Could not end the match. Try again.' }),
+    });
+  };
+
+  const handleResumeMatch = () => {
+    resumeMatchMutation.mutate(undefined, {
+      onSuccess: () => setConfirmingResume(false),
+      onError: () =>
+        addToast({ type: 'error', message: 'Could not resume the match. Try again.' }),
     });
   };
 
@@ -161,6 +172,15 @@ export default function MatchPage() {
                 className="px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm sm:text-base transition disabled:opacity-50 shrink-0"
               >
                 {endMatchMutation.isPending ? 'Ending...' : 'End Match'}
+              </button>
+            )}
+            {isCreator && match.status === 'ended' && (
+              <button
+                onClick={() => setConfirmingResume(true)}
+                disabled={resumeMatchMutation.isPending}
+                className="px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm sm:text-base transition disabled:opacity-50 shrink-0"
+              >
+                {resumeMatchMutation.isPending ? 'Resuming...' : 'Resume Match'}
               </button>
             )}
           </div>
@@ -287,6 +307,16 @@ export default function MatchPage() {
         busy={endMatchMutation.isPending}
         onConfirm={handleEndMatch}
         onCancel={() => setConfirmingEnd(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmingResume}
+        title="Resume this match?"
+        message="The match reopens for new rounds and its result is removed from ratings until it is ended again."
+        confirmLabel={resumeMatchMutation.isPending ? 'Resuming...' : 'Resume Match'}
+        busy={resumeMatchMutation.isPending}
+        onConfirm={handleResumeMatch}
+        onCancel={() => setConfirmingResume(false)}
       />
 
       {editingRound !== null && (() => {

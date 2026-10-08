@@ -37,3 +37,7 @@ export async function onMatchEnded(matchId: string): Promise<void> {
   const ratingChanges = await rebuildAllPlayerStats();
   await notifyMany(matchWonNotifications(matchId, match, ratingChanges));
 }
+
+export async function onMatchResumed(): Promise<void> {
+  await rebuildAllPlayerStats();
+}

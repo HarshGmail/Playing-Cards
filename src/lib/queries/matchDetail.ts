@@ -127,6 +127,22 @@ export function useEndMatchMutation(matchId: string) {
   });
 }
 
+export function useResumeMatchMutation(matchId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<void>(`/api/matches/${matchId}/resume`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+      queryClient.invalidateQueries({ queryKey: matchKeys.state(matchId) });
+      queryClient.invalidateQueries({ queryKey: matchKeys.list() });
+    },
+  });
+}
+
 interface RosterActionRequest {
   action: 'mark-dnf' | 'rejoin';
 }
