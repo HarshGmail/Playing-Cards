@@ -16,7 +16,7 @@ interface Step1Props {
 
 export default function CreateMatchStep1({ onNext }: Step1Props) {
   const [name, setName] = useState('');
-  const [creatorRole, setCreatorRole] = useState('score-only');
+  const [creatorRole, setCreatorRole] = useState('score-and-play');
   const [gameType, setGameType] = useState<GameType>('least-count');
   const [gameLabel, setGameLabel] = useState('');
   const [rankPreference, setRankPreference] = useState<string>(
@@ -131,8 +131,8 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
           onChange={(e) => setCreatorRole(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
         >
-          <option value="score-only">Score keeper (not playing)</option>
           <option value="score-and-play">Score keeper &amp; player</option>
+          <option value="score-only">Score keeper (not playing)</option>
         </select>
       </div>
 
