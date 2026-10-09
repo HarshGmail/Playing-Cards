@@ -73,7 +73,7 @@ export async function notifyMany(inputs: NotificationInput[]): Promise<void> {
     }))
   );
 
-  pushInBackground(inputs);
+  await deliverPush(inputs);
 }
 
 function ttlMsFor(type: Notification['type']): number {
@@ -102,8 +102,8 @@ function groupPayloadsByUser(inputs: NotificationInput[]): Map<string, PushPaylo
   return payloadsByUserId;
 }
 
-function pushInBackground(inputs: NotificationInput[]): void {
-  sendPushToUsers(groupPayloadsByUser(inputs)).catch((err) => {
+async function deliverPush(inputs: NotificationInput[]): Promise<void> {
+  await sendPushToUsers(groupPayloadsByUser(inputs)).catch((err) => {
     logger.warn('Push fan-out failed', { message: err instanceof Error ? err.message : String(err) });
   });
 }

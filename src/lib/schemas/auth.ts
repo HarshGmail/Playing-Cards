@@ -24,18 +24,20 @@ export const loginSchema = z.object({
 });
 
 export const recoverIdentitySchema = z.object({
-  username: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().min(1),
-  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  username: z.string({ required_error: 'Username is required' }).trim().min(1, 'Username is required'),
+  email: z.string({ required_error: 'Email is required' }).trim().email('Invalid email'),
+  phone: z.string({ required_error: 'Phone is required' }).trim().min(1, 'Phone is required'),
+  dob: z
+    .string({ required_error: 'Date of birth is required' })
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
 });
 
 export const resetPasswordSchema = z.object({
   password: z
-    .string()
-    .min(8)
-    .regex(/[0-9]/)
-    .regex(/[!@#$%^&*]/),
+    .string({ required_error: 'Password is required' })
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[0-9]/, 'Password must contain a number')
+    .regex(/[!@#$%^&*]/, 'Password must contain a special character'),
 });
 
 export type SignupInput = z.infer<typeof signupSchema>;
