@@ -16,6 +16,10 @@ export const DEFAULT_NOTIFICATION_TTL_MS = 2 * 24 * 60 * 60 * 1000;
 /** Types swept by the TTL index a day after they are created. */
 const EPHEMERAL_TYPES = new Set<Notification['type']>(['round-scored']);
 
+export const KEEP_UNTIL_READ_TYPES: Notification['type'][] = ['milestone'];
+
+const KEEP_UNTIL_READ = new Set<Notification['type']>(KEEP_UNTIL_READ_TYPES);
+
 /**
  * ensureIndexes() is a one-shot migration helper that nothing calls at runtime,
  * so the TTL index cannot be assumed to exist in a given database. Expiry is a
@@ -65,7 +69,7 @@ export async function notifyMany(inputs: NotificationInput[]): Promise<void> {
       payload: input.payload,
       read: false,
       createdAt: now,
-      expiresAt: new Date(now.getTime() + ttlMsFor(input.type)),
+      expiresAt: expiresAtOnInsert(input.type, now),
     }))
   );
 
@@ -76,6 +80,15 @@ function ttlMsFor(type: Notification['type']): number {
   return EPHEMERAL_TYPES.has(type)
     ? EPHEMERAL_NOTIFICATION_TTL_MS
     : DEFAULT_NOTIFICATION_TTL_MS;
+}
+
+function expiresAtOnInsert(type: Notification['type'], now: Date): Date | null {
+  if (KEEP_UNTIL_READ.has(type)) return null;
+  return new Date(now.getTime() + ttlMsFor(type));
+}
+
+export function expiresAtOnRead(now: Date = new Date()): Date {
+  return new Date(now.getTime() + DEFAULT_NOTIFICATION_TTL_MS);
 }
 
 function groupPayloadsByUser(inputs: NotificationInput[]): Map<string, PushPayload[]> {

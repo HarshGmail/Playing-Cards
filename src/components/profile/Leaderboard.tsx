@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Crown } from 'lucide-react';
 import PlayerNameLink from '@/components/common/PlayerNameLink';
 import SegmentedToggle from '@/components/profile/SegmentedToggle';
+import { StreakBadges } from '@/components/streaks/StreakBadge';
 import RatingHelpLink from '@/components/rating/RatingHelpLink';
 import { useLeaderboardQuery } from '@/lib/queries/leaderboard';
 import { formatWinPct, getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
@@ -70,6 +71,11 @@ function LeaderboardRowItem({ row, metric }: LeaderboardRowItemProps) {
           {row.isSelf && (
             <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(you)</span>
           )}
+          <StreakBadges
+            gameStreak={row.currentGameStreak}
+            matchStreak={row.currentMatchStreak}
+            className="ml-1.5 align-middle"
+          />
         </div>
       </div>
 

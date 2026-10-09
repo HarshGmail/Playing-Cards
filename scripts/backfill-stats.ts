@@ -1,9 +1,10 @@
 import { ObjectId } from 'mongodb';
 import { closeMongoConnection } from '../src/lib/db/client';
-import { getMatches, getPlayerStats, getUsers } from '../src/lib/db/collections';
+import { getMatches, getNotifications, getPlayerStats, getUsers } from '../src/lib/db/collections';
 import { ensureIndexes } from '../src/lib/db/indexes';
 import { recomputeMatchStandings } from '../src/lib/stats/standings';
 import { rebuildAllPlayerStats } from '../src/lib/stats/playerStats';
+import { notifyMilestones } from '../src/lib/events/matchEvents';
 
 const PERCENT = 100;
 
@@ -44,15 +45,31 @@ async function printSummary(): Promise<void> {
       rating: s.rating,
       matchWins: s.matchWins,
       winPct: formatPercent(s.winPct),
+      longestGameStreak: s.streaks?.longestGameStreak ?? 0,
+      gameStreakCounts: JSON.stringify(s.streaks?.gameStreakCounts ?? {}),
+      longestMatchStreak: s.streaks?.longestMatchStreak ?? 0,
+      longestDayStreak: s.streaks?.longestDayStreak ?? 0,
+      milestones: s.milestones?.length ?? 0,
     }))
   );
 }
 
+async function countMilestoneNotifications(): Promise<number> {
+  const notificationsCol = await getNotifications();
+  return notificationsCol.countDocuments({ type: 'milestone' });
+}
+
 async function main(): Promise<void> {
   await ensureIndexes();
+  const milestoneNotificationsBefore = await countMilestoneNotifications();
   const matchCount = await recomputeAllStandings();
-  const ratings = await rebuildAllPlayerStats();
-  console.log(`Recomputed standings for ${matchCount} matches; rated ${ratings.size} players.`);
+  const { ratingChanges, newMilestones } = await rebuildAllPlayerStats();
+  await notifyMilestones(newMilestones);
+  const milestoneNotificationsAfter = await countMilestoneNotifications();
+  console.log(`Recomputed standings for ${matchCount} matches; rated ${ratingChanges.size} players.`);
+  console.log(
+    `Milestone notifications: ${milestoneNotificationsBefore} before, ${milestoneNotificationsAfter} after.`
+  );
   await printSummary();
 }
 

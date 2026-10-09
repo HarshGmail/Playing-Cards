@@ -13,6 +13,7 @@ export const NOTIFICATIONS_URL = '/notifications';
 export const PROFILE_URL = '/profile';
 export const DASHBOARD_URL = '/dashboard';
 export const CELEBRATE_QUERY = 'celebrate=1';
+export const MILESTONES_URL = `${PROFILE_URL}#milestones`;
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -43,6 +44,13 @@ function formatMatchWon(payload: Record<string, unknown>): FormattedNotification
     body: delta ? `You won ${matchName}! 🏆 ${delta}` : `You won ${matchName}! 🏆`,
     url: matchUrl(payload, CELEBRATE_QUERY),
   };
+}
+
+function formatMilestone(payload: Record<string, unknown>): FormattedNotification {
+  const headline = [text(payload.emoji), text(payload.title) || 'New milestone']
+    .filter(Boolean)
+    .join(' ');
+  return { title: 'Milestone unlocked', body: headline, url: MILESTONES_URL };
 }
 
 function formatRoundScored(payload: Record<string, unknown>): FormattedNotification {
@@ -129,6 +137,8 @@ export function formatNotification(notification: FormattableNotification): Forma
       return formatRoundScored(p);
     case 'match-won':
       return formatMatchWon(p);
+    case 'milestone':
+      return formatMilestone(p);
     default:
       return { title: 'Notification', body: 'New notification', url: NOTIFICATIONS_URL };
   }

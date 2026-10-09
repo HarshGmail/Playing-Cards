@@ -4,6 +4,7 @@ import {
   Flag,
   LogIn,
   Mail,
+  Sparkles,
   Trophy,
   UserCheck,
   UserPlus,
@@ -52,6 +53,12 @@ const GOLD = tone(
   'bg-gradient-to-r from-amber-50/60 to-yellow-50/40 dark:from-amber-900/15 dark:to-yellow-900/5 border-amber-200 dark:border-amber-800'
 );
 
+const MILESTONE = tone(
+  'bg-gradient-to-br from-purple-200 to-amber-200 text-purple-800 dark:from-purple-500/40 dark:to-amber-500/30 dark:text-amber-100',
+  'bg-gradient-to-r from-purple-50 to-amber-50 dark:from-purple-900/30 dark:to-amber-900/10 border-purple-400 dark:border-purple-600',
+  'bg-gradient-to-r from-purple-50/60 to-amber-50/40 dark:from-purple-900/15 dark:to-amber-900/5 border-purple-200 dark:border-purple-800'
+);
+
 const APPEARANCE_BY_TYPE: Record<NotificationType, NotificationAppearance> = {
   'friend-request': { icon: UserPlus, ...BLUE },
   'friend-accepted': { icon: UserCheck, ...GREEN },
@@ -65,6 +72,7 @@ const APPEARANCE_BY_TYPE: Record<NotificationType, NotificationAppearance> = {
   'match-invite-declined': { icon: UserX, ...RED },
   'round-scored': { icon: Calculator, ...SLATE },
   'match-won': { icon: Trophy, ...GOLD },
+  milestone: { icon: Sparkles, ...MILESTONE },
 };
 
 const FALLBACK_APPEARANCE: NotificationAppearance = { icon: Bell, ...SLATE };

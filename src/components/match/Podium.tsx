@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Medal } from 'lucide-react';
 import Avatar from '@/components/common/Avatar';
+import StreakBadge from '@/components/streaks/StreakBadge';
 import {
   LeaderCrown,
   NewLeaderShine,
@@ -62,7 +63,7 @@ function useHasMounted() {
   return mounted.current;
 }
 
-export default function Podium({ entries, playersById, changes }: PodiumProps) {
+export default function Podium({ entries, playersById, changes, gameStreaks }: PodiumProps) {
   const hasMounted = useHasMounted();
   const prefersReducedMotion = useReducedMotion();
   const ceremonyDone = hasMounted || !!prefersReducedMotion;
@@ -119,6 +120,11 @@ export default function Podium({ entries, playersById, changes }: PodiumProps) {
                     <TiedLabel className="text-xs text-gray-500 dark:text-gray-400 ml-1" />
                   )}
                 </p>
+                <StreakBadge
+                  kind="game"
+                  count={gameStreaks?.get(entry.playerId) ?? 0}
+                  className="mt-0.5"
+                />
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 tabular-nums">
                   {entry.total}
                 </p>

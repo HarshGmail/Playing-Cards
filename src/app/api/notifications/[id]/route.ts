@@ -3,6 +3,7 @@ import { getNotifications } from '@/lib/db/collections';
 import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
+import { expiresAtOnRead, KEEP_UNTIL_READ_TYPES } from '@/lib/notifications/create';
 import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
@@ -46,9 +47,12 @@ export async function PATCH(
       return forbidden();
     }
 
+    const readUpdate = KEEP_UNTIL_READ_TYPES.includes(notification.type)
+      ? { read: true, expiresAt: expiresAtOnRead() }
+      : { read: true };
     const result = await notificationsCol.updateOne(
-      { _id: new ObjectId(params.id) },
-      { $set: { read: true } }
+      { _id: new ObjectId(params.id), read: false },
+      { $set: readUpdate }
     );
 
     if (result.modifiedCount === 0) {

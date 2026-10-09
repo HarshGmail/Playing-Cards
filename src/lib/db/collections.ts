@@ -36,6 +36,8 @@ export interface MatchStanding {
   roundsPlayed: number;
   isDnf: boolean;
   isSharedPosition: boolean;
+  gameRuns?: number[];
+  currentGameRun?: number;
 }
 
 export interface Match {
@@ -151,7 +153,8 @@ export interface Notification {
     | 'match-invite-accepted'
     | 'match-invite-declined'
     | 'round-scored'
-    | 'match-won';
+    | 'match-won'
+    | 'milestone';
   payload: Record<string, unknown>;
   read: boolean;
   createdAt: Date;
@@ -170,6 +173,29 @@ export interface PodiumCounts {
   third: number;
 }
 
+export interface StreakTierCounts {
+  3: number;
+  4: number;
+  5: number;
+  6: number;
+}
+
+export interface PlayerStreaks {
+  longestGameStreak: number;
+  currentGameStreak: number;
+  gameStreakCounts: StreakTierCounts;
+  longestMatchStreak: number;
+  currentMatchStreak: number;
+  longestDayStreak: number;
+  currentDayStreak: number;
+  lastActiveDay: string | null;
+}
+
+export interface AchievedMilestoneDoc {
+  id: string;
+  achievedAt: Date;
+}
+
 export interface PlayerStats {
   _id?: { toString(): string };
   userId: string;
@@ -183,6 +209,8 @@ export interface PlayerStats {
   gamesPlayed: number;
   winPct: number;
   averageRank: number;
+  streaks: PlayerStreaks;
+  milestones: AchievedMilestoneDoc[];
   updatedAt: Date;
 }
 

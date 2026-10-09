@@ -3,11 +3,32 @@ import { getUsers, getPlayerStats, PlayerStats } from '@/lib/db/collections';
 import { success, notFound, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
-import { ZERO_PLAYER_STATS } from '@/lib/domain/playerStats';
+import { emptyPlayerStreaks, ZERO_PLAYER_STATS } from '@/lib/domain/playerStats';
+import { dayKey, liveDayStreak } from '@/lib/domain/streaks';
 import { strictlyAheadFilter } from '@/lib/stats/leaderboard';
-import type { PlayerStatsSummary } from '@/types';
+import type { PlayerStatsSummary, PlayerStreaksSummary } from '@/types';
 
 export const dynamic = 'force-dynamic';
+
+function toStreaksSummary(doc: PlayerStats | null, now: Date): PlayerStreaksSummary {
+  const streaks = doc?.streaks ?? emptyPlayerStreaks();
+  return {
+    longestGameStreak: streaks.longestGameStreak,
+    currentGameStreak: streaks.currentGameStreak,
+    gameStreakCounts: { ...streaks.gameStreakCounts },
+    longestMatchStreak: streaks.longestMatchStreak,
+    currentMatchStreak: streaks.currentMatchStreak,
+    longestDayStreak: streaks.longestDayStreak,
+    currentDayStreak: liveDayStreak(streaks.currentDayStreak, streaks.lastActiveDay, dayKey(now)),
+  };
+}
+
+function toMilestonesSummary(doc: PlayerStats | null): PlayerStatsSummary['milestones'] {
+  return (doc?.milestones ?? []).map((m) => ({
+    id: m.id,
+    achievedAt: new Date(m.achievedAt).toISOString(),
+  }));
+}
 
 function toSummary(doc: PlayerStats | null, globalRank: number | null): PlayerStatsSummary {
   const source = doc ?? ZERO_PLAYER_STATS;
@@ -23,6 +44,8 @@ function toSummary(doc: PlayerStats | null, globalRank: number | null): PlayerSt
     winPct: source.winPct,
     averageRank: source.averageRank,
     globalRank,
+    streaks: toStreaksSummary(doc, new Date()),
+    milestones: toMilestonesSummary(doc),
   };
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { LayoutGroup, MotionConfig } from 'framer-motion';
 import { Table, BarChart3 } from 'lucide-react';
@@ -9,6 +9,7 @@ import LeaderboardPodium from '@/components/match/LeaderboardPodium';
 import RoundsWonTable from '@/components/match/RoundsWonTable';
 import { useRankTransition } from '@/components/match/useRankTransition';
 import { buildScoreboardRows } from '@/lib/domain/scoreboard';
+import { gameRunsByPlayer } from '@/lib/domain/streaks';
 import type { PlayersById } from '@/types';
 
 const TotalsChart = dynamic(() => import('@/components/match/charts/TotalsChart'), { ssr: false });
@@ -104,6 +105,17 @@ export default function LeaderboardSection({
   const [view, setView] = useState<'table' | 'chart'>('table');
   const { entries, changes } = useRankTransition(matchId, latestEntries);
 
+  const gameStreaks = useMemo(
+    () =>
+      new Map(
+        Array.from(gameRunsByPlayer(rounds, rankPreference), ([playerId, { current }]) => [
+          playerId,
+          current,
+        ])
+      ),
+    [rounds, rankPreference]
+  );
+
   const bestRound = findBestSingleRound(rounds, players, rankPreference);
   const mostConsistent = findMostConsistent(entries);
   // DNF players are excluded, matching how the leaderboard rows order them last.
@@ -146,10 +158,17 @@ export default function LeaderboardSection({
                 entries={podium}
                 playersById={playersById}
                 changes={changes}
+                gameStreaks={gameStreaks}
                 ended={ended}
               />
               <div className="grid md:grid-cols-2 gap-4">
-                <Leaderboard entries={entries} playersById={playersById} changes={changes} compact />
+                <Leaderboard
+                  entries={entries}
+                  playersById={playersById}
+                  changes={changes}
+                  gameStreaks={gameStreaks}
+                  compact
+                />
                 <RoundsWonTable entries={entries} playersById={playersById} />
               </div>
             </LayoutGroup>

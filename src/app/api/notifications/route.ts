@@ -3,6 +3,7 @@ import { getNotifications } from '@/lib/db/collections';
 import { success, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
+import { expiresAtOnRead, KEEP_UNTIL_READ_TYPES } from '@/lib/notifications/create';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,15 +65,22 @@ export async function POST(request: NextRequest) {
     logApiRequest(requestId, 'POST /api/notifications (mark all read)', userId, {});
 
     const notificationsCol = await getNotifications();
-    const result = await notificationsCol.updateMany(
-      { userId, read: false },
-      { $set: { read: true } }
-    );
+    const unread = { userId, read: false };
+    const [keptUntilRead, others] = await Promise.all([
+      notificationsCol.updateMany(
+        { ...unread, type: { $in: KEEP_UNTIL_READ_TYPES } },
+        { $set: { read: true, expiresAt: expiresAtOnRead() } }
+      ),
+      notificationsCol.updateMany(
+        { ...unread, type: { $nin: KEEP_UNTIL_READ_TYPES } },
+        { $set: { read: true } }
+      ),
+    ]);
 
     logApiResponse(requestId, 200, Date.now() - startTime);
 
     return success({
-      markedAsRead: result.modifiedCount,
+      markedAsRead: keptUntilRead.modifiedCount + others.modifiedCount,
     });
   } catch (err) {
     logError(requestId, err);

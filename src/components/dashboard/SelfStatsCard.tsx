@@ -2,6 +2,7 @@
 
 import { User } from '@/types';
 import { useUserStatsQuery } from '@/lib/queries/users';
+import { StreakBadges } from '@/components/streaks/StreakBadge';
 import Avatar from '@/components/common/Avatar';
 import { formatWinPct } from '@/lib/domain/ratingTier';
 
@@ -22,8 +23,14 @@ export default function SelfStatsCard({ user }: SelfStatsCardProps) {
           fallbackClassName="bg-blue-500 text-white"
         />
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-x-2 gap-y-1">
             {user.name}
+            {stats && (
+              <StreakBadges
+                gameStreak={stats.streaks.currentGameStreak}
+                matchStreak={stats.streaks.currentMatchStreak}
+              />
+            )}
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             @{user.username}

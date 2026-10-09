@@ -17,6 +17,8 @@ export const PODIUM_ENTER_EXIT = {
   exit: { opacity: 0, scale: 0.6, y: 28 },
 };
 
+export type GameStreaksByPlayer = ReadonlyMap<string, number>;
+
 export interface PodiumEntry {
   playerId: string;
   position: number;
@@ -31,6 +33,7 @@ export interface PodiumProps {
   entries: PodiumEntry[];
   playersById: PlayersById;
   changes: RankChanges;
+  gameStreaks?: GameStreaksByPlayer;
 }
 
 export function hasMoved(change: RankChange | undefined): change is RankChange {

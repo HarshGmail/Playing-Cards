@@ -13,6 +13,16 @@ interface MedalsTableProps {
 
 const STARTING_RATING = 1200;
 
+const EMPTY_STREAKS: UserStats['streaks'] = {
+  longestGameStreak: 0,
+  currentGameStreak: 0,
+  gameStreakCounts: { 3: 0, 4: 0, 5: 0, 6: 0 },
+  longestMatchStreak: 0,
+  currentMatchStreak: 0,
+  longestDayStreak: 0,
+  currentDayStreak: 0,
+};
+
 const EMPTY_STATS: UserStats = {
   rating: STARTING_RATING,
   peakRating: STARTING_RATING,
@@ -25,6 +35,8 @@ const EMPTY_STATS: UserStats = {
   winPct: 0,
   averageRank: 0,
   globalRank: null,
+  streaks: EMPTY_STREAKS,
+  milestones: [],
   wins: 0,
   totalMatches: 0,
   totalRounds: 0,

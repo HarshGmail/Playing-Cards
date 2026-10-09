@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { getMatches, getScores, Match, MatchStanding } from '@/lib/db/collections';
 import { computeMatchLeaderboard } from '@/lib/domain/ranking';
-import { toStandings } from '@/lib/domain/playerStats';
+import { roundScoresWithinCutoff, toStandings, withGameRuns } from '@/lib/domain/playerStats';
 
 export type StandingsMatch = Pick<Match, 'name' | 'status' | 'roundsPlayed'> & {
   standings: MatchStanding[];
@@ -34,8 +34,12 @@ export async function recomputeMatchStandings(matchId: string): Promise<Standing
     .find({ matchId }, { projection: SCORE_PROJECTION })
     .toArray();
 
-  const standings = toStandings(
-    computeMatchLeaderboard(match.roster, scores, match.rankPreference, match.tiebreakers)
+  const standings = withGameRuns(
+    toStandings(
+      computeMatchLeaderboard(match.roster, scores, match.rankPreference, match.tiebreakers)
+    ),
+    roundScoresWithinCutoff(match.roster, scores),
+    match.rankPreference
   );
 
   await matchesCol.updateOne({ _id }, { $set: { standings } });

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import Link from 'next/link';
 import Avatar from '@/components/common/Avatar';
+import { StreakBadges } from '@/components/streaks/StreakBadge';
 import { formatWinPct } from '@/lib/domain/ratingTier';
 import type { UserStats } from '@/lib/queries/users';
 
@@ -201,7 +202,13 @@ export default function PlayerNameLink({
                   fallbackClassName="bg-blue-600 text-white"
                 />
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">{displayName}</p>
+                  <p className="font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-1.5">
+                    {displayName}
+                    <StreakBadges
+                      gameStreak={stats.streaks?.currentGameStreak}
+                      matchStreak={stats.streaks?.currentMatchStreak}
+                    />
+                  </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">@{userName}</p>
                 </div>
               </div>

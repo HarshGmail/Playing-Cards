@@ -4,6 +4,8 @@ import { useState } from 'react';
 import ProfileCard from '@/components/profile/ProfileCard';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import MedalsTable from '@/components/profile/MedalsTable';
+import StreakStatsCard from '@/components/streaks/StreakStatsCard';
+import MilestonesSection from '@/components/streaks/MilestonesSection';
 import Leaderboard from '@/components/profile/Leaderboard';
 import {
   useMeUserQuery,
@@ -93,6 +95,8 @@ export default function MyProfilePage() {
         />
 
         <MedalsTable stats={stats} />
+        <StreakStatsCard stats={stats} />
+        <MilestonesSection stats={stats} />
 
         <Leaderboard />
 

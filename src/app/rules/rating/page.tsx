@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Swords, Zap, Timer, Flag, Equal, History, Crown, Percent, Gauge } from 'lucide-react';
+import { Swords, Zap, Timer, Flag, Equal, History, Crown, Percent, Gauge, Flame, Award, CalendarDays } from 'lucide-react';
 import RatingPlayground from '@/components/rating/RatingPlayground';
 import { BASE_K, START_RATING, MAX_ROUNDS_WEIGHT } from '@/lib/domain/rating';
 import { TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
@@ -222,6 +222,26 @@ export default function RatingExplainerPage() {
           </IdeaCard>
           <IdeaCard icon={<Crown className="w-5 h-5" />} title="Match wins">
             Finished matches where you came first. Each one is a crown in your trophy cabinet.
+          </IdeaCard>
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <SectionHeading eyebrow="Just for fun" title="Streaks & milestones" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <IdeaCard icon={<Flame className="w-5 h-5" />} title="Hat-tricks and streak fire">
+            Win three rounds in a row within a match for a hat-trick. Four, five and six in a row are
+            counted too. While a streak of two or more is alive you get a 🔥 next to your name, and a
+            match-win streak earns a ⚡. Rounds you sit out do not break a streak, and a new match starts
+            fresh.
+          </IdeaCard>
+          <IdeaCard icon={<CalendarDays className="w-5 h-5" />} title="Days active">
+            Every day you score in at least one round counts as an active day. Play on consecutive days to
+            grow the streak; skip a whole day and it resets.
+          </IdeaCard>
+          <IdeaCard icon={<Award className="w-5 h-5" />} title="Milestones">
+            Badges for round wins, match wins, matches played and streaks. You get a notification when you
+            unlock one, and your profile shows what is next. They never affect your rating.
           </IdeaCard>
         </div>
       </section>

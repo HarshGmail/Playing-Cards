@@ -7,7 +7,6 @@
     "db": "Run scripts against the real DB with: npm run db:script -- scripts/<file>.ts (handles corp CA + DNS). The user allows reading and adding fields/collections. Never delete user data.",
     "report": "Final message: <=15 lines. Files touched, what is done, any 'requests' for other owners, anything not done."
   },
-
   "stack": {
     "dirs": "src/app (pages + api routes), src/components/<area>, src/lib/{domain,db,queries,api,notifications,hooks,store}, src/types/index.ts (client types), src/lib/db/collections.ts (DB types + collection getters)",
     "apiPattern": "See src/app/api/users/[username]/stats/route.ts: requireAuth -> logApiRequest -> db -> success()/error() from lib/api/respond. export const dynamic = 'force-dynamic'.",
@@ -15,14 +14,12 @@
     "installedPkgs": "framer-motion@11, canvas-confetti (+types), web-push (+types), tsx (dev). Already installed; do not npm install anything else without listing it in requests.",
     "terminology": "A 'match' is a whole session; a 'game' is one round inside it. 'Match win' = finished 1st in an ended match. 'Game win' = best score in a single round (entry.gamesWon). gamesPlayed = rounds played."
   },
-
   "data": {
     "Match.standings": "Optional MatchStanding[] cached on the match doc (collections.ts). Same order as computeMatchLeaderboard output. Recomputed by onRoundsChanged/onMatchEnded. Lets lists show leader/winner without loading scores.",
     "playerStats": "Collection 'playerStats', one doc per user (PlayerStats in collections.ts): rating, peakRating, ratedMatches, matchesPlayed, matchWins, podiums{first,second,third}, gamesWon, gamesPlayed, winPct (0..1 = gamesWon/gamesPlayed), averageRank. Rebuilt on match end. Only ended matches count toward rating/podiums; matchesPlayed/gamesWon/gamesPlayed count every match with >=1 round where player is not DNF.",
     "pushSubscriptions": "Collection 'pushSubscriptions' (PushSubscriptionDoc in collections.ts), unique by endpoint.",
     "indexes": "src/lib/db/indexes.ts already lists indexes for the new collections; ensureIndexes() is called by scripts/backfill-stats.ts."
   },
-
   "contracts": {
     "events": "src/lib/events/matchEvents.ts exports onRoundsChanged(matchId) and onMatchEnded(matchId). Already wired into round submit/edit routes and the end-match PATCH. Currently stubs.",
     "rating": "Multi-player Elo. Start 1200. For each ended match in endedAt order, compare every pair of non-DNF players by final position (win 1 / tie 0.5 / loss 0). K = BASE_K * roundsWeight(roundsPlayed) / (n-1). roundsWeight grows with rounds (e.g. 3 rounds ~0.6, 10 rounds ~1.3, capped ~2) so a win in a long match earns more. DNF players count as last place.",
@@ -35,7 +32,6 @@
     "push": "notifyMany() in src/lib/notifications/create.ts fans out web-push to the recipients' pushSubscriptions after inserting, fire-and-forget, deleting subscriptions that return 404/410. Message text comes from a shared pure formatter so the in-app list and the push body match.",
     "leaderboardQueryKey": "leaderboardKeys.list(scope, metric) in src/lib/queries/keys.ts (already added)."
   },
-
   "owners": {
     "stats": "src/lib/domain/rating.ts(+test), src/lib/domain/playerStats.ts(+test), src/lib/stats/**, src/lib/events/matchEvents.ts, src/app/api/users/[username]/stats/route.ts, src/app/api/leaderboard/**, src/app/api/matches/route.ts (GET only), scripts/backfill-stats.ts",
     "profile": "src/components/profile/**, src/app/(app)/profile/**, src/components/common/PlayerNameLink.tsx, src/components/common/Avatar.tsx, src/components/common/ImageLightbox.tsx, src/lib/queries/users.ts, src/lib/queries/leaderboard.ts, src/components/dashboard/SelfStatsCard.tsx",
@@ -43,5 +39,20 @@
     "calendar": "src/components/calendar/**, src/lib/domain/calendar.ts(+test), src/lib/queries/calendar.ts, src/lib/queries/matches.ts, src/app/(app)/dashboard/page.tsx, src/components/dashboard/MatchListItem.tsx",
     "notifyPwa": "src/lib/notifications/**, src/app/api/notifications/**, src/app/api/push/**, src/lib/push/**, src/app/(app)/notifications/page.tsx, src/components/layout/**, src/components/pwa/**, src/app/layout.tsx, src/app/(app)/layout.tsx, public/**, next.config.js, scripts/notifications-ttl.ts, .env.local (append VAPID keys only)",
     "lead": "src/types/index.ts, src/lib/db/collections.ts, src/lib/db/indexes.ts, src/lib/queries/keys.ts, package.json, AGENT_CONTEXT.json, src/middleware.ts"
+  },
+  "contracts2": {
+    "sharedDomain": "Already written + tested, import, do not reimplement: src/lib/domain/streaks.ts (runLengths, trailingRun, summarizeRuns, gameRunsByPlayer, dayKey (Asia/Kolkata), dayStreaks, liveDayStreak, STREAK_TIERS=[3,4,5,6], STREAK_TIER_LABELS, MIN_VISIBLE_STREAK=2) and src/lib/domain/milestones.ts (MILESTONE_TRACKS, ALL_MILESTONES, findMilestone, newlyReachedMilestones, mergeAchieved, milestoneProgress, MilestoneStats). You MAY add functions to these files (with tests) but do not change existing signatures.",
+    "types": "Already added: MatchStanding.gameRuns?/currentGameRun? and PlayerStats.streaks (PlayerStreaks) + PlayerStats.milestones (AchievedMilestoneDoc[]) in collections.ts; PlayerStatsSummary.streaks/milestones, PlayerStreaksSummary, LeaderboardRow.currentGameStreak/currentMatchStreak, NotificationType 'milestone' in src/types/index.ts.",
+    "gameStreakDefinition": "Game streak = consecutive rounds won by a player (shared best score counts as a win; rounds a player has no score in are skipped, not breaks). Runs are computed per match and NOT carried across matches. longestGameStreak = max run across all matches; gameStreakCounts[k] = number of runs with length >= k across all matches (a 6-run counts once in 3,4,5,6). currentGameStreak = currentGameRun of the player's most recent ACTIVE match (0 if none active) \u2014 this is the fire badge.",
+    "matchStreakDefinition": "Match streak = consecutive ENDED matches (ordered by endedAt) where player rank===1 (ties count). DNF or non-1st breaks it. currentMatchStreak = trailing run.",
+    "dayStreakDefinition": "Active day = dayKey(Asia/Kolkata) of any round the player has a score in (score.enteredAt). longest/current via dayStreaks; stored lastActiveDay; API returns liveDayStreak(current,lastActiveDay,today) so a lapsed streak shows 0.",
+    "milestoneFlow": "After rebuildAllPlayerStats computes stats, for each user: newly = newlyReachedMilestones(statsAsMilestoneStats, existing ids); store mergeAchieved(...). BACKFILL: on the very first run (doc has no milestones field), record everything reached silently WITHOUT notifications, so existing players are not spammed. Otherwise send one 'milestone' notification per newly reached milestone: payload {milestoneId, title, emoji, metric, threshold}. Click target: /profile#milestones.",
+    "milestoneNoExpiry": "'milestone' notifications have expiresAt=null on insert. When marked read (PATCH /api/notifications/[id] and POST mark-all), set expiresAt=now+DEFAULT_NOTIFICATION_TTL_MS for milestone rows so they vanish 2 days after being read. Unread milestones never expire.",
+    "fireBadge": "Show \ud83d\udd25N when current streak >= MIN_VISIBLE_STREAK. Places: profile Leaderboard rows (currentGameStreak; also \u26a1N for currentMatchStreak>=2), live match leaderboard/podium rows (standing currentGameRun via a pure helper on the client from rounds data \u2014 the match page already has rounds), PlayerNameLink preview.",
+    "statsApi2": "GET /api/users/[username]/stats adds streaks (PlayerStreaksSummary, day streak live-adjusted) and milestones [{id, achievedAt ISO}]. GET /api/leaderboard rows add currentGameStreak/currentMatchStreak (same 3 queries, just project more fields)."
+  },
+  "owners2": {
+    "streakBackend": "src/lib/stats/**, src/lib/domain/playerStats.ts(+test), src/lib/events/matchEvents.ts, src/app/api/users/[username]/stats/route.ts, src/app/api/leaderboard/**, src/lib/notifications/** (create.ts expiry rule + format.ts 'milestone' case + tests), src/app/api/notifications/**, scripts/backfill-stats.ts",
+    "streakUi": "src/components/profile/**, src/app/(app)/profile/**, src/components/common/PlayerNameLink.tsx, src/components/dashboard/SelfStatsCard.tsx, src/components/match/Leaderboard.tsx, src/components/match/LeaderboardPodium.tsx, src/components/match/Podium.tsx, src/components/match/rankEffects.tsx, src/components/match/LeaderboardSection.tsx, src/components/layout/notificationAppearance.ts, src/components/streaks/**, src/lib/queries/users.ts, src/app/rules/rating/page.tsx"
   }
 }

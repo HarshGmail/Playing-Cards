@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import ProfileCard from '@/components/profile/ProfileCard';
 import MedalsTable from '@/components/profile/MedalsTable';
+import StreakStatsCard from '@/components/streaks/StreakStatsCard';
+import MilestonesSection from '@/components/streaks/MilestonesSection';
 import Leaderboard from '@/components/profile/Leaderboard';
 import { useUserStatsQuery } from '@/lib/queries/users';
 import { UserPlus, UserCheck, UserMinus } from 'lucide-react';
@@ -125,6 +127,8 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <ProfileCard user={user} actions={friendButton} />
         <MedalsTable stats={stats} />
+        <StreakStatsCard stats={stats} />
+        <MilestonesSection stats={stats} />
         {viewer && viewer.username === username && <Leaderboard />}
       </div>
     </div>

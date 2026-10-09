@@ -40,6 +40,8 @@ const STATS_PROJECTION = {
   gamesWon: 1,
   gamesPlayed: 1,
   matchesPlayed: 1,
+  'streaks.currentGameStreak': 1,
+  'streaks.currentMatchStreak': 1,
 } as const;
 
 type StatsRow = Pick<PlayerStats, keyof RankableStats>;

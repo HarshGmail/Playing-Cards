@@ -2,6 +2,23 @@ import { describe, it, expect } from 'vitest';
 import { formatNotification, formatRatingDelta } from './format';
 
 describe('formatNotification', () => {
+  it('formats a milestone with its emoji and links to the profile milestones section', () => {
+    const result = formatNotification({
+      type: 'milestone',
+      payload: { milestoneId: 'matchWins:1', title: 'First match win', emoji: '👑' },
+    });
+    expect(result).toEqual({
+      title: 'Milestone unlocked',
+      body: '👑 First match win',
+      url: '/profile#milestones',
+    });
+  });
+
+  it('falls back to a generic milestone body when the payload is incomplete', () => {
+    const result = formatNotification({ type: 'milestone', payload: {} });
+    expect(result.body).toBe('New milestone');
+  });
+
   it('formats a match win with rating delta and a celebrate link', () => {
     const result = formatNotification({
       type: 'match-won',

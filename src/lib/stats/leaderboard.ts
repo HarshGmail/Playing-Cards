@@ -9,6 +9,12 @@ export interface RankableStats {
   gamesWon: number;
   gamesPlayed: number;
   matchesPlayed: number;
+  streaks?: CurrentStreaks;
+}
+
+export interface CurrentStreaks {
+  currentGameStreak: number;
+  currentMatchStreak: number;
 }
 
 export interface RankableIdentity {
@@ -64,6 +70,8 @@ export function toLeaderboardRow(
     gamesWon: stats.gamesWon,
     gamesPlayed: stats.gamesPlayed,
     matchesPlayed: stats.matchesPlayed,
+    currentGameStreak: stats.streaks?.currentGameStreak ?? 0,
+    currentMatchStreak: stats.streaks?.currentMatchStreak ?? 0,
     isSelf: stats.userId === viewerId,
   };
 }

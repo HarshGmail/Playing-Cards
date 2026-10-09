@@ -6,7 +6,13 @@ import type { RankChanges } from '@/lib/domain/rankChanges';
 import { getPositionColor } from '@/lib/domain/positionColor';
 import { POSITION_CLASSES } from '@/components/match/positionClasses';
 import PlayerNameLink from '@/components/common/PlayerNameLink';
-import { MovedRowFlash, RANK_SPRING, RankDeltaChip } from '@/components/match/rankEffects';
+import StreakBadge from '@/components/streaks/StreakBadge';
+import {
+  MovedRowFlash,
+  RANK_SPRING,
+  RankDeltaChip,
+  type GameStreaksByPlayer,
+} from '@/components/match/rankEffects';
 import type { PlayersById } from '@/types';
 
 interface LeaderboardEntry {
@@ -29,6 +35,7 @@ interface LeaderboardProps {
   /** Keyed by userId; `entry.playerId` is a userId. */
   playersById: PlayersById;
   changes: RankChanges;
+  gameStreaks?: GameStreaksByPlayer;
   compact?: boolean;
 }
 
@@ -37,6 +44,7 @@ export default function Leaderboard({
   entries,
   playersById,
   changes,
+  gameStreaks,
   compact = false,
 }: LeaderboardProps) {
   const [gapMode, setGapMode] = useState<'interval' | 'leader'>('interval');
@@ -103,6 +111,11 @@ export default function Leaderboard({
                     {entry.isSharedPosition && (
                       <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(tied)</span>
                     )}
+                    <StreakBadge
+                      kind="game"
+                      count={gameStreaks?.get(entry.playerId) ?? 0}
+                      className="ml-1.5 align-middle"
+                    />
                     <RankDeltaChip change={change} className="ml-1.5 align-middle" />
                   </p>
                   {entry.isDnf && (

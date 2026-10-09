@@ -46,3 +46,23 @@ describe('rankByMetric', () => {
     ]);
   });
 });
+
+describe('rankByMetric current streaks', () => {
+  it('copies current streaks onto rows and defaults missing ones to zero', () => {
+    const rows = rankByMetric(
+      'rating',
+      [
+        {
+          stats: stats('a', { rating: 1300, streaks: { currentGameStreak: 3, currentMatchStreak: 2 } }),
+          identity: identity('Amy'),
+        },
+        { stats: stats('b', {}), identity: identity('Ben') },
+      ],
+      'a'
+    );
+    expect(rows.map((r) => [r.name, r.currentGameStreak, r.currentMatchStreak])).toEqual([
+      ['Amy', 3, 2],
+      ['Ben', 0, 0],
+    ]);
+  });
+});

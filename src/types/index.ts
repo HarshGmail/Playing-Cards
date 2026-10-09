@@ -111,6 +111,18 @@ export interface PlayerStatsSummary {
   winPct: number;
   averageRank: number;
   globalRank: number | null;
+  streaks: PlayerStreaksSummary;
+  milestones: Array<{ id: string; achievedAt: string }>;
+}
+
+export interface PlayerStreaksSummary {
+  longestGameStreak: number;
+  currentGameStreak: number;
+  gameStreakCounts: { 3: number; 4: number; 5: number; 6: number };
+  longestMatchStreak: number;
+  currentMatchStreak: number;
+  longestDayStreak: number;
+  currentDayStreak: number;
 }
 
 export type LeaderboardScope = 'friends' | 'global';
@@ -129,6 +141,8 @@ export interface LeaderboardRow {
   gamesWon: number;
   gamesPlayed: number;
   matchesPlayed: number;
+  currentGameStreak: number;
+  currentMatchStreak: number;
   isSelf: boolean;
 }
 
@@ -217,7 +231,8 @@ export type NotificationType =
   | 'match-invite-accepted'
   | 'match-invite-declined'
   | 'round-scored'
-  | 'match-won';
+  | 'match-won'
+  | 'milestone';
 
 export interface Notification {
   id: string;
