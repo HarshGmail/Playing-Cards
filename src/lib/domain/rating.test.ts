@@ -5,6 +5,8 @@ import {
   expectedScore,
   computeMatchDeltas,
   replayRatings,
+  matchRatingDeltas,
+  ratingHistoryFor,
   RatedMatch,
   RatedParticipant,
 } from './rating';
@@ -127,5 +129,56 @@ describe('replayRatings', () => {
     ]);
     const pool = sumOf(Array.from(states.values()).map((s) => s.rating));
     expect(Math.abs(pool - START_RATING * states.size)).toBeLessThanOrEqual(states.size);
+  });
+});
+
+describe('matchRatingDeltas', () => {
+  const match = (
+    matchId: string,
+    endedAt: string,
+    participants: RatedParticipant[]
+  ): RatedMatch => ({ matchId, endedAt: new Date(endedAt), roundsPlayed: 6, participants });
+
+  const history = [
+    match('m1', '2026-01-01', [participant('a', 1), participant('b', 2)]),
+    match('m2', '2026-01-02', [participant('a', 2), participant('b', 1)]),
+    match('m3', '2026-01-03', [participant('a', 1), participant('b', 2)]),
+  ];
+
+  it('returns the change each player got from that match, ignoring later ones', () => {
+    const deltas = matchRatingDeltas(history, 'm2');
+    const replayedToM2 = replayRatings(history.slice(0, 2));
+    expect(deltas.get('a')).toBe(replayedToM2.get('a')!.lastDelta);
+    expect(deltas.get('b')).toBe(replayedToM2.get('b')!.lastDelta);
+    expect(deltas.get('b')).toBeGreaterThan(0);
+  });
+
+  it('is empty for a match that is not rated', () => {
+    expect(matchRatingDeltas(history, 'missing').size).toBe(0);
+  });
+});
+
+describe('ratingHistoryFor', () => {
+  const match = (
+    matchId: string,
+    endedAt: string,
+    participants: RatedParticipant[]
+  ): RatedMatch => ({ matchId, endedAt: new Date(endedAt), roundsPlayed: 6, participants });
+
+  const history = [
+    match('m2', '2026-01-02', [participant('a', 2), participant('b', 1)]),
+    match('m1', '2026-01-01', [participant('a', 1), participant('b', 2)]),
+    match('m3', '2026-01-03', [participant('b', 1), participant('c', 2)]),
+  ];
+
+  it('lists one point per rated match in time order, ending at the current rating', () => {
+    const points = ratingHistoryFor(history, 'a');
+    expect(points.map((p) => p.matchId)).toEqual(['m1', 'm2']);
+    expect(points[0].delta).toBeGreaterThan(0);
+    expect(points[1].rating).toBe(replayRatings(history).get('a')!.rating);
+  });
+
+  it('is empty for a player with no rated matches', () => {
+    expect(ratingHistoryFor(history, 'nobody')).toEqual([]);
   });
 });

@@ -23,6 +23,7 @@ import RoundForm from '@/components/match/RoundForm';
 import SubmittedRounds from '@/components/match/SubmittedRounds';
 import RosterPanel from '@/components/match/RosterPanel';
 import ShareMatchButton from '@/components/match/ShareMatchButton';
+import MatchRecapButton from '@/components/match/MatchRecapButton';
 import JoinRequestsPanel from '@/components/match/JoinRequestsPanel';
 import EditRoundModal from '@/components/match/EditRoundModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -164,6 +165,9 @@ export default function MatchPage() {
             {match.name}
           </h1>
           <div className="flex items-center gap-2 shrink-0">
+            {match.status === 'ended' && match.roundsPlayed > 0 && (
+              <MatchRecapButton matchId={matchId} matchName={match.name} />
+            )}
             {isCreator && <ShareMatchButton matchId={matchId} />}
             {isCreator && match.status === 'active' && (
               <button

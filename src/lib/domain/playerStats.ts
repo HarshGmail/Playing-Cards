@@ -136,7 +136,7 @@ function recordPodium(podiums: PodiumCounts, rank: number): void {
   else if (rank === 3) podiums.third += 1;
 }
 
-function toRatedMatch(record: MatchStandingsRecord): RatedMatch | null {
+export function toRatedMatch(record: MatchStandingsRecord): RatedMatch | null {
   if (record.status !== 'ended' || !record.endedAt) return null;
   return {
     matchId: record.matchId,

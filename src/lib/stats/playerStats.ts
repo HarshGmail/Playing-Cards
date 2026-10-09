@@ -38,7 +38,7 @@ export interface PlayerStatsRebuild {
 
 type ExistingMilestones = Map<string, AchievedMilestoneDoc[] | null>;
 
-async function loadStandingsRecords(): Promise<MatchStandingsRecord[]> {
+export async function loadStandingsRecords(): Promise<MatchStandingsRecord[]> {
   const matchesCol = await getMatches();
   const matches = await matchesCol
     .find(

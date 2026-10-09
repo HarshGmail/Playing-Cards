@@ -85,7 +85,19 @@ function byEndedAtThenId(a: RatedMatch, b: RatedMatch): number {
   return a.matchId < b.matchId ? -1 : a.matchId > b.matchId ? 1 : 0;
 }
 
-export function replayRatings(matches: RatedMatch[]): Map<string, RatingState> {
+export interface RatingHistoryPoint {
+  matchId: string;
+  endedAt: Date;
+  rating: number;
+  delta: number;
+}
+
+type RatedMatchListener = (playerId: string, match: RatedMatch, state: RatingState) => void;
+
+export function replayRatings(
+  matches: RatedMatch[],
+  onRated?: RatedMatchListener
+): Map<string, RatingState> {
   const exactRatings = new Map<string, number>();
   const states = new Map<string, RatingState>();
 
@@ -102,15 +114,45 @@ export function replayRatings(matches: RatedMatch[]): Map<string, RatingState> {
       const previous = states.get(playerId);
       const shownBefore = Math.round(before);
       const shownAfter = Math.round(after);
-      states.set(playerId, {
+      const state: RatingState = {
         rating: shownAfter,
         peakRating: Math.max(previous?.peakRating ?? START_RATING, shownAfter),
         ratedMatches: (previous?.ratedMatches ?? 0) + 1,
         lastDelta: shownAfter - shownBefore,
         lastMatchId: match.matchId,
-      });
+      };
+      states.set(playerId, state);
+      onRated?.(playerId, match, state);
     }
   }
 
   return states;
+}
+
+export function ratingHistoryFor(matches: RatedMatch[], playerId: string): RatingHistoryPoint[] {
+  const history: RatingHistoryPoint[] = [];
+  replayRatings(matches, (ratedPlayerId, match, state) => {
+    if (ratedPlayerId !== playerId) return;
+    history.push({
+      matchId: match.matchId,
+      endedAt: match.endedAt,
+      rating: state.rating,
+      delta: state.lastDelta,
+    });
+  });
+  return history;
+}
+
+export function matchRatingDeltas(matches: RatedMatch[], matchId: string): Map<string, number> {
+  const target = matches.find((match) => match.matchId === matchId);
+  if (!target) return new Map();
+
+  const upToTarget = matches.filter((match) => byEndedAtThenId(match, target) <= 0);
+  const states = replayRatings(upToTarget);
+  const deltas = new Map<string, number>();
+  for (const { playerId } of target.participants) {
+    const state = states.get(playerId);
+    if (state?.lastMatchId === matchId) deltas.set(playerId, state.lastDelta);
+  }
+  return deltas;
 }
