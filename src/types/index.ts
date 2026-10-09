@@ -115,6 +115,14 @@ export interface PlayerStatsSummary {
   milestones: Array<{ id: string; achievedAt: string }>;
 }
 
+export interface RatingHistoryEntry {
+  matchId: string;
+  matchName: string;
+  endedAt: string;
+  rating: number;
+  delta: number;
+}
+
 export interface PlayerStreaksSummary {
   longestGameStreak: number;
   currentGameStreak: number;

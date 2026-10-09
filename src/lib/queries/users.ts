@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PlayerStatsSummary, User } from '@/types';
+import type { PlayerStatsSummary, RatingHistoryEntry, User } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
 import { userKeys, friendKeys, authKeys } from './keys';
 
@@ -104,6 +104,21 @@ export function useUserStatsQuery(username: string) {
       apiFetch<UserStatsResponse>(`/api/users/${username}/stats`).then(
         (data) => data.stats
       ),
+  });
+}
+
+interface RatingHistoryResponse {
+  history: RatingHistoryEntry[];
+}
+
+export function useRatingHistoryQuery(username: string) {
+  return useQuery({
+    queryKey: userKeys.ratingHistory(username),
+    queryFn: () =>
+      apiFetch<RatingHistoryResponse>(`/api/users/${username}/rating-history`).then(
+        (data) => data.history
+      ),
+    enabled: username.length > 0,
   });
 }
 

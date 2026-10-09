@@ -94,7 +94,7 @@ export default function MyProfilePage() {
           }
         />
 
-        <MedalsTable stats={stats} />
+        <MedalsTable stats={stats} username={user.username} />
         <StreakStatsCard stats={stats} />
         <MilestonesSection stats={stats} />
 

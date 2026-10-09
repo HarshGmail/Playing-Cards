@@ -1,14 +1,15 @@
 'use client';
 
-import { Trophy, Crown, Medal, Swords, ListOrdered, Gauge, Percent, Hash, TrendingUp } from 'lucide-react';
+import { Trophy, Crown, Medal, Swords, ListOrdered, Gauge, Percent } from 'lucide-react';
 import type { ReactNode } from 'react';
 import MedalIconRow from '@/components/profile/MedalIconRow';
-import RatingHelpLink from '@/components/rating/RatingHelpLink';
-import { formatWinPct, getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
+import RatingPanel from '@/components/profile/RatingPanel';
+import { formatWinPct } from '@/lib/domain/ratingTier';
 import type { UserStats } from '@/lib/queries/users';
 
 interface MedalsTableProps {
   stats?: UserStats;
+  username?: string;
 }
 
 const STARTING_RATING = 1200;
@@ -86,9 +87,7 @@ function TrophyShelf({ title, count, children, toneClasses }: TrophyShelfProps) 
   );
 }
 
-export default function MedalsTable({ stats = EMPTY_STATS }: MedalsTableProps) {
-  const tier = getRatingTier(stats.rating);
-
+export default function MedalsTable({ stats = EMPTY_STATS, username }: MedalsTableProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -96,44 +95,7 @@ export default function MedalsTable({ stats = EMPTY_STATS }: MedalsTableProps) {
         Trophy Cabinet
       </h3>
 
-      <div className="rounded-xl p-4 sm:p-5 mb-4 border border-yellow-200 dark:border-yellow-800/60 bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 dark:from-yellow-900/20 dark:via-amber-900/10 dark:to-orange-900/20 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-            Rating
-            <RatingHelpLink className="normal-case tracking-normal" />
-          </p>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-4xl font-extrabold text-gray-900 dark:text-white tabular-nums">
-              {Math.round(stats.rating)}
-            </span>
-            <span
-              className={`text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${TIER_BADGE_CLASSES[tier]}`}
-            >
-              {tier}
-            </span>
-          </div>
-        </div>
-        <div className="flex gap-6 text-sm">
-          <div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5" />
-              Peak
-            </p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
-              {Math.round(stats.peakRating)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
-              <Hash className="w-3.5 h-3.5" />
-              Global rank
-            </p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
-              {stats.globalRank === null ? '-' : `#${stats.globalRank}`}
-            </p>
-          </div>
-        </div>
-      </div>
+      <RatingPanel stats={stats} username={username} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <TrophyShelf
