@@ -79,13 +79,16 @@ export function useLogoutMutation() {
 }
 
 interface RecoverVerifyRequest {
+  username: string;
   email: string;
+  phone: string;
+  dob: string;
 }
 
 export function useRecoverVerifyMutation() {
   return useMutation({
     mutationFn: (data: RecoverVerifyRequest) =>
-      apiFetch<{ step: string }>('/api/auth/recover/verify', {
+      apiFetch<{ verified: boolean }>('/api/auth/recover/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -94,15 +97,13 @@ export function useRecoverVerifyMutation() {
 }
 
 interface RecoverResetRequest {
-  email: string;
-  code: string;
-  newPassword: string;
+  password: string;
 }
 
 export function useRecoverResetMutation() {
   return useMutation({
     mutationFn: (data: RecoverResetRequest) =>
-      apiFetch<void>('/api/auth/recover/reset', {
+      apiFetch<{ reset: boolean }>('/api/auth/recover/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

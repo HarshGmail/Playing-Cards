@@ -11,6 +11,28 @@ interface ForgotPasswordFormProps {
   onCancel?: () => void;
 }
 
+const INPUT_CLASSES =
+  'w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+const LABEL_CLASSES =
+  'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1';
+
+const VERIFY_FIELDS = [
+  { key: 'username', label: 'Username', type: 'text', autoComplete: 'username' },
+  { key: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
+  { key: 'phone', label: 'Phone', type: 'tel', autoComplete: 'tel' },
+  { key: 'dob', label: 'Date of Birth', type: 'date', autoComplete: 'bday' },
+] as const;
+
+type VerifyData = Record<(typeof VERIFY_FIELDS)[number]['key'], string>;
+
+const EMPTY_VERIFY_DATA: VerifyData = {
+  username: '',
+  email: '',
+  phone: '',
+  dob: '',
+};
+
 export default function ForgotPasswordForm({
   onSuccess,
   onCancel,
@@ -18,7 +40,7 @@ export default function ForgotPasswordForm({
   const verifyMutation = useRecoverVerifyMutation();
   const resetMutation = useRecoverResetMutation();
   const [step, setStep] = useState<'verify' | 'reset'>('verify');
-  const [email, setEmail] = useState('');
+  const [verifyData, setVerifyData] = useState<VerifyData>(EMPTY_VERIFY_DATA);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -28,7 +50,12 @@ export default function ForgotPasswordForm({
     setError('');
 
     try {
-      await verifyMutation.mutateAsync({ email });
+      await verifyMutation.mutateAsync({
+        username: verifyData.username.trim(),
+        email: verifyData.email.trim(),
+        phone: verifyData.phone.trim(),
+        dob: verifyData.dob,
+      });
       setStep('reset');
       setError('');
     } catch (err: any) {
@@ -46,11 +73,7 @@ export default function ForgotPasswordForm({
     }
 
     try {
-      await resetMutation.mutateAsync({
-        email,
-        code: '', // Code would typically come from the verify step
-        newPassword,
-      });
+      await resetMutation.mutateAsync({ password: newPassword });
 
       if (onSuccess) {
         onSuccess();
@@ -73,19 +96,25 @@ export default function ForgotPasswordForm({
           Enter your account details to verify your identity.
         </p>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Email
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-            disabled={verifyMutation.isPending}
-          />
-        </div>
+        {VERIFY_FIELDS.map(({ key, label, type, autoComplete }) => (
+          <div key={key}>
+            <label htmlFor={`recover-${key}`} className={LABEL_CLASSES}>
+              {label}
+            </label>
+            <input
+              id={`recover-${key}`}
+              type={type}
+              autoComplete={autoComplete}
+              value={verifyData[key]}
+              onChange={(e) =>
+                setVerifyData((prev) => ({ ...prev, [key]: e.target.value }))
+              }
+              className={INPUT_CLASSES}
+              required
+              disabled={verifyMutation.isPending}
+            />
+          </div>
+        ))}
 
         <div className="flex gap-3 pt-2">
           <button
@@ -121,17 +150,19 @@ export default function ForgotPasswordForm({
       </p>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="recover-new-password" className={LABEL_CLASSES}>
           New Password
         </label>
         <input
+          id="recover-new-password"
           type="password"
+          autoComplete="new-password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={INPUT_CLASSES}
           placeholder="••••••••"
           required
-          disabled={resetMutation.isPending || verifyMutation.isPending}
+          disabled={resetMutation.isPending}
         />
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           Min 8 chars, 1 number, 1 special char (!@#$%^&*)
@@ -139,17 +170,19 @@ export default function ForgotPasswordForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="recover-confirm-password" className={LABEL_CLASSES}>
           Confirm Password
         </label>
         <input
+          id="recover-confirm-password"
           type="password"
+          autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={INPUT_CLASSES}
           placeholder="••••••••"
           required
-          disabled={resetMutation.isPending || verifyMutation.isPending}
+          disabled={resetMutation.isPending}
         />
       </div>
 
