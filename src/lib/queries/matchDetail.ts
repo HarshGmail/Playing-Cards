@@ -209,6 +209,32 @@ export function useJoinRequestActionMutation(matchId: string) {
   });
 }
 
+interface AddToMatchRequest {
+  userId: string;
+  role: 'player' | 'spectator';
+}
+
+const ADD_TO_MATCH_PATH = {
+  player: 'roster',
+  spectator: 'spectators',
+} as const;
+
+export function useAddToMatchMutation(matchId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, role }: AddToMatchRequest) =>
+      apiFetch<void>(`/api/matches/${matchId}/${ADD_TO_MATCH_PATH[role]}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+    },
+  });
+}
+
 interface ShareMatchResponse {
   code: string;
   expiresAt: string;
