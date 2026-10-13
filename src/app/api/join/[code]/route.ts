@@ -42,9 +42,15 @@ export async function GET(
       return error('Share code expired', 'CODE_EXPIRED', 410);
     }
 
+    if (!ObjectId.isValid(shareLink.matchId)) {
+      logApiResponse(requestId, 404, Date.now() - startTime);
+      return notFound();
+    }
+
+    const matchObjectId = new ObjectId(shareLink.matchId);
     const matchesCol = await getMatches();
     const match = await matchesCol.findOne({
-      _id: shareLink.matchId,
+      _id: matchObjectId,
       deletedAt: null,
     });
 
@@ -118,9 +124,15 @@ export async function POST(
       return error('Share code expired', 'CODE_EXPIRED', 410);
     }
 
+    if (!ObjectId.isValid(shareLink.matchId)) {
+      logApiResponse(requestId, 404, Date.now() - startTime);
+      return notFound();
+    }
+
+    const matchObjectId = new ObjectId(shareLink.matchId);
     const matchesCol = await getMatches();
     const match = await matchesCol.findOne({
-      _id: shareLink.matchId,
+      _id: matchObjectId,
       deletedAt: null,
     });
 
@@ -148,7 +160,7 @@ export async function POST(
 
     if (shareLink.role === 'spectator') {
       await matchesCol.updateOne(
-        { _id: shareLink.matchId },
+        { _id: matchObjectId },
         {
           $push: { spectators: { userId, userName: user.name } },
           $inc: { version: 1 },
@@ -176,7 +188,7 @@ export async function POST(
     };
 
     await matchesCol.updateOne(
-      { _id: shareLink.matchId },
+      { _id: matchObjectId },
       {
         $push: { roster: newRosterEntry },
         $inc: { version: 1 },

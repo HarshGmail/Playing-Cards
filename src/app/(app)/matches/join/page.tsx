@@ -17,16 +17,7 @@ export default function JoinPage() {
     }
 
     setLoading(true);
-    try {
-      const res = await fetch(`/api/join/${code.toUpperCase()}`);
-      if (!res.ok) throw new Error('Invalid or expired code');
-
-      const data = await res.json();
-      router.push(`/matches/${data.match.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to join match');
-      setLoading(false);
-    }
+    router.push(`/join/${code.trim().toUpperCase()}`);
   };
 
   return (
