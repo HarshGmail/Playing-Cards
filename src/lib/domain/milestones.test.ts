@@ -59,12 +59,20 @@ describe('milestones', () => {
     ]);
   });
 
-  it('measures progress from the last reached threshold to the next', () => {
+  it('measures progress as the share of the next threshold already reached', () => {
     const games = milestoneProgress({ ...ZERO, gamesWon: 40 }, []).find(
       (p) => p.track.metric === 'gamesWon'
     )!;
     expect(games.next!.threshold).toBe(50);
-    expect(games.progressToNext).toBeCloseTo((40 - 25) / (50 - 25));
+    expect(games.progressToNext).toBeCloseTo(40 / 50);
+  });
+
+  it('shows a half-full bar when sitting on a threshold halfway to the next', () => {
+    const played = milestoneProgress({ ...ZERO, gamesPlayed: 250 }, []).find(
+      (p) => p.track.metric === 'gamesPlayed'
+    )!;
+    expect(played.next!.threshold).toBe(500);
+    expect(played.progressToNext).toBeCloseTo(0.5);
   });
 
   it('keeps a recorded milestone even if the stat later drops', () => {

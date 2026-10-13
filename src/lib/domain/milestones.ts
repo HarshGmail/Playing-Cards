@@ -153,10 +153,7 @@ export function milestoneProgress(
     const all = track.thresholds.map((threshold) => toMilestone(track, threshold));
     const achieved = all.filter((m) => achievedSet.has(m.id) || value >= m.threshold);
     const next = all.find((m) => !achievedSet.has(m.id) && value < m.threshold) ?? null;
-    const previousThreshold = achieved.length > 0 ? achieved[achieved.length - 1].threshold : 0;
-    const progressToNext = next
-      ? Math.min(1, Math.max(0, (value - previousThreshold) / (next.threshold - previousThreshold)))
-      : 1;
+    const progressToNext = next ? Math.min(1, Math.max(0, value / next.threshold)) : 1;
     return { track, value, achieved, next, progressToNext };
   });
 }
