@@ -63,10 +63,11 @@ async function main(): Promise<void> {
   await ensureIndexes();
   const milestoneNotificationsBefore = await countMilestoneNotifications();
   const matchCount = await recomputeAllStandings();
-  const { ratingChanges, newMilestones } = await rebuildAllPlayerStats();
+  const { ratingsByGame, newMilestones } = await rebuildAllPlayerStats();
   await notifyMilestones(newMilestones);
   const milestoneNotificationsAfter = await countMilestoneNotifications();
-  console.log(`Recomputed standings for ${matchCount} matches; rated ${ratingChanges.size} players.`);
+  const ratedGames = Array.from(ratingsByGame, ([game, ratings]) => `${game} (${ratings.size})`);
+  console.log(`Recomputed standings for ${matchCount} matches; rated games: ${ratedGames.join(', ')}.`);
   console.log(
     `Milestone notifications: ${milestoneNotificationsBefore} before, ${milestoneNotificationsAfter} after.`
   );

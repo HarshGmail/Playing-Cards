@@ -99,10 +99,25 @@ export interface PodiumCounts {
   third: number;
 }
 
+export interface GameRatingSummary {
+  key: string;
+  name: string;
+  rating: number;
+  peakRating: number;
+  ratedMatches: number;
+  globalRank?: number | null;
+}
+
+export interface RatedGame {
+  key: string;
+  name: string;
+}
+
 export interface PlayerStatsSummary {
   rating: number;
   peakRating: number;
   ratedMatches: number;
+  ratingsByGame: GameRatingSummary[];
   matchesPlayed: number;
   matchWins: number;
   podiums: PodiumCounts;

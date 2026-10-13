@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server';
 import { getUsers } from '@/lib/db/collections';
-import { success, notFound, error } from '@/lib/api/respond';
+import { success, notFound, error, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { loadRatingHistory } from '@/lib/stats/ratingHistory';
+import { ratingGameKeySchema } from '@/lib/stats/ratingGames';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,14 @@ export async function GET(
       username: params.username,
     });
 
+    const game = ratingGameKeySchema.safeParse(
+      request.nextUrl.searchParams.get('game') ?? undefined
+    );
+    if (!game.success) {
+      logApiResponse(requestId, 400, Date.now() - startTime);
+      return validationError('game must be a lowercase slug');
+    }
+
     const usersCol = await getUsers();
     const user = await usersCol.findOne({ username: params.username }, { projection: { _id: 1 } });
 
@@ -34,7 +43,7 @@ export async function GET(
       return notFound();
     }
 
-    const history = await loadRatingHistory(user._id!.toString());
+    const history = await loadRatingHistory(user._id!.toString(), game.data);
 
     logApiResponse(requestId, 200, Date.now() - startTime);
     return success({ history });

@@ -196,12 +196,20 @@ export interface AchievedMilestoneDoc {
   achievedAt: Date;
 }
 
+export interface GameRating {
+  name: string;
+  rating: number;
+  peakRating: number;
+  ratedMatches: number;
+}
+
 export interface PlayerStats {
   _id?: { toString(): string };
   userId: string;
   rating: number;
   peakRating: number;
   ratedMatches: number;
+  ratingsByGame?: Record<string, GameRating>;
   matchesPlayed: number;
   matchWins: number;
   podiums: PodiumCounts;

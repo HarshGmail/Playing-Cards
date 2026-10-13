@@ -1,11 +1,13 @@
 import type {
   AchievedMilestoneDoc,
+  GameRating,
   MatchStanding,
   PlayerStreaks,
   PodiumCounts,
 } from '@/lib/db/collections';
 import type { LeaderboardEntry } from '@/lib/domain/ranking';
 import type { MatchLeader } from '@/types';
+import { PRIMARY_RATING_GAME, RatingGame } from '@/lib/games/catalog';
 import { START_RATING, replayRatings, RatedMatch, RatingState } from './rating';
 import {
   dayStreaks,
@@ -24,7 +26,10 @@ export interface MatchStandingsRecord {
   createdAt: Date;
   endedAt: Date | null;
   standings: MatchStanding[];
+  game?: RatingGame;
 }
+
+export type RatingsByGame = Map<string, Map<string, RatingState>>;
 
 export type ActiveDaysByPlayer = Map<string, string[]>;
 
@@ -43,6 +48,7 @@ export interface PlayerStatsAggregate {
   rating: number;
   peakRating: number;
   ratedMatches: number;
+  ratingsByGame: Record<string, GameRating>;
   matchesPlayed: number;
   matchWins: number;
   podiums: PodiumCounts;
@@ -55,7 +61,7 @@ export interface PlayerStatsAggregate {
 
 export interface PlayerStatsBuild {
   stats: Map<string, PlayerStatsAggregate>;
-  ratings: Map<string, RatingState>;
+  ratingsByGame: RatingsByGame;
 }
 
 interface RankedStanding extends MatchStanding {
@@ -150,6 +156,57 @@ export function toRatedMatch(record: MatchStandingsRecord): RatedMatch | null {
   };
 }
 
+export function ratingGameOf(record: Pick<MatchStandingsRecord, 'game'>): RatingGame {
+  return record.game ?? PRIMARY_RATING_GAME;
+}
+
+export function ratedMatchesForGame(
+  records: MatchStandingsRecord[],
+  gameKey: string
+): RatedMatch[] {
+  return records
+    .filter((record) => ratingGameOf(record).key === gameKey)
+    .map(toRatedMatch)
+    .filter((match): match is RatedMatch => match !== null);
+}
+
+function gameNamesByKey(records: MatchStandingsRecord[]): Map<string, string> {
+  const names = new Map<string, string>();
+  for (const record of records) {
+    const game = ratingGameOf(record);
+    if (!names.has(game.key)) names.set(game.key, game.name);
+  }
+  return names;
+}
+
+export function replayRatingsByGame(records: MatchStandingsRecord[]): RatingsByGame {
+  const ratingsByGame: RatingsByGame = new Map();
+  for (const gameKey of Array.from(gameNamesByKey(records).keys())) {
+    const ratings = replayRatings(ratedMatchesForGame(records, gameKey));
+    if (ratings.size > 0) ratingsByGame.set(gameKey, ratings);
+  }
+  return ratingsByGame;
+}
+
+function gameRatingsOf(
+  userId: string,
+  ratingsByGame: RatingsByGame,
+  names: Map<string, string>
+): Record<string, GameRating> {
+  const gameRatings: Record<string, GameRating> = {};
+  for (const [gameKey, ratings] of Array.from(ratingsByGame)) {
+    const state = ratings.get(userId);
+    if (!state) continue;
+    gameRatings[gameKey] = {
+      name: names.get(gameKey) ?? gameKey,
+      rating: state.rating,
+      peakRating: state.peakRating,
+      ratedMatches: state.ratedMatches,
+    };
+  }
+  return gameRatings;
+}
+
 export function emptyPlayerStreaks(): PlayerStreaks {
   return {
     longestGameStreak: 0,
@@ -167,6 +224,7 @@ export const ZERO_PLAYER_STATS: Omit<PlayerStatsAggregate, 'userId'> = {
   rating: START_RATING,
   peakRating: START_RATING,
   ratedMatches: 0,
+  ratingsByGame: {},
   matchesPlayed: 0,
   matchWins: 0,
   podiums: { first: 0, second: 0, third: 0 },
@@ -182,6 +240,7 @@ export function emptyPlayerStats(userId: string): PlayerStatsAggregate {
     userId,
     ...ZERO_PLAYER_STATS,
     podiums: { ...ZERO_PLAYER_STATS.podiums },
+    ratingsByGame: {},
     streaks: emptyPlayerStreaks(),
   };
 }
@@ -332,20 +391,20 @@ export function buildPlayerStats(
     }
   }
 
-  const ratedMatches = records
-    .map(toRatedMatch)
-    .filter((match): match is RatedMatch => match !== null);
-  const ratings = replayRatings(ratedMatches);
+  const ratingsByGame = replayRatingsByGame(records);
+  const primaryRatings = ratingsByGame.get(PRIMARY_RATING_GAME.key) ?? new Map<string, RatingState>();
+  const names = gameNamesByKey(records);
   const matchWinsInOrder = matchWinSequences(records);
 
   const stats = new Map<string, PlayerStatsAggregate>();
   for (const [userId, tally] of Array.from(tallies)) {
-    const rating = ratings.get(userId);
+    const rating = primaryRatings.get(userId);
     stats.set(userId, {
       ...emptyPlayerStats(userId),
       rating: rating?.rating ?? START_RATING,
       peakRating: rating?.peakRating ?? START_RATING,
       ratedMatches: rating?.ratedMatches ?? 0,
+      ratingsByGame: gameRatingsOf(userId, ratingsByGame, names),
       matchesPlayed: tally.matchesPlayed,
       matchWins: tally.matchWins,
       podiums: tally.podiums,
@@ -361,5 +420,5 @@ export function buildPlayerStats(
     });
   }
 
-  return { stats, ratings };
+  return { stats, ratingsByGame };
 }

@@ -10,12 +10,13 @@ import {
   ActiveDaysByPlayer,
   buildPlayerStats,
   MatchStandingsRecord,
+  RatingsByGame,
   resolveMilestones,
   toMilestoneStats,
   ZERO_PLAYER_STATS,
 } from '@/lib/domain/playerStats';
-import type { RatingState } from '@/lib/domain/rating';
 import type { Milestone } from '@/lib/domain/milestones';
+import { ratingGameFor } from '@/lib/games/catalog';
 import { APP_TIME_ZONE } from '@/lib/domain/streaks';
 
 const STANDINGS_RECORD_PROJECTION = {
@@ -24,15 +25,16 @@ const STANDINGS_RECORD_PROJECTION = {
   createdAt: 1,
   endedAt: 1,
   standings: 1,
+  gameType: 1,
+  gameLabel: 1,
 } as const;
 
 const DAY_KEY_FORMAT = '%Y-%m-%d';
 
-export type RatingChanges = Map<string, RatingState>;
 export type NewMilestones = Map<string, Milestone[]>;
 
 export interface PlayerStatsRebuild {
-  ratingChanges: RatingChanges;
+  ratingsByGame: RatingsByGame;
   newMilestones: NewMilestones;
 }
 
@@ -54,6 +56,7 @@ export async function loadStandingsRecords(): Promise<MatchStandingsRecord[]> {
     createdAt: match.createdAt,
     endedAt: match.endedAt,
     standings: match.standings ?? [],
+    game: ratingGameFor(match.gameType, match.gameLabel),
   }));
 }
 
@@ -97,7 +100,7 @@ export async function rebuildAllPlayerStats(): Promise<PlayerStatsRebuild> {
     loadActiveDays(records.map((record) => record.matchId)),
     loadExistingMilestones(),
   ]);
-  const { stats, ratings } = buildPlayerStats(records, activeDays);
+  const { stats, ratingsByGame } = buildPlayerStats(records, activeDays);
   const updatedAt = new Date();
   const firstMilestoneRun = isFirstMilestoneRun(existingMilestones);
   const newMilestones: NewMilestones = new Map();
@@ -132,5 +135,5 @@ export async function rebuildAllPlayerStats(): Promise<PlayerStatsRebuild> {
     { $set: { ...ZERO_PLAYER_STATS, updatedAt } }
   );
 
-  return { ratingChanges: ratings, newMilestones };
+  return { ratingsByGame, newMilestones };
 }

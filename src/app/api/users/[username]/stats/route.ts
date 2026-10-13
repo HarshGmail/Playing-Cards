@@ -6,7 +6,9 @@ import { requireAuth } from '@/lib/api/auth';
 import { emptyPlayerStreaks, ZERO_PLAYER_STATS } from '@/lib/domain/playerStats';
 import { dayKey, liveDayStreak } from '@/lib/domain/streaks';
 import { strictlyAheadFilter } from '@/lib/stats/leaderboard';
-import type { PlayerStatsSummary, PlayerStreaksSummary } from '@/types';
+import { PRIMARY_RATING_GAME } from '@/lib/games/catalog';
+import { countAheadInGame } from '@/lib/stats/ratingGames';
+import type { GameRatingSummary, PlayerStatsSummary, PlayerStreaksSummary } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,12 +32,57 @@ function toMilestonesSummary(doc: PlayerStats | null): PlayerStatsSummary['miles
   }));
 }
 
-function toSummary(doc: PlayerStats | null, globalRank: number | null): PlayerStatsSummary {
+type RankedGameRating = GameRatingSummary & { globalRank: number | null };
+
+function primaryGameRating(source: Pick<PlayerStats, 'rating' | 'peakRating' | 'ratedMatches'>): GameRatingSummary {
+  return {
+    key: PRIMARY_RATING_GAME.key,
+    name: PRIMARY_RATING_GAME.name,
+    rating: source.rating,
+    peakRating: source.peakRating,
+    ratedMatches: source.ratedMatches,
+  };
+}
+
+function otherGameRatings(doc: PlayerStats | null): GameRatingSummary[] {
+  return Object.entries(doc?.ratingsByGame ?? {})
+    .filter(([key]) => key !== PRIMARY_RATING_GAME.key)
+    .map(([key, gameRating]) => ({ key, ...gameRating }))
+    .sort((a, b) => b.ratedMatches - a.ratedMatches);
+}
+
+async function rankGameRating(
+  doc: PlayerStats,
+  gameRating: GameRatingSummary
+): Promise<RankedGameRating> {
+  const ahead = await countAheadInGame(gameRating.key, {
+    ...doc,
+    rating: gameRating.rating,
+  });
+  return { ...gameRating, globalRank: ahead + 1 };
+}
+
+async function rankedGameRatings(doc: PlayerStats | null, primaryRank: number | null) {
+  const primary: RankedGameRating = {
+    ...primaryGameRating(doc ?? ZERO_PLAYER_STATS),
+    globalRank: primaryRank,
+  };
+  if (!doc) return [primary];
+  const others = await Promise.all(otherGameRatings(doc).map((g) => rankGameRating(doc, g)));
+  return [primary, ...others];
+}
+
+function toSummary(
+  doc: PlayerStats | null,
+  globalRank: number | null,
+  ratingsByGame: RankedGameRating[]
+): PlayerStatsSummary {
   const source = doc ?? ZERO_PLAYER_STATS;
   return {
     rating: source.rating,
     peakRating: source.peakRating,
     ratedMatches: source.ratedMatches,
+    ratingsByGame,
     matchesPlayed: source.matchesPlayed,
     matchWins: source.matchWins,
     podiums: { ...source.podiums },
@@ -91,7 +138,12 @@ export async function GET(
 
     const playerStatsCol = await getPlayerStats();
     const statsDoc = await playerStatsCol.findOne({ userId: user._id!.toString() });
-    const summary = toSummary(statsDoc, await globalRankOf(statsDoc));
+    const globalRank = await globalRankOf(statsDoc);
+    const summary = toSummary(
+      statsDoc,
+      globalRank,
+      await rankedGameRatings(statsDoc, globalRank)
+    );
 
     logApiResponse(requestId, 200, Date.now() - startTime);
 

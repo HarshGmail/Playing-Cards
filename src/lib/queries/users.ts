@@ -111,13 +111,13 @@ interface RatingHistoryResponse {
   history: RatingHistoryEntry[];
 }
 
-export function useRatingHistoryQuery(username: string) {
+export function useRatingHistoryQuery(username: string, game: string) {
   return useQuery({
-    queryKey: userKeys.ratingHistory(username),
+    queryKey: userKeys.ratingHistory(username, game),
     queryFn: () =>
-      apiFetch<RatingHistoryResponse>(`/api/users/${username}/rating-history`).then(
-        (data) => data.history
-      ),
+      apiFetch<RatingHistoryResponse>(
+        `/api/users/${username}/rating-history?game=${encodeURIComponent(game)}`
+      ).then((data) => data.history),
     enabled: username.length > 0,
   });
 }

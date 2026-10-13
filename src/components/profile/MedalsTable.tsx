@@ -28,6 +28,7 @@ const EMPTY_STATS: UserStats = {
   rating: STARTING_RATING,
   peakRating: STARTING_RATING,
   ratedMatches: 0,
+  ratingsByGame: [],
   matchesPlayed: 0,
   matchWins: 0,
   podiums: { first: 0, second: 0, third: 0 },

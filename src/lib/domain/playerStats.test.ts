@@ -184,7 +184,7 @@ describe('buildPlayerStats', () => {
   });
 
   it('excludes DNF players from played counts but still rates them last', () => {
-    const { stats, ratings } = buildPlayerStats([
+    const { stats, ratingsByGame } = buildPlayerStats([
       record('m1', [
         standing('a', 1),
         standing('b', 2),
@@ -192,8 +192,37 @@ describe('buildPlayerStats', () => {
       ]),
     ]);
     expect(stats.get('quit')).toMatchObject({ matchesPlayed: 0, gamesWon: 0, gamesPlayed: 0 });
-    expect(ratings.get('quit')!.lastDelta).toBeLessThan(0);
+    expect(ratingsByGame.get('least-count')!.get('quit')!.lastDelta).toBeLessThan(0);
     expect(stats.get('quit')!.rating).toBeLessThan(stats.get('b')!.rating);
+  });
+
+  it('rates each game on its own ladder and keeps Least Count as the headline rating', () => {
+    const kittens = { key: 'exploding-kittens', name: 'Exploding Kittens' };
+    const { stats, ratingsByGame } = buildPlayerStats([
+      record('lc', [standing('a', 1), standing('b', 2)]),
+      record('ek', [standing('b', 1), standing('a', 2)], {
+        endedAt: new Date('2026-01-02'),
+        game: kittens,
+      }),
+    ]);
+
+    const a = stats.get('a')!;
+    expect(a.rating).toBeGreaterThan(START_RATING);
+    expect(a.ratedMatches).toBe(1);
+    expect(a.ratingsByGame['least-count']).toMatchObject({ name: 'Least Count', ratedMatches: 1 });
+    expect(a.ratingsByGame[kittens.key]).toMatchObject({ name: kittens.name, ratedMatches: 1 });
+    expect(a.ratingsByGame[kittens.key].rating).toBeLessThan(START_RATING);
+    expect(Array.from(ratingsByGame.keys()).sort()).toEqual([kittens.key, 'least-count']);
+  });
+
+  it('leaves the headline rating at the start for players who only played other games', () => {
+    const { stats } = buildPlayerStats([
+      record('ek', [standing('a', 1), standing('b', 2)], {
+        game: { key: 'exploding-kittens', name: 'Exploding Kittens' },
+      }),
+    ]);
+    expect(stats.get('a')).toMatchObject({ rating: START_RATING, ratedMatches: 0 });
+    expect(stats.get('a')!.ratingsByGame['least-count']).toBeUndefined();
   });
 
   it('skips matches with no rounds', () => {

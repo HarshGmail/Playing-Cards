@@ -79,3 +79,32 @@ export function gameDisplayName(
 export function rulesPathFor(gameType: GameType | undefined): string | null {
   return GAMES[toGameType(gameType)].rulesPath;
 }
+
+export interface RatingGame {
+  key: string;
+  name: string;
+}
+
+export const PRIMARY_RATING_GAME: RatingGame = {
+  key: DEFAULT_GAME_TYPE,
+  name: GAMES[DEFAULT_GAME_TYPE].label,
+};
+
+export const RATING_GAME_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const NON_SLUG_CHARACTERS = /[^a-z0-9]+/g;
+const EDGE_DASHES = /^-+|-+$/g;
+
+function slugify(label: string): string {
+  return label.toLowerCase().replace(NON_SLUG_CHARACTERS, '-').replace(EDGE_DASHES, '');
+}
+
+export function ratingGameFor(
+  gameType: GameType | undefined,
+  gameLabel?: string | null
+): RatingGame {
+  const type = toGameType(gameType);
+  const name = gameDisplayName(type, gameLabel);
+  if (type !== 'other') return { key: type, name };
+  return { key: slugify(name) || type, name };
+}

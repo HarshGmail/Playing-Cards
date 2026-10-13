@@ -8,6 +8,7 @@ import { StreakBadges } from '@/components/streaks/StreakBadge';
 import RatingHelpLink from '@/components/rating/RatingHelpLink';
 import { useLeaderboardQuery } from '@/lib/queries/leaderboard';
 import { formatWinPct, getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
+import { PRIMARY_RATING_GAME } from '@/lib/games/catalog';
 import type { LeaderboardMetric, LeaderboardRow, LeaderboardScope } from '@/types';
 
 const SCOPE_OPTIONS: { value: LeaderboardScope; label: string }[] = [
@@ -139,12 +140,17 @@ function pinnedSelfRow(
 export default function Leaderboard() {
   const [scope, setScope] = useState<LeaderboardScope>('friends');
   const [metric, setMetric] = useState<LeaderboardMetric>('rating');
+  const [gameKey, setGameKey] = useState(PRIMARY_RATING_GAME.key);
 
-  const { data, isPending, isError, isPlaceholderData } = useLeaderboardQuery(scope, metric);
+  const { data, isPending, isError, isPlaceholderData } = useLeaderboardQuery(scope, metric, gameKey);
 
+  const games = data?.games ?? [];
+  const showGamePicker = metric === 'rating' && games.length > 1;
+  const isPrimaryGame = gameKey === PRIMARY_RATING_GAME.key;
   const rows = data?.rows ?? [];
   const pinnedRow = data ? pinnedSelfRow(scope, rows, data.self) : null;
-  const hasNoFriends = scope === 'friends' && rows.length <= 1;
+  const hasNoFriends = scope === 'friends' && isPrimaryGame && rows.length <= 1;
+  const noRatedPlayers = rows.length === 0 && (scope === 'global' || !isPrimaryGame);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
@@ -169,6 +175,17 @@ export default function Leaderboard() {
           />
         </div>
       </div>
+
+      {showGamePicker && (
+        <div className="mb-4 max-w-full overflow-x-auto">
+          <SegmentedToggle
+            ariaLabel="Leaderboard game"
+            options={games.map((game) => ({ value: game.key, label: game.name }))}
+            value={gameKey}
+            onChange={setGameKey}
+          />
+        </div>
+      )}
 
       {isPending ? (
         <LeaderboardSkeleton />
@@ -195,7 +212,7 @@ export default function Leaderboard() {
               Add friends to see how you stack up against them.
             </p>
           )}
-          {scope === 'global' && rows.length === 0 && (
+          {noRatedPlayers && (
             <p className="text-gray-600 dark:text-gray-400">No ranked players yet.</p>
           )}
         </div>

@@ -1,9 +1,9 @@
 import { ObjectId } from 'mongodb';
 import { getMatches, getScores, Match } from '@/lib/db/collections';
 import { buildMatchRecap, MatchRecap } from '@/lib/domain/matchRecap';
-import { roundScoresWithinCutoff, toRatedMatch } from '@/lib/domain/playerStats';
-import { matchRatingDeltas, RatedMatch } from '@/lib/domain/rating';
-import { gameDisplayName } from '@/lib/games/catalog';
+import { ratedMatchesForGame, roundScoresWithinCutoff } from '@/lib/domain/playerStats';
+import { matchRatingDeltas } from '@/lib/domain/rating';
+import { gameDisplayName, ratingGameFor } from '@/lib/games/catalog';
 import { loadStandingsRecords } from './playerStats';
 
 const SCORE_PROJECTION = { _id: 0, playerId: 1, round: 1, value: 1 } as const;
@@ -31,10 +31,8 @@ function canView(match: Match, userId: string): boolean {
   );
 }
 
-async function loadRatingDeltas(matchId: string): Promise<Map<string, number>> {
-  const ratedMatches = (await loadStandingsRecords())
-    .map(toRatedMatch)
-    .filter((match): match is RatedMatch => match !== null);
+async function loadRatingDeltas(matchId: string, gameKey: string): Promise<Map<string, number>> {
+  const ratedMatches = ratedMatchesForGame(await loadStandingsRecords(), gameKey);
   return matchRatingDeltas(ratedMatches, matchId);
 }
 
@@ -52,7 +50,7 @@ export async function loadMatchRecap(matchId: string, userId: string): Promise<M
   const scoresCol = await getScores();
   const [scores, ratingDeltas] = await Promise.all([
     scoresCol.find({ matchId }, { projection: SCORE_PROJECTION }).toArray(),
-    loadRatingDeltas(matchId),
+    loadRatingDeltas(matchId, ratingGameFor(match.gameType, match.gameLabel).key),
   ]);
 
   return {

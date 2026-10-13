@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gameDisplayName, rulesPathFor, toGameType } from './catalog';
+import { gameDisplayName, ratingGameFor, rulesPathFor, toGameType } from './catalog';
 
 describe('toGameType', () => {
   it('passes through known game types', () => {
@@ -49,5 +49,25 @@ describe('rulesPathFor', () => {
 
   it('has no rules page for an unspecified game', () => {
     expect(rulesPathFor('other')).toBeNull();
+  });
+});
+
+describe('ratingGameFor', () => {
+  it('rates catalog games under their type', () => {
+    expect(ratingGameFor('least-count')).toEqual({ key: 'least-count', name: 'Least Count' });
+    expect(ratingGameFor(undefined)).toEqual({ key: 'least-count', name: 'Least Count' });
+  });
+
+  it('gives each named other game its own key, ignoring case and spacing', () => {
+    expect(ratingGameFor('other', 'Exploding Kittens')).toEqual({
+      key: 'exploding-kittens',
+      name: 'Exploding Kittens',
+    });
+    expect(ratingGameFor('other', '  exploding   KITTENS! ').key).toBe('exploding-kittens');
+  });
+
+  it('falls back to a shared key when an other game has no usable name', () => {
+    expect(ratingGameFor('other', null).key).toBe('other');
+    expect(ratingGameFor('other', '???').key).toBe('other');
   });
 });

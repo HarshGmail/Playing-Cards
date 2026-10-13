@@ -15,7 +15,8 @@ import {
   TimedRating,
 } from '@/lib/domain/ratingHistory';
 import { useRatingHistoryQuery, UserStats } from '@/lib/queries/users';
-import type { RatingHistoryEntry } from '@/types';
+import { PRIMARY_RATING_GAME } from '@/lib/games/catalog';
+import type { GameRatingSummary, RatingHistoryEntry } from '@/types';
 
 const RatingHistoryChart = dynamic(() => import('@/components/profile/RatingHistoryChart'), {
   ssr: false,
@@ -42,6 +43,20 @@ function toTimedRatings(history: RatingHistoryEntry[]): TimedRating[] {
   }));
 }
 
+function gameRatingsOf(stats: UserStats): GameRatingSummary[] {
+  if (stats.ratingsByGame?.length) return stats.ratingsByGame;
+  return [
+    {
+      key: PRIMARY_RATING_GAME.key,
+      name: PRIMARY_RATING_GAME.name,
+      rating: stats.rating,
+      peakRating: stats.peakRating,
+      ratedMatches: stats.ratedMatches,
+      globalRank: stats.globalRank,
+    },
+  ];
+}
+
 function changeClasses(change: number): string {
   if (change > 0) return 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/40';
   if (change < 0) return 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/40';
@@ -50,21 +65,34 @@ function changeClasses(change: number): string {
 
 export default function RatingPanel({ stats, username = '' }: RatingPanelProps) {
   const [range, setRange] = useState<RatingRange>(DEFAULT_RANGE);
-  const { data: history, isLoading } = useRatingHistoryQuery(username);
-  const tier = getRatingTier(stats.rating);
+  const gameRatings = gameRatingsOf(stats);
+  const [gameKey, setGameKey] = useState(gameRatings[0].key);
+  const selected = gameRatings.find((game) => game.key === gameKey) ?? gameRatings[0];
+  const { data: history, isLoading } = useRatingHistoryQuery(username, selected.key);
+  const tier = getRatingTier(selected.rating);
   const rangeWindow = ratingWindow(toTimedRatings(history ?? []), range, Date.now());
 
   return (
     <div className="rounded-xl p-4 sm:p-5 mb-4 border border-yellow-200 dark:border-yellow-800/60 bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 dark:from-yellow-900/20 dark:via-amber-900/10 dark:to-orange-900/20">
+      {gameRatings.length > 1 && (
+        <div className="mb-4 max-w-full overflow-x-auto">
+          <SegmentedToggle
+            options={gameRatings.map((game) => ({ value: game.key, label: game.name }))}
+            value={selected.key}
+            onChange={setGameKey}
+            ariaLabel="Rating game"
+          />
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-            Rating
+            {selected.name} rating
             <RatingHelpLink className="normal-case tracking-normal" />
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <span className="text-4xl font-extrabold text-gray-900 dark:text-white tabular-nums">
-              {Math.round(stats.rating)}
+              {Math.round(selected.rating)}
             </span>
             {history && (
               <span
@@ -91,7 +119,7 @@ export default function RatingPanel({ stats, username = '' }: RatingPanelProps) 
               Peak
             </p>
             <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
-              {Math.round(stats.peakRating)}
+              {Math.round(selected.peakRating)}
             </p>
           </div>
           <div>
@@ -100,7 +128,7 @@ export default function RatingPanel({ stats, username = '' }: RatingPanelProps) 
               Global rank
             </p>
             <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
-              {stats.globalRank === null ? '-' : `#${stats.globalRank}`}
+              {selected.globalRank == null ? '-' : `#${selected.globalRank}`}
             </p>
           </div>
         </div>

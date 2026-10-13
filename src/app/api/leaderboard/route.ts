@@ -15,6 +15,15 @@ import {
   strictlyAheadFilter,
   toLeaderboardRow,
 } from '@/lib/stats/leaderboard';
+import {
+  countAheadInGame,
+  gameRatingProjection,
+  gameRatingStages,
+  isPrimaryGame,
+  loadRatedGames,
+  ratingGameKeySchema,
+  withGameRating,
+} from '@/lib/stats/ratingGames';
 import type { LeaderboardMetric, LeaderboardRow } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +37,7 @@ const querySchema = z.object({
   scope: z.enum(['friends', 'global']).default('friends'),
   metric: z.enum(['rating', 'winPct']).default('rating'),
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
+  game: ratingGameKeySchema,
 });
 
 const STATS_PROJECTION = {
@@ -44,7 +54,7 @@ const STATS_PROJECTION = {
   'streaks.currentMatchStreak': 1,
 } as const;
 
-type StatsRow = Pick<PlayerStats, keyof RankableStats>;
+type StatsRow = Pick<PlayerStats, keyof RankableStats | 'ratingsByGame'>;
 
 function zeroStats(userId: string): RankableStats {
   return { userId, ...ZERO_PLAYER_STATS, podiums: { ...ZERO_PLAYER_STATS.podiums } };
@@ -73,7 +83,42 @@ async function loadIdentities(userIds: string[]): Promise<Map<string, RankableId
   );
 }
 
-async function friendsLeaderboard(viewerId: string, metric: LeaderboardMetric) {
+interface LeaderboardQuery {
+  viewerId: string;
+  metric: LeaderboardMetric;
+  gameKey: string;
+}
+
+function isGameRatingQuery({ metric, gameKey }: LeaderboardQuery): boolean {
+  return metric === 'rating' && !isPrimaryGame(gameKey);
+}
+
+function statsProjection(query: LeaderboardQuery) {
+  return isGameRatingQuery(query)
+    ? { ...STATS_PROJECTION, ...gameRatingProjection(query.gameKey) }
+    : STATS_PROJECTION;
+}
+
+function friendsStatsFor(
+  query: LeaderboardQuery,
+  memberIds: string[],
+  statsById: Map<string, StatsRow>
+): Map<string, RankableStats> {
+  const statsByMember = new Map<string, RankableStats>();
+  for (const id of memberIds) {
+    const doc = statsById.get(id);
+    if (!isGameRatingQuery(query)) {
+      statsByMember.set(id, doc ?? zeroStats(id));
+      continue;
+    }
+    const rated = doc ? withGameRating(doc, query.gameKey) : null;
+    if (rated) statsByMember.set(id, rated);
+  }
+  return statsByMember;
+}
+
+async function friendsLeaderboard(query: LeaderboardQuery) {
+  const { viewerId, metric } = query;
   const friendshipsCol = await getFriendships();
   const friendships = await friendshipsCol
     .find({ $or: [{ userA: viewerId }, { userB: viewerId }] }, { projection: { userA: 1, userB: 1 } })
@@ -85,35 +130,51 @@ async function friendsLeaderboard(viewerId: string, metric: LeaderboardMetric) {
   const playerStatsCol = await getPlayerStats();
   const [statsDocs, identities] = await Promise.all([
     playerStatsCol
-      .find({ userId: { $in: memberIds } }, { projection: STATS_PROJECTION })
+      .find({ userId: { $in: memberIds } }, { projection: statsProjection(query) })
       .toArray() as Promise<StatsRow[]>,
     loadIdentities(memberIds),
   ]);
-  const statsById = new Map(statsDocs.map((doc) => [doc.userId, doc]));
+  const statsByMember = friendsStatsFor(
+    query,
+    memberIds,
+    new Map(statsDocs.map((doc) => [doc.userId, doc]))
+  );
 
   const rows = rankByMetric(
     metric,
-    memberIds
-      .filter((id) => identities.has(id))
-      .map((id) => ({ stats: statsById.get(id) ?? zeroStats(id), identity: identities.get(id)! })),
+    Array.from(statsByMember)
+      .filter(([id]) => identities.has(id))
+      .map(([id, stats]) => ({ stats, identity: identities.get(id)! })),
     viewerId
   );
   return { rows, self: rows.find((row) => row.isSelf) ?? null };
 }
 
-async function globalLeaderboard(viewerId: string, metric: LeaderboardMetric, limit: number) {
+function eligibleStages(query: LeaderboardQuery) {
+  return isGameRatingQuery(query) ? gameRatingStages(query.gameKey) : [{ $match: HAS_PLAYED }];
+}
+
+function countAhead(query: LeaderboardQuery, stats: RankableStats): Promise<number> {
+  if (isGameRatingQuery(query)) return countAheadInGame(query.gameKey, stats);
+  return getPlayerStats().then((col) =>
+    col.countDocuments({ ...HAS_PLAYED, ...strictlyAheadFilter(query.metric, stats) })
+  );
+}
+
+async function globalLeaderboard(query: LeaderboardQuery, limit: number) {
+  const { viewerId, metric } = query;
   const playerStatsCol = await getPlayerStats();
   const [facet] = await playerStatsCol
     .aggregate<{ top: StatsRow[]; self: StatsRow[] }>([
+      ...eligibleStages(query),
       {
         $facet: {
           top: [
-            { $match: HAS_PLAYED },
             { $sort: mongoSort(metric) },
             { $limit: limit },
             { $project: STATS_PROJECTION },
           ],
-          self: [{ $match: { userId: viewerId, ...HAS_PLAYED } }, { $project: STATS_PROJECTION }],
+          self: [{ $match: { userId: viewerId } }, { $project: STATS_PROJECTION }],
         },
       },
     ])
@@ -125,9 +186,7 @@ async function globalLeaderboard(viewerId: string, metric: LeaderboardMetric, li
 
   const [identities, viewerAheadCount] = await Promise.all([
     loadIdentities([...top.map((doc) => doc.userId), viewerId]),
-    viewerStats && !viewerInTop
-      ? playerStatsCol.countDocuments({ ...HAS_PLAYED, ...strictlyAheadFilter(metric, viewerStats) })
-      : Promise.resolve(0),
+    viewerStats && !viewerInTop ? countAhead(query, viewerStats) : Promise.resolve(0),
   ]);
   const identityOf = (userId: string) => identities.get(userId) ?? UNKNOWN_IDENTITY;
 
@@ -162,17 +221,20 @@ export async function GET(request: NextRequest) {
     const parsed = querySchema.safeParse(searchParams);
     if (!parsed.success) {
       logApiResponse(requestId, 400, Date.now() - startTime);
-      return validationError('scope must be friends|global, metric rating|winPct, limit 1-100');
+      return validationError(
+        'scope must be friends|global, metric rating|winPct, limit 1-100, game a lowercase slug'
+      );
     }
-    const { scope, metric, limit } = parsed.data;
+    const { scope, metric, limit, game } = parsed.data;
+    const query: LeaderboardQuery = { viewerId: userId, metric, gameKey: game };
 
-    const result =
-      scope === 'friends'
-        ? await friendsLeaderboard(userId, metric)
-        : await globalLeaderboard(userId, metric, limit);
+    const [result, games] = await Promise.all([
+      scope === 'friends' ? friendsLeaderboard(query) : globalLeaderboard(query, limit),
+      loadRatedGames(),
+    ]);
 
     logApiResponse(requestId, 200, Date.now() - startTime);
-    return success(result);
+    return success({ ...result, games });
   } catch (err) {
     logError(requestId, err);
     logApiResponse(requestId, 500, Date.now() - startTime);

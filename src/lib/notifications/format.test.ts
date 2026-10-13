@@ -51,6 +51,14 @@ describe('formatNotification', () => {
     expect(result.url).toBe('/profile');
   });
 
+  it('names the game whose rating moved', () => {
+    const result = formatNotification({
+      type: 'match-won',
+      payload: { matchId: 'm1', matchName: 'Kitten Night', gameName: 'Exploding Kittens', ratingDelta: 9 },
+    });
+    expect(result.body).toBe('You won Kitten Night! 🏆 +9 rating (Exploding Kittens)');
+  });
+
   it('omits the rating when the delta is null', () => {
     const result = formatNotification({
       type: 'match-won',

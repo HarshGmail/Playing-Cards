@@ -38,7 +38,9 @@ function profileUrl(username: unknown): string {
 
 function formatMatchWon(payload: Record<string, unknown>): FormattedNotification {
   const matchName = text(payload.matchName) || 'the match';
-  const delta = formatRatingDelta(payload.ratingDelta);
+  const gameName = text(payload.gameName);
+  const ratingDelta = formatRatingDelta(payload.ratingDelta);
+  const delta = ratingDelta && gameName ? `${ratingDelta} (${gameName})` : ratingDelta;
   return {
     title: 'Match won',
     body: delta ? `You won ${matchName}! 🏆 ${delta}` : `You won ${matchName}! 🏆`,

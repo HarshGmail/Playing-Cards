@@ -3,7 +3,10 @@ import { getMatches, getScores, Match, MatchStanding } from '@/lib/db/collection
 import { computeMatchLeaderboard } from '@/lib/domain/ranking';
 import { roundScoresWithinCutoff, toStandings, withGameRuns } from '@/lib/domain/playerStats';
 
-export type StandingsMatch = Pick<Match, 'name' | 'status' | 'roundsPlayed'> & {
+export type StandingsMatch = Pick<
+  Match,
+  'name' | 'status' | 'roundsPlayed' | 'gameType' | 'gameLabel'
+> & {
   standings: MatchStanding[];
 };
 
@@ -14,6 +17,8 @@ const STANDINGS_INPUT_PROJECTION = {
   roster: 1,
   rankPreference: 1,
   tiebreakers: 1,
+  gameType: 1,
+  gameLabel: 1,
 } as const;
 
 const SCORE_PROJECTION = { _id: 0, playerId: 1, round: 1, value: 1 } as const;
@@ -48,6 +53,8 @@ export async function recomputeMatchStandings(matchId: string): Promise<Standing
     name: match.name,
     status: match.status,
     roundsPlayed: match.roundsPlayed,
+    gameType: match.gameType,
+    gameLabel: match.gameLabel,
     standings,
   };
 }

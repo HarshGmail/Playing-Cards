@@ -1,11 +1,8 @@
 import { notifyMany, NotificationInput } from '@/lib/notifications/create';
-import { rankAmongPlayed } from '@/lib/domain/playerStats';
+import { rankAmongPlayed, RatingsByGame } from '@/lib/domain/playerStats';
+import { ratingGameFor } from '@/lib/games/catalog';
 import { recomputeMatchStandings, StandingsMatch } from '@/lib/stats/standings';
-import {
-  NewMilestones,
-  rebuildAllPlayerStats,
-  RatingChanges,
-} from '@/lib/stats/playerStats';
+import { NewMilestones, rebuildAllPlayerStats } from '@/lib/stats/playerStats';
 
 function milestoneNotifications(newMilestones: NewMilestones): NotificationInput[] {
   return Array.from(newMilestones).flatMap(([userId, milestones]) =>
@@ -27,10 +24,10 @@ export async function notifyMilestones(newMilestones: NewMilestones): Promise<vo
   await notifyMany(milestoneNotifications(newMilestones));
 }
 
-async function rebuildStatsAndNotifyMilestones(): Promise<RatingChanges> {
-  const { ratingChanges, newMilestones } = await rebuildAllPlayerStats();
+async function rebuildStatsAndNotifyMilestones(): Promise<RatingsByGame> {
+  const { ratingsByGame, newMilestones } = await rebuildAllPlayerStats();
   await notifyMilestones(newMilestones);
-  return ratingChanges;
+  return ratingsByGame;
 }
 
 export async function onRoundsChanged(matchId: string): Promise<void> {
@@ -42,11 +39,13 @@ export async function onRoundsChanged(matchId: string): Promise<void> {
 function matchWonNotifications(
   matchId: string,
   match: StandingsMatch,
-  ratingChanges: RatingChanges
+  ratingsByGame: RatingsByGame
 ): NotificationInput[] {
   const winners = rankAmongPlayed(match.standings).filter((s) => !s.isDnf && s.rank === 1);
+  const game = ratingGameFor(match.gameType, match.gameLabel);
+  const gameRatings = ratingsByGame.get(game.key);
   return winners.map((winner) => {
-    const rating = ratingChanges.get(winner.playerId);
+    const rating = gameRatings?.get(winner.playerId);
     const ratedThisMatch = rating?.lastMatchId === matchId;
     return {
       userId: winner.playerId,
@@ -55,6 +54,7 @@ function matchWonNotifications(
         matchId,
         matchName: match.name,
         roundsPlayed: match.roundsPlayed,
+        gameName: game.name,
         ratingDelta: ratedThisMatch ? rating.lastDelta : null,
         newRating: ratedThisMatch ? rating.rating : null,
       },
@@ -65,8 +65,8 @@ function matchWonNotifications(
 export async function onMatchEnded(matchId: string): Promise<void> {
   const match = await recomputeMatchStandings(matchId);
   if (!match) return;
-  const ratingChanges = await rebuildStatsAndNotifyMilestones();
-  await notifyMany(matchWonNotifications(matchId, match, ratingChanges));
+  const ratingsByGame = await rebuildStatsAndNotifyMilestones();
+  await notifyMany(matchWonNotifications(matchId, match, ratingsByGame));
 }
 
 export async function onMatchResumed(): Promise<void> {

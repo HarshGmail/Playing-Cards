@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { getMatches } from '@/lib/db/collections';
-import { toRatedMatch } from '@/lib/domain/playerStats';
-import { RatedMatch, ratingHistoryFor } from '@/lib/domain/rating';
+import { ratedMatchesForGame } from '@/lib/domain/playerStats';
+import { ratingHistoryFor } from '@/lib/domain/rating';
 import type { RatingHistoryEntry } from '@/types';
 import { loadStandingsRecords } from './playerStats';
 
@@ -19,10 +19,11 @@ async function loadMatchNames(matchIds: string[]): Promise<Map<string, string>> 
   return new Map(matches.map((match) => [match._id!.toString(), match.name]));
 }
 
-export async function loadRatingHistory(userId: string): Promise<RatingHistoryEntry[]> {
-  const ratedMatches = (await loadStandingsRecords())
-    .map(toRatedMatch)
-    .filter((match): match is RatedMatch => match !== null);
+export async function loadRatingHistory(
+  userId: string,
+  gameKey: string
+): Promise<RatingHistoryEntry[]> {
+  const ratedMatches = ratedMatchesForGame(await loadStandingsRecords(), gameKey);
   const history = ratingHistoryFor(ratedMatches, userId);
   const names = await loadMatchNames(history.map((point) => point.matchId));
 

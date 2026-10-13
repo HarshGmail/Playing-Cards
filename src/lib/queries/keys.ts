@@ -33,13 +33,15 @@ export const userKeys = {
   me: () => [...userKeys.all, 'me'] as const,
   detail: (username: string) => [...userKeys.all, username] as const,
   stats: (username: string) => [...userKeys.all, username, 'stats'] as const,
-  ratingHistory: (username: string) => [...userKeys.all, username, 'rating-history'] as const,
+  ratingHistory: (username: string, game: string) =>
+    [...userKeys.all, username, 'rating-history', game] as const,
   search: (term: string) => [...userKeys.all, 'search', term] as const,
 };
 
 export const leaderboardKeys = {
   all: ['leaderboard'] as const,
-  list: (scope: string, metric: string) => [...leaderboardKeys.all, scope, metric] as const,
+  list: (scope: string, metric: string, game: string) =>
+    [...leaderboardKeys.all, scope, metric, game] as const,
 };
 
 export const joinKeys = {
