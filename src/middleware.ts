@@ -11,6 +11,7 @@ export async function middleware(request: NextRequest) {
     '/api/auth/username-available',
     '/api/auth/recover/verify',
     '/api/auth/recover/reset',
+    '/api/cron/game-time',
   ];
   const isPublicRoute =
     request.nextUrl.pathname === '/' ||

@@ -255,7 +255,8 @@ export type NotificationType =
   | 'match-invite-declined'
   | 'round-scored'
   | 'match-won'
-  | 'milestone';
+  | 'milestone'
+  | 'game-time';
 
 export interface Notification {
   id: string;

@@ -141,6 +141,12 @@ export function formatNotification(notification: FormattableNotification): Forma
       return formatMatchWon(p);
     case 'milestone':
       return formatMilestone(p);
+    case 'game-time':
+      return {
+        title: 'Game time 🃏',
+        body: text(p.message) || 'Shuffle up! Round up your friends for a game tonight.',
+        url: DASHBOARD_URL,
+      };
     default:
       return { title: 'Notification', body: 'New notification', url: NOTIFICATIONS_URL };
   }

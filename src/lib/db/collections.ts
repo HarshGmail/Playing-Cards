@@ -154,7 +154,8 @@ export interface Notification {
     | 'match-invite-declined'
     | 'round-scored'
     | 'match-won'
-    | 'milestone';
+    | 'milestone'
+    | 'game-time';
   payload: Record<string, unknown>;
   read: boolean;
   createdAt: Date;

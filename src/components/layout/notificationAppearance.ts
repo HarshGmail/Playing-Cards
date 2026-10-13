@@ -1,4 +1,5 @@
 import {
+  AlarmClock,
   Bell,
   Calculator,
   Flag,
@@ -73,6 +74,7 @@ const APPEARANCE_BY_TYPE: Record<NotificationType, NotificationAppearance> = {
   'round-scored': { icon: Calculator, ...SLATE },
   'match-won': { icon: Trophy, ...GOLD },
   milestone: { icon: Sparkles, ...MILESTONE },
+  'game-time': { icon: AlarmClock, ...VIOLET },
 };
 
 const FALLBACK_APPEARANCE: NotificationAppearance = { icon: Bell, ...SLATE };
