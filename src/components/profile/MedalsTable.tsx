@@ -1,6 +1,6 @@
 'use client';
 
-import { Trophy, Crown, Medal, Swords, ListOrdered, Gauge, Percent } from 'lucide-react';
+import { Trophy, Crown, Medal, Swords, ListOrdered, Gauge, Target } from 'lucide-react';
 import type { ReactNode } from 'react';
 import MedalIconRow from '@/components/profile/MedalIconRow';
 import RatingPanel from '@/components/profile/RatingPanel';
@@ -44,13 +44,18 @@ const EMPTY_STATS: UserStats = {
   totalRounds: 0,
 };
 
+function strikeRate(gamesWon: number, gamesPlayed: number): string {
+  if (gamesPlayed === 0) return '0.0';
+  return ((gamesWon / gamesPlayed) * 100).toFixed(1);
+}
+
 const CARD_BASE_CLASSES =
   'rounded-xl p-4 text-center border transition duration-200 hover:-translate-y-0.5 hover:shadow-md';
 
 interface StatTileProps {
   label: string;
   value: ReactNode;
-  icon: ReactNode;
+  icon?: ReactNode;
   toneClasses: string;
   valueClassName: string;
 }
@@ -143,13 +148,19 @@ export default function MedalsTable({ stats = EMPTY_STATS, username }: MedalsTab
         </TrophyShelf>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatTile
           label="Win %"
           value={formatWinPct(stats.winPct)}
-          icon={<Percent className="w-4 h-4" />}
           toneClasses="border-green-200 dark:border-green-800/60 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40"
           valueClassName="text-green-600 dark:text-green-500"
+        />
+        <StatTile
+          label="Strike Rate"
+          value={strikeRate(stats.gamesWon, stats.gamesPlayed)}
+          icon={<Target className="w-4 h-4" />}
+          toneClasses="border-rose-200 dark:border-rose-800/60 bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/20 dark:to-rose-900/40"
+          valueClassName="text-rose-600 dark:text-rose-500"
         />
         <StatTile
           label="Matches"
