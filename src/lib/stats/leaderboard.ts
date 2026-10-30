@@ -23,11 +23,13 @@ export interface RankableIdentity {
   profilePicUrl: string | null;
 }
 
-type MetricKey = 'rating' | 'matchWins' | 'winPct' | 'gamesPlayed';
+type MetricKey = 'rating' | 'matchWins' | 'winPct' | 'gamesPlayed' | 'gamesWon';
 
 export const METRIC_SORT_KEYS: Record<LeaderboardMetric, [MetricKey, MetricKey]> = {
   rating: ['rating', 'matchWins'],
   winPct: ['winPct', 'gamesPlayed'],
+  matchWins: ['matchWins', 'rating'],
+  gamesWon: ['gamesWon', 'winPct'],
 };
 
 export function compareByMetric(

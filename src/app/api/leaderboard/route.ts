@@ -35,7 +35,7 @@ const UNKNOWN_IDENTITY: RankableIdentity = { name: 'Unknown', username: '', prof
 
 const querySchema = z.object({
   scope: z.enum(['friends', 'global']).default('friends'),
-  metric: z.enum(['rating', 'winPct']).default('rating'),
+  metric: z.enum(['rating', 'winPct', 'matchWins', 'gamesWon']).default('rating'),
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
   game: ratingGameKeySchema,
 });
@@ -222,7 +222,7 @@ export async function GET(request: NextRequest) {
     if (!parsed.success) {
       logApiResponse(requestId, 400, Date.now() - startTime);
       return validationError(
-        'scope must be friends|global, metric rating|winPct, limit 1-100, game a lowercase slug'
+        'scope must be friends|global, metric rating|winPct|matchWins|gamesWon, limit 1-100, game a lowercase slug'
       );
     }
     const { scope, metric, limit, game } = parsed.data;

@@ -149,7 +149,7 @@ export interface PlayerStreaksSummary {
 }
 
 export type LeaderboardScope = 'friends' | 'global';
-export type LeaderboardMetric = 'rating' | 'winPct';
+export type LeaderboardMetric = 'rating' | 'winPct' | 'matchWins' | 'gamesWon';
 
 export interface LeaderboardRow {
   rank: number;

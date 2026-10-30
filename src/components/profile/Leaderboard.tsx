@@ -19,6 +19,8 @@ const SCOPE_OPTIONS: { value: LeaderboardScope; label: string }[] = [
 const METRIC_OPTIONS: { value: LeaderboardMetric; label: string }[] = [
   { value: 'rating', label: 'Rating' },
   { value: 'winPct', label: 'Win %' },
+  { value: 'matchWins', label: 'Match wins' },
+  { value: 'gamesWon', label: 'Game wins' },
 ];
 
 const SKELETON_ROW_COUNT = 5;
@@ -45,8 +47,53 @@ interface LeaderboardRowItemProps {
   metric: LeaderboardMetric;
 }
 
+function MetricValue({ row, metric }: LeaderboardRowItemProps) {
+  const valueClasses = 'text-base font-bold text-gray-900 dark:text-white tabular-nums';
+  const detailClasses = 'text-xs text-gray-500 dark:text-gray-400 tabular-nums';
+
+  if (metric === 'rating') {
+    const tier = getRatingTier(row.rating);
+    return (
+      <>
+        <span className={valueClasses}>{Math.round(row.rating)}</span>
+        <span
+          className={`inline-block text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${TIER_BADGE_CLASSES[tier]}`}
+        >
+          {tier}
+        </span>
+      </>
+    );
+  }
+
+  if (metric === 'matchWins') {
+    return (
+      <>
+        <span className={valueClasses}>{row.matchWins}</span>
+        <span className={detailClasses}>of {row.matchesPlayed}</span>
+      </>
+    );
+  }
+
+  if (metric === 'gamesWon') {
+    return (
+      <>
+        <span className={valueClasses}>{row.gamesWon}</span>
+        <span className={detailClasses}>of {row.gamesPlayed}</span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <span className={valueClasses}>{formatWinPct(row.winPct)}</span>
+      <span className={detailClasses}>
+        {row.gamesWon}/{row.gamesPlayed}
+      </span>
+    </>
+  );
+}
+
 function LeaderboardRowItem({ row, metric }: LeaderboardRowItemProps) {
-  const tier = getRatingTier(row.rating);
   const rowClasses = row.isSelf
     ? SELF_ROW_CLASSES
     : PODIUM_ROW_CLASSES[row.rank] ?? DEFAULT_ROW_CLASSES;
@@ -81,27 +128,7 @@ function LeaderboardRowItem({ row, metric }: LeaderboardRowItemProps) {
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0 text-right">
-        {metric === 'rating' ? (
-          <>
-            <span className="text-base font-bold text-gray-900 dark:text-white tabular-nums">
-              {Math.round(row.rating)}
-            </span>
-            <span
-              className={`inline-block text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${TIER_BADGE_CLASSES[tier]}`}
-            >
-              {tier}
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="text-base font-bold text-gray-900 dark:text-white tabular-nums">
-              {formatWinPct(row.winPct)}
-            </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-              {row.gamesWon}/{row.gamesPlayed}
-            </span>
-          </>
-        )}
+        <MetricValue row={row} metric={metric} />
       </div>
     </li>
   );
@@ -160,7 +187,7 @@ export default function Leaderboard() {
           Leaderboard
           <RatingHelpLink className="ml-1" />
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <SegmentedToggle
             ariaLabel="Leaderboard scope"
             options={SCOPE_OPTIONS}

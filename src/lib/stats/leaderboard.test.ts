@@ -47,6 +47,32 @@ describe('rankByMetric', () => {
   });
 });
 
+describe('rankByMetric win counts', () => {
+  const entries = [
+    { stats: stats('a', { matchWins: 2, rating: 1300, gamesWon: 10, winPct: 0.4 }), identity: identity('Amy') },
+    { stats: stats('b', { matchWins: 2, rating: 1250, gamesWon: 10, winPct: 0.5 }), identity: identity('Ben') },
+    { stats: stats('c', { matchWins: 5, rating: 1100, gamesWon: 4, winPct: 0.6 }), identity: identity('Cat') },
+  ];
+
+  it('orders by match wins, then rating', () => {
+    const rows = rankByMetric('matchWins', entries, 'a');
+    expect(rows.map((r) => [r.name, r.rank])).toEqual([
+      ['Cat', 1],
+      ['Amy', 2],
+      ['Ben', 3],
+    ]);
+  });
+
+  it('orders by game wins, then win percentage', () => {
+    const rows = rankByMetric('gamesWon', entries, 'a');
+    expect(rows.map((r) => [r.name, r.rank])).toEqual([
+      ['Ben', 1],
+      ['Amy', 2],
+      ['Cat', 3],
+    ]);
+  });
+});
+
 describe('rankByMetric current streaks', () => {
   it('copies current streaks onto rows and defaults missing ones to zero', () => {
     const rows = rankByMetric(
