@@ -75,22 +75,22 @@ export default function MyProfilePage() {
           user={user}
           isOwnProfile
           actions={
-            <div className="flex gap-2">
+            <>
               <button
                 onClick={() => setShowEditModal(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition"
+                className="flex-1 sm:flex-none justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition"
               >
                 <Edit className="w-4 h-4" />
                 Edit
               </button>
               <button
                 onClick={handleShareProfile}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center gap-2 transition"
+                className="flex-1 sm:flex-none justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center gap-2 transition"
               >
                 <Share className="w-4 h-4" />
                 Share
               </button>
-            </div>
+            </>
           }
         />
 
