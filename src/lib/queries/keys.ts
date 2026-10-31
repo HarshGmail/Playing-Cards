@@ -10,6 +10,7 @@ export const matchKeys = {
   state: (id: string) => [...matchKeys.all, id, 'state'] as const,
   rounds: (id: string) => [...matchKeys.all, id, 'rounds'] as const,
   joinRequests: (id: string) => [...matchKeys.all, id, 'join-requests'] as const,
+  forecast: (id: string, version: number) => [...matchKeys.all, id, 'forecast', version] as const,
 };
 
 export const gameKeys = {

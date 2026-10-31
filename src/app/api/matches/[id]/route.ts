@@ -86,6 +86,7 @@ export async function GET(
         rankPreference: match.rankPreference,
         gameType: toGameType(match.gameType),
         gameLabel: match.gameLabel ?? null,
+        targetRounds: match.targetRounds ?? null,
         status: match.status,
         tiebreakers: match.tiebreakers,
         roster: match.roster.map((r) => {

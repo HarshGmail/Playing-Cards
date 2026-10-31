@@ -89,6 +89,7 @@ export async function PATCH(
           rankPreference: settings.rankPreference,
           gameType: settings.gameType,
           gameLabel: settings.gameLabel,
+          targetRounds: settings.targetRounds,
           tiebreakers: alignTiebreakers(match.tiebreakers, settings.rankPreference),
         },
         $inc: { version: 1 },

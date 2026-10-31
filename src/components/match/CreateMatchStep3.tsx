@@ -21,6 +21,7 @@ interface Step3Props {
   rankPreference: string;
   gameType: GameType;
   gameLabel?: string;
+  targetRounds: number | null;
   tiebreakers: string[];
   onBack: () => void;
 }
@@ -37,6 +38,7 @@ export default function CreateMatchStep3({
   rankPreference,
   gameType,
   gameLabel,
+  targetRounds,
   tiebreakers,
   onBack,
 }: Step3Props) {
@@ -125,6 +127,7 @@ export default function CreateMatchStep3({
         rankPreference: rankPreference as 'highest-first' | 'lowest-first',
         gameType,
         gameLabel,
+        targetRounds,
         tiebreakers,
         players: players.map((p) => p.id),
         spectatorIds: spectators.map((s) => s.id),

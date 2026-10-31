@@ -14,6 +14,7 @@ export default function CreateMatchPage() {
     rankPreference: 'lowest-first' as 'highest-first' | 'lowest-first',
     gameType: 'least-count' as GameType,
     gameLabel: undefined as string | undefined,
+    targetRounds: null as number | null,
     tiebreakers: [] as string[],
   });
 
@@ -23,6 +24,7 @@ export default function CreateMatchPage() {
     rankPreference: string;
     gameType: GameType;
     gameLabel?: string;
+    targetRounds: number | null;
   }) => {
     setFormData((prev) => ({
       ...prev,
@@ -90,6 +92,7 @@ export default function CreateMatchPage() {
               rankPreference={formData.rankPreference}
               gameType={formData.gameType}
               gameLabel={formData.gameLabel}
+              targetRounds={formData.targetRounds}
               tiebreakers={formData.tiebreakers}
               onBack={() => setStep(2)}
             />

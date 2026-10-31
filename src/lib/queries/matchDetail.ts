@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { GameType, Match, MatchState, RosterEntry } from '@/types';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { GameType, Match, MatchState, RosterEntry, WinForecast } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
 import { gameKeys, matchKeys } from './keys';
 
@@ -214,6 +214,7 @@ export interface MatchSettings {
   rankPreference: 'highest-first' | 'lowest-first';
   gameType: GameType;
   gameLabel?: string;
+  targetRounds: number | null;
 }
 
 export function useUpdateMatchSettingsMutation(matchId: string) {
@@ -287,5 +288,20 @@ export function useShareMatchMutation(matchId: string) {
       apiFetch<ShareMatchResponse>(`/api/matches/${matchId}/share`, {
         method: 'POST',
       }),
+  });
+}
+
+interface ForecastResponse {
+  forecast: WinForecast | null;
+}
+
+export function useWinForecastQuery(matchId: string, version: number, enabled: boolean) {
+  return useQuery({
+    queryKey: matchKeys.forecast(matchId, version),
+    queryFn: () =>
+      apiFetch<ForecastResponse>(`/api/matches/${matchId}/forecast`).then((data) => data.forecast),
+    enabled,
+    staleTime: Infinity,
+    placeholderData: keepPreviousData,
   });
 }

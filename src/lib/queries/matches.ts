@@ -17,6 +17,7 @@ interface CreateMatchRequest {
   tiebreakers: string[];
   players: string[];
   spectatorIds?: string[];
+  targetRounds?: number | null;
 }
 
 interface CreateMatchResponse {

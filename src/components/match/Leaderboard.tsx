@@ -13,6 +13,7 @@ import {
   RankDeltaChip,
   type GameStreaksByPlayer,
 } from '@/components/match/rankEffects';
+import { formatWinChance } from '@/components/match/WinChancePanel';
 import type { PlayersById } from '@/types';
 
 interface LeaderboardEntry {
@@ -36,6 +37,7 @@ interface LeaderboardProps {
   playersById: PlayersById;
   changes: RankChanges;
   gameStreaks?: GameStreaksByPlayer;
+  winChanceById?: Map<string, number>;
   compact?: boolean;
 }
 
@@ -45,6 +47,7 @@ export default function Leaderboard({
   playersById,
   changes,
   gameStreaks,
+  winChanceById,
   compact = false,
 }: LeaderboardProps) {
   const [gapMode, setGapMode] = useState<'interval' | 'leader'>('interval');
@@ -82,6 +85,7 @@ export default function Leaderboard({
           const colors = POSITION_CLASSES[getPositionColor(entry.position, entry.isLast, entry.isDnf)];
           const gapValue = gapMode === 'interval' ? entry.gapToAhead : entry.gapToLeader;
           const change = changes.get(entry.playerId);
+          const winChance = winChanceById?.get(entry.playerId);
 
           return (
             <motion.div
@@ -120,6 +124,11 @@ export default function Leaderboard({
                   </p>
                   {entry.isDnf && (
                     <p className="text-xs text-gray-500 dark:text-gray-500">Did Not Finish</p>
+                  )}
+                  {winChance !== undefined && !entry.isDnf && (
+                    <p className="text-xs text-blue-700 dark:text-blue-300 tabular-nums">
+                      {formatWinChance(winChance)} to win
+                    </p>
                   )}
                 </div>
               </div>

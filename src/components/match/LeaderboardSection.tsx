@@ -7,10 +7,11 @@ import { Table, BarChart3 } from 'lucide-react';
 import Leaderboard from '@/components/match/Leaderboard';
 import LeaderboardPodium from '@/components/match/LeaderboardPodium';
 import RoundsWonTable from '@/components/match/RoundsWonTable';
+import WinChancePanel from '@/components/match/WinChancePanel';
 import { useRankTransition } from '@/components/match/useRankTransition';
 import { buildScoreboardRows } from '@/lib/domain/scoreboard';
 import { gameRunsByPlayer } from '@/lib/domain/streaks';
-import type { PlayersById } from '@/types';
+import type { PlayersById, WinForecast } from '@/types';
 
 const TotalsChart = dynamic(() => import('@/components/match/charts/TotalsChart'), { ssr: false });
 const RoundsWonChart = dynamic(() => import('@/components/match/charts/RoundsWonChart'), {
@@ -45,6 +46,7 @@ interface LeaderboardSectionProps {
   playersById: PlayersById;
   rankPreference: 'highest-first' | 'lowest-first';
   ended?: boolean;
+  forecast?: WinForecast | null;
 }
 
 function findBestSingleRound(
@@ -101,6 +103,7 @@ export default function LeaderboardSection({
   playersById,
   rankPreference,
   ended = false,
+  forecast = null,
 }: LeaderboardSectionProps) {
   const [view, setView] = useState<'table' | 'chart'>('table');
   const { entries, changes } = useRankTransition(matchId, latestEntries);
@@ -120,6 +123,15 @@ export default function LeaderboardSection({
   const mostConsistent = findMostConsistent(entries);
   // DNF players are excluded, matching how the leaderboard rows order them last.
   const podium = entries.filter((e) => !e.isDnf).slice(0, 3);
+  const nameById = useMemo(() => new Map(players.map((p) => [p.userId, p.userName])), [players]);
+  const showForecast = !!forecast && !ended;
+  const winChanceById = useMemo(
+    () =>
+      showForecast
+        ? new Map(forecast!.players.map((p) => [p.playerId, p.winProbability]))
+        : undefined,
+    [forecast, showForecast]
+  );
 
   return (
     <div className="space-y-4">
@@ -167,6 +179,7 @@ export default function LeaderboardSection({
                   playersById={playersById}
                   changes={changes}
                   gameStreaks={gameStreaks}
+                  winChanceById={winChanceById}
                   compact
                 />
                 <RoundsWonTable entries={entries} playersById={playersById} />
@@ -195,6 +208,10 @@ export default function LeaderboardSection({
             <ScoreTrendChart rounds={rounds} players={players} playersById={playersById} />
           </div>
         </div>
+      )}
+
+      {showForecast && (
+        <WinChancePanel forecast={forecast!} playersById={playersById} nameById={nameById} />
       )}
 
       {(bestRound || mostConsistent) && (

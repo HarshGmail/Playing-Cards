@@ -48,6 +48,15 @@ export default function RulesIndexPage() {
           The chess-style number on your profile and the leaderboards, explained.
         </span>
       </Link>
+      <Link
+        href="/rules/win-chances"
+        className="mt-3 block rounded-lg border border-gray-200 dark:border-gray-800 p-4 hover:border-blue-500 dark:hover:border-blue-500 transition"
+      >
+        <span className="font-semibold text-gray-900 dark:text-white">How win chances work</span>
+        <span className="block mt-1 text-sm text-gray-600 dark:text-gray-400">
+          The live percentage on a match leaderboard, and what goes into it.
+        </span>
+      </Link>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Trash2, X } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { toGameType, type GameType } from '@/lib/games/catalog';
 import GamePicker, { type GameSelection } from '@/components/match/GamePicker';
+import TargetRoundsField from '@/components/match/TargetRoundsField';
 import { useDeleteMatchMutation, useUpdateMatchSettingsMutation } from '@/lib/queries/matchDetail';
 
 type RankPreference = 'highest-first' | 'lowest-first';
@@ -17,6 +18,7 @@ interface MatchSettingsModalProps {
     rankPreference: RankPreference;
     gameType?: GameType;
     gameLabel?: string | null;
+    targetRounds?: number | null;
     roundsPlayed: number;
   };
   onClose: () => void;
@@ -38,6 +40,7 @@ export default function MatchSettingsModal({ matchId, match, onClose }: MatchSet
   const [gameType, setGameType] = useState<GameType>(toGameType(match.gameType));
   const [gameLabel, setGameLabel] = useState(match.gameLabel ?? '');
   const [rankPreference, setRankPreference] = useState<RankPreference>(match.rankPreference);
+  const [targetRounds, setTargetRounds] = useState<number | null>(match.targetRounds ?? null);
   const [error, setError] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -75,6 +78,7 @@ export default function MatchSettingsModal({ matchId, match, onClose }: MatchSet
         rankPreference,
         gameType,
         gameLabel: gameType === 'other' ? gameLabel.trim() : undefined,
+        targetRounds,
       });
       onClose();
     } catch (err) {
@@ -140,6 +144,13 @@ export default function MatchSettingsModal({ matchId, match, onClose }: MatchSet
           <GamePicker
             value={{ gameType, gameLabel }}
             onChange={handleGameChange}
+            fieldClassName={FIELD_CLASSES}
+            labelClassName={LABEL_CLASSES}
+          />
+
+          <TargetRoundsField
+            value={targetRounds}
+            onChange={setTargetRounds}
             fieldClassName={FIELD_CLASSES}
             labelClassName={LABEL_CLASSES}
           />

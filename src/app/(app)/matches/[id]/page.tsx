@@ -16,6 +16,7 @@ import {
   useEditRoundMutation,
   useEndMatchMutation,
   useResumeMatchMutation,
+  useWinForecastQuery,
 } from '@/lib/queries/matchDetail';
 import LeaderboardSection from '@/components/match/LeaderboardSection';
 import Scoreboard from '@/components/match/Scoreboard';
@@ -55,6 +56,11 @@ export default function MatchPage() {
   const editRoundMutation = useEditRoundMutation(matchId);
   const endMatchMutation = useEndMatchMutation(matchId);
   const resumeMatchMutation = useResumeMatchMutation(matchId);
+  const { data: forecast } = useWinForecastQuery(
+    matchId,
+    match?.version ?? 0,
+    !!match && match.status === 'active' && !!match.targetRounds
+  );
 
   const loading = matchLoading || stateLoading || roundsLoading;
   const error = matchError?.message || '';
@@ -255,6 +261,7 @@ export default function MatchPage() {
               playersById={playersById}
               rankPreference={match.rankPreference}
               ended={match.status === 'ended'}
+              forecast={match.targetRounds ? forecast : null}
             />
           )}
           {tab === 'scoreboard' && (

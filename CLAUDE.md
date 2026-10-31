@@ -14,6 +14,7 @@ Score tracker for card games (house variant: Least Count, see `docs/LEAST_COUNT.
 - `src/components/<area>/` grouped by feature (`match`, `profile`, `dashboard`, `calendar`, `layout`, `pwa`, ...). Shared bits in `common/` and `ui/`.
 - `src/lib/domain/` = pure logic, no I/O, unit tested (ranking, rating, playerStats, streaks, milestones, calendar...). Exception: `matchInvites.ts` touches the DB.
 - `src/lib/stats/` = DB-side counterparts that load data and call `domain/` (e.g. `stats/playerStats.ts` persists what `domain/playerStats.ts` computes).
+- Live win chances (`Match.targetRounds`, `/api/matches/[id]/forecast`, `domain/winProbability.ts`): see `docs/WIN_PROBABILITY.md`.
 - `src/lib/events/matchEvents.ts` = `onRoundsChanged` / `onMatchEnded` hooks that recompute standings, stats and send notifications.
 - `src/lib/db/collections.ts` = DB doc types + collection getters. `src/types/index.ts` = client/API types.
 - `src/lib/queries/` = React Query hooks per area; all keys in `queries/keys.ts`.

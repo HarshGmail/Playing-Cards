@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const MAX_TARGET_ROUNDS = 20;
+const targetRoundsSchema = z.number().int().min(1).max(MAX_TARGET_ROUNDS).nullable();
+
 export const createMatchSchema = z
   .object({
     name: z.string().min(3).max(50),
@@ -13,6 +16,7 @@ export const createMatchSchema = z
     tiebreakers: z.array(z.string()).length(3),
     players: z.array(z.string()).min(1),
     spectatorIds: z.array(z.string()).optional().default([]),
+    targetRounds: targetRoundsSchema.optional().default(null),
   })
   .transform((data) => ({
     ...data,
@@ -28,6 +32,7 @@ export const updateMatchSettingsSchema = z
     rankPreference: z.enum(['highest-first', 'lowest-first']),
     gameType: z.enum(['least-count', 'other']),
     gameLabel: z.string().trim().max(50).optional(),
+    targetRounds: targetRoundsSchema.optional().default(null),
   })
   .refine((data) => data.gameType !== 'other' || !!data.gameLabel, {
     message: 'Name the game you are playing',

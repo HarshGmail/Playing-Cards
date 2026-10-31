@@ -56,6 +56,7 @@ export interface Match {
   gameType?: 'least-count' | 'other';
   /** Free-text game name, set only when gameType is 'other'. */
   gameLabel?: string | null;
+  targetRounds?: number | null;
   status: 'active' | 'ended';
   deletedAt: Date | null;
   tiebreakers: string[];

@@ -27,6 +27,7 @@ export interface Match {
   gameType?: GameType;
   /** Free-text game name, present only when gameType is 'other'. */
   gameLabel?: string | null;
+  targetRounds?: number | null;
   status: 'active' | 'ended';
   tiebreakers: string[];
   roster: RosterEntry[];
@@ -111,6 +112,20 @@ export interface GameRatingSummary {
 export interface RatedGame {
   key: string;
   name: string;
+}
+
+export interface PlayerWinChance {
+  playerId: string;
+  winProbability: number;
+  expectedTotal: number;
+}
+
+export interface WinForecast {
+  targetRounds: number;
+  gamesPlayed: number;
+  targetGames: number;
+  remainingGames: number;
+  players: PlayerWinChance[];
 }
 
 export interface PlayedGame extends RatedGame {

@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
       rankPreference: data.rankPreference,
       gameType: data.gameType,
       gameLabel: data.gameLabel,
+      targetRounds: data.targetRounds,
       status: 'active',
       deletedAt: null,
       tiebreakers: data.tiebreakers,

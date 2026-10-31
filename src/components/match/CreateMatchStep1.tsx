@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { GAMES, type GameType } from '@/lib/games/catalog';
 import GamePicker, { type GameSelection } from '@/components/match/GamePicker';
+import TargetRoundsField from '@/components/match/TargetRoundsField';
 
 interface Step1Props {
   onNext: (data: {
@@ -12,6 +13,7 @@ interface Step1Props {
     rankPreference: string;
     gameType: GameType;
     gameLabel?: string;
+    targetRounds: number | null;
   }) => void;
 }
 
@@ -23,6 +25,7 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
   const [rankPreference, setRankPreference] = useState<string>(
     GAMES['least-count'].defaultRankPreference
   );
+  const [targetRounds, setTargetRounds] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   const rulesPath = GAMES[gameType].rulesPath;
@@ -57,6 +60,7 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
       rankPreference,
       gameType,
       gameLabel: gameType === 'other' ? gameLabel.trim() : undefined,
+      targetRounds,
     });
   };
 
@@ -96,6 +100,13 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
           </Link>
         )}
       </div>
+
+      <TargetRoundsField
+        value={targetRounds}
+        onChange={setTargetRounds}
+        fieldClassName="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+        labelClassName="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+      />
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
