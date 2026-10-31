@@ -5,7 +5,7 @@ import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { toGameType } from '@/lib/games/catalog';
 import { ObjectId } from 'mongodb';
-import { onMatchEnded } from '@/lib/events/matchEvents';
+import { onMatchDeleted, onMatchEnded } from '@/lib/events/matchEvents';
 
 export const dynamic = 'force-dynamic';
 
@@ -248,6 +248,8 @@ export async function DELETE(
       { _id: new ObjectId(params.id) },
       { $set: { deletedAt: new Date() }, $inc: { version: 1 } }
     );
+
+    await onMatchDeleted().catch((err) => logError(requestId, err));
 
     logApiResponse(requestId, 200, Date.now() - startTime);
     return success({ matchId: params.id, deleted: true });

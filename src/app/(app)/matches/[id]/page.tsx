@@ -25,11 +25,13 @@ import RosterPanel from '@/components/match/RosterPanel';
 import ShareMatchButton from '@/components/match/ShareMatchButton';
 import MatchRecapButton from '@/components/match/MatchRecapButton';
 import JoinRequestsPanel from '@/components/match/JoinRequestsPanel';
+import MatchSettingsModal from '@/components/match/MatchSettingsModal';
 import EditRoundModal from '@/components/match/EditRoundModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Confetti from '@/components/effects/Confetti';
 import { useMatchCelebration } from '@/components/effects/useMatchCelebration';
 import { gameDisplayName, rulesPathFor, toGameType } from '@/lib/games/catalog';
+import { Settings } from 'lucide-react';
 
 const CONFETTI_AFTER_CEREMONY_MS = 900;
 
@@ -43,6 +45,7 @@ export default function MatchPage() {
   const [editingRound, setEditingRound] = useState<number | null>(null);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [confirmingResume, setConfirmingResume] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const { data: match, isLoading: matchLoading, error: matchError } = useMatchQuery(matchId);
   const { data: state, isLoading: stateLoading } = useMatchStateQuery(matchId);
@@ -169,6 +172,16 @@ export default function MatchPage() {
               <MatchRecapButton matchId={matchId} matchName={match.name} />
             )}
             {isCreator && <ShareMatchButton matchId={matchId} />}
+            {isCreator && (
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                aria-label="Match settings"
+                className="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition shrink-0"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            )}
             {isCreator && match.status === 'active' && (
               <button
                 onClick={() => setConfirmingEnd(true)}
@@ -312,6 +325,14 @@ export default function MatchPage() {
         onConfirm={handleEndMatch}
         onCancel={() => setConfirmingEnd(false)}
       />
+
+      {showSettings && (
+        <MatchSettingsModal
+          matchId={matchId}
+          match={match}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmingResume}

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Match, MatchState, RosterEntry } from '@/types';
+import type { GameType, Match, MatchState, RosterEntry } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
 import { matchKeys } from './keys';
 
@@ -205,6 +205,45 @@ export function useJoinRequestActionMutation(matchId: string) {
       queryClient.invalidateQueries({ queryKey: matchKeys.joinRequests(matchId) });
       queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
       queryClient.invalidateQueries({ queryKey: matchKeys.state(matchId) });
+    },
+  });
+}
+
+export interface MatchSettings {
+  name: string;
+  rankPreference: 'highest-first' | 'lowest-first';
+  gameType: GameType;
+  gameLabel?: string;
+}
+
+export function useUpdateMatchSettingsMutation(matchId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (settings: MatchSettings) =>
+      apiFetch<void>(`/api/matches/${matchId}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+      queryClient.invalidateQueries({ queryKey: matchKeys.list() });
+    },
+  });
+}
+
+export function useDeleteMatchMutation(matchId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<void>(`/api/matches/${matchId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: matchKeys.detail(matchId) });
+      queryClient.invalidateQueries({ queryKey: matchKeys.list() });
     },
   });
 }

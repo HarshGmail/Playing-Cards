@@ -72,3 +72,7 @@ export async function onMatchEnded(matchId: string): Promise<void> {
 export async function onMatchResumed(): Promise<void> {
   await rebuildStatsAndNotifyMilestones();
 }
+
+export async function onMatchDeleted(): Promise<void> {
+  await rebuildStatsAndNotifyMilestones();
+}

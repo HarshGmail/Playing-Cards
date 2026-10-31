@@ -22,6 +22,22 @@ export const createMatchSchema = z
       data.gameType === 'other' && data.gameLabel ? data.gameLabel : null,
   }));
 
+export const updateMatchSettingsSchema = z
+  .object({
+    name: z.string().trim().min(3).max(50),
+    rankPreference: z.enum(['highest-first', 'lowest-first']),
+    gameType: z.enum(['least-count', 'other']),
+    gameLabel: z.string().trim().max(50).optional(),
+  })
+  .refine((data) => data.gameType !== 'other' || !!data.gameLabel, {
+    message: 'Name the game you are playing',
+    path: ['gameLabel'],
+  })
+  .transform((data) => ({
+    ...data,
+    gameLabel: data.gameType === 'other' && data.gameLabel ? data.gameLabel : null,
+  }));
+
 export const submitRoundSchema = z.object({
   scores: z.array(
     z.object({
@@ -44,5 +60,6 @@ export const updateRoundSchema = z.object({
 });
 
 export type CreateMatchInput = z.infer<typeof createMatchSchema>;
+export type UpdateMatchSettingsInput = z.infer<typeof updateMatchSettingsSchema>;
 export type SubmitRoundInput = z.infer<typeof submitRoundSchema>;
 export type UpdateRoundInput = z.infer<typeof updateRoundSchema>;
