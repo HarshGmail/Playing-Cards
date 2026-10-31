@@ -113,6 +113,10 @@ export interface RatedGame {
   name: string;
 }
 
+export interface PlayedGame extends RatedGame {
+  rankPreference: 'highest-first' | 'lowest-first';
+}
+
 export interface PlayerStatsSummary {
   rating: number;
   peakRating: number;

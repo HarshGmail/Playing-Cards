@@ -82,3 +82,36 @@ export async function loadRatedGames(): Promise<RatingGame[]> {
   }
   return Array.from(gamesByKey.values());
 }
+
+export interface PlayedGame extends RatingGame {
+  rankPreference: 'highest-first' | 'lowest-first';
+}
+
+const NAMED_GAME_FILTER = { deletedAt: null, gameType: 'other' as const, gameLabel: { $nin: [null, ''] } };
+
+export async function loadPlayedGames(): Promise<PlayedGame[]> {
+  const matchesCol = await getMatches();
+  const groups = await matchesCol
+    .aggregate<{ _id: string; rankPreference: PlayedGame['rankPreference']; lastPlayedAt: Date }>([
+      { $match: NAMED_GAME_FILTER },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: '$gameLabel',
+          rankPreference: { $first: '$rankPreference' },
+          lastPlayedAt: { $first: '$createdAt' },
+        },
+      },
+      { $sort: { lastPlayedAt: -1 } },
+    ])
+    .toArray();
+
+  const gamesByKey = new Map<string, PlayedGame>();
+  for (const group of groups) {
+    const game = ratingGameFor('other', group._id);
+    if (!gamesByKey.has(game.key)) {
+      gamesByKey.set(game.key, { ...game, rankPreference: group.rankPreference });
+    }
+  }
+  return Array.from(gamesByKey.values());
+}

@@ -12,6 +12,11 @@ export const matchKeys = {
   joinRequests: (id: string) => [...matchKeys.all, id, 'join-requests'] as const,
 };
 
+export const gameKeys = {
+  all: ['games'] as const,
+  played: () => [...gameKeys.all, 'played'] as const,
+};
+
 export const matchInviteKeys = {
   all: ['match-invites'] as const,
   list: () => [...matchInviteKeys.all, 'list'] as const,

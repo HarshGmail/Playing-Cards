@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { GAMES, GAME_TYPES, type GameType } from '@/lib/games/catalog';
+import { GAMES, type GameType } from '@/lib/games/catalog';
+import GamePicker, { type GameSelection } from '@/components/match/GamePicker';
 
 interface Step1Props {
   onNext: (data: {
@@ -24,13 +25,17 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
   );
   const [error, setError] = useState('');
 
-  const selectedGame = GAMES[gameType];
+  const rulesPath = GAMES[gameType].rulesPath;
 
   // Picking a game prefills the ranking direction it is normally played with —
   // Least Count is always lowest-wins — but leaves the field editable.
-  const handleGameChange = (next: GameType) => {
-    setGameType(next);
-    setRankPreference(GAMES[next].defaultRankPreference);
+  const handleGameChange = (
+    selection: GameSelection,
+    suggestedRankPreference?: 'highest-first' | 'lowest-first'
+  ) => {
+    setGameType(selection.gameType);
+    setGameLabel(selection.gameLabel);
+    if (suggestedRankPreference) setRankPreference(suggestedRankPreference);
   };
 
   const handleNext = () => {
@@ -74,53 +79,23 @@ export default function CreateMatchStep1({ onNext }: Step1Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Game
-        </label>
-        <select
-          value={gameType}
-          onChange={(e) => handleGameChange(e.target.value as GameType)}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
-        >
-          {GAME_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {GAMES[type].label}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          {selectedGame.blurb}
-          {selectedGame.rulesPath && (
-            <>
-              {' '}
-              <Link
-                href={selectedGame.rulesPath}
-                target="_blank"
-                className="text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Read the rules
-              </Link>
-            </>
-          )}
-        </p>
+        <GamePicker
+          value={{ gameType, gameLabel }}
+          onChange={handleGameChange}
+          onSubmit={handleNext}
+          fieldClassName="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+          labelClassName="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+        />
+        {rulesPath && (
+          <Link
+            href={rulesPath}
+            target="_blank"
+            className="mt-1 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Read the rules
+          </Link>
+        )}
       </div>
-
-      {gameType === 'other' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Which game?
-          </label>
-          <input
-            type="text"
-            value={gameLabel}
-            onChange={(e) => setGameLabel(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleNext()}
-            placeholder="e.g., Bluff, Rummy, Teen Patti"
-            maxLength={50}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
-          />
-        </div>
-      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

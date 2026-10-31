@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GameType, Match, MatchState, RosterEntry } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
-import { matchKeys } from './keys';
+import { gameKeys, matchKeys } from './keys';
 
 interface MatchResponse {
   match: Match;
@@ -229,6 +229,7 @@ export function useUpdateMatchSettingsMutation(matchId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
       queryClient.invalidateQueries({ queryKey: matchKeys.list() });
+      queryClient.invalidateQueries({ queryKey: gameKeys.played() });
     },
   });
 }
@@ -244,6 +245,7 @@ export function useDeleteMatchMutation(matchId: string) {
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: matchKeys.detail(matchId) });
       queryClient.invalidateQueries({ queryKey: matchKeys.list() });
+      queryClient.invalidateQueries({ queryKey: gameKeys.played() });
     },
   });
 }

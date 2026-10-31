@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, X } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { GAMES, GAME_TYPES, toGameType, type GameType } from '@/lib/games/catalog';
+import { toGameType, type GameType } from '@/lib/games/catalog';
+import GamePicker, { type GameSelection } from '@/components/match/GamePicker';
 import { useDeleteMatchMutation, useUpdateMatchSettingsMutation } from '@/lib/queries/matchDetail';
 
 type RankPreference = 'highest-first' | 'lowest-first';
@@ -50,6 +51,11 @@ export default function MatchSettingsModal({ matchId, match, onClose }: MatchSet
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [busy, confirmingDelete, onClose]);
+
+  const handleGameChange = (selection: GameSelection) => {
+    setGameType(selection.gameType);
+    setGameLabel(selection.gameLabel);
+  };
 
   const handleSave = async () => {
     const trimmedName = name.trim();
@@ -131,40 +137,12 @@ export default function MatchSettingsModal({ matchId, match, onClose }: MatchSet
             />
           </div>
 
-          <div>
-            <label htmlFor="match-settings-game" className={LABEL_CLASSES}>
-              Game
-            </label>
-            <select
-              id="match-settings-game"
-              value={gameType}
-              onChange={(e) => setGameType(e.target.value as GameType)}
-              className={FIELD_CLASSES}
-            >
-              {GAME_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {GAMES[type].label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {gameType === 'other' && (
-            <div>
-              <label htmlFor="match-settings-game-label" className={LABEL_CLASSES}>
-                Which game?
-              </label>
-              <input
-                id="match-settings-game-label"
-                type="text"
-                value={gameLabel}
-                onChange={(e) => setGameLabel(e.target.value)}
-                placeholder="e.g., Bluff, Rummy, Teen Patti"
-                maxLength={NAME_MAX_LENGTH}
-                className={FIELD_CLASSES}
-              />
-            </div>
-          )}
+          <GamePicker
+            value={{ gameType, gameLabel }}
+            onChange={handleGameChange}
+            fieldClassName={FIELD_CLASSES}
+            labelClassName={LABEL_CLASSES}
+          />
 
           <div>
             <label htmlFor="match-settings-ranking" className={LABEL_CLASSES}>

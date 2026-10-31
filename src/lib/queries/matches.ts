@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GameType, MatchSummary } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
-import { matchKeys } from './keys';
+import { gameKeys, matchKeys } from './keys';
 
 interface MatchesResponse {
   matches: MatchSummary[];
@@ -48,6 +48,7 @@ export function useCreateMatchMutation() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: matchKeys.list() });
+      queryClient.invalidateQueries({ queryKey: gameKeys.played() });
     },
   });
 }
