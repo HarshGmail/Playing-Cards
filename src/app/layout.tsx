@@ -4,6 +4,8 @@ import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister';
+import InstallBanner from '@/components/pwa/InstallBanner';
+import { INSTALL_CAPTURE_SCRIPT } from '@/lib/install/capture';
 
 const THEME_COLOR = '#4c1d95';
 
@@ -17,7 +19,6 @@ export const metadata: Metadata = {
   applicationName: 'Playing Cards',
   title: 'Playing Cards',
   description: 'Score tracker for card games',
-  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -42,10 +43,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
+        <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials" />
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE_SCRIPT }} />
       </head>
       <body>
         <QueryProvider>
           <ThemeProvider>
+            <InstallBanner />
             {children}
           </ThemeProvider>
         </QueryProvider>
