@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { BellRing, BellOff, Download, Share, PlusSquare, Loader2, X } from 'lucide-react';
+import { apiFetch } from '@/lib/api/fetcher';
 import { useInstallPrompt } from './useInstallPrompt';
 import { usePushNotifications } from './usePushNotifications';
 
 const IOS_HELP_DISMISSED_KEY = 'pwa-ios-help-dismissed';
+const TEST_PUSH_URL = '/api/push/test';
+const NO_PUSH_KEYS_MESSAGE = 'The server has no push keys, so nothing can be sent.';
+const NO_DEVICE_MESSAGE =
+  'No device of yours is signed up. Turn notifications off and on again on this device.';
 
 const CARD_CLASS =
   'flex items-start gap-3 p-4 rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20';
@@ -22,6 +27,62 @@ function readIosHelpDismissed(): boolean {
   } catch {
     return false;
   }
+}
+
+interface DeliveryResult {
+  service: string;
+  ok: boolean;
+  statusCode?: number;
+  reason?: string;
+}
+
+interface TestPushAnswer {
+  configured: boolean;
+  results: DeliveryResult[];
+}
+
+function describeFailure(result: DeliveryResult): string {
+  const status = result.statusCode ?? 'no answer';
+  const detail = result.reason ? `: ${result.reason}` : '';
+  return `${result.service} refused (${status}${detail})`;
+}
+
+function describeTestPush({ configured, results }: TestPushAnswer): string {
+  if (!configured) return NO_PUSH_KEYS_MESSAGE;
+  if (results.length === 0) return NO_DEVICE_MESSAGE;
+  const sentCount = results.filter((result) => result.ok).length;
+  const deviceWord = results.length === 1 ? 'device' : 'devices';
+  const summary = `Sent to ${sentCount} of ${results.length} ${deviceWord}.`;
+  const failures = results.filter((result) => !result.ok).map(describeFailure);
+  return [summary, ...failures].join(' ');
+}
+
+function PushTestButton() {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function sendTest() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const answer = await apiFetch<TestPushAnswer>(TEST_PUSH_URL, { method: 'POST' });
+      setMessage(describeTestPush(answer));
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Could not send a test notification');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <button type="button" onClick={sendTest} disabled={busy} className={SECONDARY_BUTTON_CLASS}>
+        {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+        Send a test notification
+      </button>
+      {message && <p className="text-xs text-gray-600 dark:text-gray-300">{message}</p>}
+    </div>
+  );
 }
 
 function IosInstallHelp({ onDismiss }: { onDismiss: () => void }) {
@@ -96,15 +157,18 @@ export default function PwaPromptCard() {
 
   if (showEnabledState && !showInstall) {
     return (
-      <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <p className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-          <BellRing className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-          Push notifications are on for this device
-        </p>
-        <button type="button" onClick={push.disable} disabled={push.busy} className={SECONDARY_BUTTON_CLASS}>
-          {push.busy && <Loader2 className="w-4 h-4 animate-spin" />}
-          Turn off
-        </button>
+      <div className="space-y-3 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+            <BellRing className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+            Push notifications are on for this device
+          </p>
+          <button type="button" onClick={push.disable} disabled={push.busy} className={SECONDARY_BUTTON_CLASS}>
+            {push.busy && <Loader2 className="w-4 h-4 animate-spin" />}
+            Turn off
+          </button>
+        </div>
+        <PushTestButton />
       </div>
     );
   }
@@ -156,6 +220,8 @@ export default function PwaPromptCard() {
           </div>
         </div>
       )}
+
+      {showEnabledState && <PushTestButton />}
     </div>
   );
 }
