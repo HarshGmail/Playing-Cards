@@ -202,7 +202,7 @@ export default function PositionTrendChart({
       <p className="text-xs text-center text-gray-500 dark:text-gray-400">
         {focusedId
           ? `Following ${nameOf(focusedId)}. Tap again to see everyone.`
-          : 'Tap a player to follow their race. Hover a round for the standings.'}
+          : 'Tap a line to follow that player. Hover a round for the standings.'}
       </p>
 
       <PositionStoryCards

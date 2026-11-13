@@ -281,20 +281,7 @@ export function buildPositionChartOptions(input: PositionChartInput): Highcharts
         return standingsTooltipHtml(input, Math.round(this.x ?? 0));
       },
     },
-    legend: {
-      useHTML: true,
-      itemStyle: { color: AXIS_LABEL_COLOR },
-      labelFormatter() {
-        const player = playerById.get(String((this as Highcharts.Series).options.id));
-        if (!player) return String((this as Highcharts.Series).name);
-        return playerLabelHtml({
-          name: player.userName,
-          profilePicUrl: playersById[player.userId]?.profilePicUrl,
-          size: 20,
-          stacked: false,
-        });
-      },
-    },
+    legend: { enabled: false },
     plotOptions: {
       series: {
         animation: false,
@@ -303,10 +290,6 @@ export function buildPositionChartOptions(input: PositionChartInput): Highcharts
         dataLabels: [crownLabel, headLabel],
         events: {
           click() {
-            if (this.options.id) onToggleFocus(this.options.id);
-          },
-          legendItemClick(event) {
-            event.preventDefault();
             if (this.options.id) onToggleFocus(this.options.id);
           },
         },
