@@ -5,7 +5,8 @@ import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { toGameType } from '@/lib/games/catalog';
 import { ObjectId } from 'mongodb';
-import { onMatchDeleted, onMatchEnded } from '@/lib/events/matchEvents';
+import { onMatchDeleted } from '@/lib/events/matchEvents';
+import { endMatch, MatchServiceError } from '@/lib/matches/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -158,43 +159,15 @@ export async function PATCH(
       matchId: params.id,
     });
 
-    if (!ObjectId.isValid(params.id)) {
-      logApiResponse(requestId, 404, Date.now() - startTime);
-      return notFound();
-    }
-
-    const matchesCol = await getMatches();
-    const match = await matchesCol.findOne({
-      _id: new ObjectId(params.id),
-      deletedAt: null,
-    });
-
-    if (!match) {
-      logApiResponse(requestId, 404, Date.now() - startTime);
-      return notFound();
-    }
-
-    if (match.creatorId !== userId) {
-      logApiResponse(requestId, 403, Date.now() - startTime);
-      return forbidden();
-    }
-
-    if (match.status === 'ended') {
-      logApiResponse(requestId, 409, Date.now() - startTime);
-      return error('Match already ended', 'ALREADY_ENDED', 409);
-    }
-
-    const endedAt = new Date();
-    await matchesCol.updateOne(
-      { _id: new ObjectId(params.id) },
-      { $set: { status: 'ended', endedAt }, $inc: { version: 1 } }
-    );
-
-    await onMatchEnded(params.id).catch((err) => logError(requestId, err));
+    const ended = await endMatch({ matchId: params.id, userId });
 
     logApiResponse(requestId, 200, Date.now() - startTime);
-    return success({ matchId: params.id, status: 'ended', endedAt });
+    return success(ended);
   } catch (err) {
+    if (err instanceof MatchServiceError) {
+      logApiResponse(requestId, err.status, Date.now() - startTime);
+      return error(err.message, err.code, err.status);
+    }
     logError(requestId, err);
     logApiResponse(requestId, 500, Date.now() - startTime);
     return error('Internal server error', 'INTERNAL_ERROR', 500);

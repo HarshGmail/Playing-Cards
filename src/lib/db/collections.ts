@@ -233,6 +233,16 @@ export interface PushSubscriptionDoc {
   createdAt: Date;
 }
 
+export interface ApiToken {
+  _id?: { toString(): string };
+  userId: string;
+  name: string;
+  tokenHash: string;
+  prefix: string;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+}
+
 export async function getPlayerStats(): Promise<Collection<PlayerStats>> {
   const db = await getDb();
   return db.collection<PlayerStats>('playerStats');
@@ -241,6 +251,11 @@ export async function getPlayerStats(): Promise<Collection<PlayerStats>> {
 export async function getPushSubscriptions(): Promise<Collection<PushSubscriptionDoc>> {
   const db = await getDb();
   return db.collection<PushSubscriptionDoc>('pushSubscriptions');
+}
+
+export async function getApiTokens(): Promise<Collection<ApiToken>> {
+  const db = await getDb();
+  return db.collection<ApiToken>('apiTokens');
 }
 
 export async function getUsers(): Promise<Collection<User>> {

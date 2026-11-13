@@ -2,87 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { BellRing, BellOff, Download, Share, PlusSquare, Loader2, X } from 'lucide-react';
-import { apiFetch } from '@/lib/api/fetcher';
 import { useInstallPrompt } from './useInstallPrompt';
 import { usePushNotifications } from './usePushNotifications';
+import PushTestButton from './PushTestButton';
+import {
+  CARD_CLASS,
+  ICON_BADGE_CLASS,
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from './pwaClasses';
 
 const IOS_HELP_DISMISSED_KEY = 'pwa-ios-help-dismissed';
-const TEST_PUSH_URL = '/api/push/test';
-const NO_PUSH_KEYS_MESSAGE = 'The server has no push keys, so nothing can be sent.';
-const NO_DEVICE_MESSAGE =
-  'No device of yours is signed up. Turn notifications off and on again on this device.';
-
-const CARD_CLASS =
-  'flex items-start gap-3 p-4 rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20';
-const ICON_BADGE_CLASS =
-  'flex-shrink-0 w-10 h-10 rounded-full bg-violet-600 text-white flex items-center justify-center';
-const PRIMARY_BUTTON_CLASS =
-  'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white text-sm font-semibold transition';
-const SECONDARY_BUTTON_CLASS =
-  'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 text-sm font-medium transition';
-
 function readIosHelpDismissed(): boolean {
   try {
     return localStorage.getItem(IOS_HELP_DISMISSED_KEY) === '1';
   } catch {
     return false;
   }
-}
-
-interface DeliveryResult {
-  service: string;
-  ok: boolean;
-  statusCode?: number;
-  reason?: string;
-}
-
-interface TestPushAnswer {
-  configured: boolean;
-  results: DeliveryResult[];
-}
-
-function describeFailure(result: DeliveryResult): string {
-  const status = result.statusCode ?? 'no answer';
-  const detail = result.reason ? `: ${result.reason}` : '';
-  return `${result.service} refused (${status}${detail})`;
-}
-
-function describeTestPush({ configured, results }: TestPushAnswer): string {
-  if (!configured) return NO_PUSH_KEYS_MESSAGE;
-  if (results.length === 0) return NO_DEVICE_MESSAGE;
-  const sentCount = results.filter((result) => result.ok).length;
-  const deviceWord = results.length === 1 ? 'device' : 'devices';
-  const summary = `Sent to ${sentCount} of ${results.length} ${deviceWord}.`;
-  const failures = results.filter((result) => !result.ok).map(describeFailure);
-  return [summary, ...failures].join(' ');
-}
-
-function PushTestButton() {
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function sendTest() {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const answer = await apiFetch<TestPushAnswer>(TEST_PUSH_URL, { method: 'POST' });
-      setMessage(describeTestPush(answer));
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Could not send a test notification');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-start gap-1">
-      <button type="button" onClick={sendTest} disabled={busy} className={SECONDARY_BUTTON_CLASS}>
-        {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-        Send a test notification
-      </button>
-      {message && <p className="text-xs text-gray-600 dark:text-gray-300">{message}</p>}
-    </div>
-  );
 }
 
 function IosInstallHelp({ onDismiss }: { onDismiss: () => void }) {
