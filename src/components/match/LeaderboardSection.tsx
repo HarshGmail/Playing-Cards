@@ -33,7 +33,7 @@ type TrendMode = (typeof TREND_MODES)[number]['value'];
 
 const TREND_TITLES: Record<TrendMode, string> = {
   scores: 'Score Trend',
-  positions: 'Position Trend',
+  positions: 'Position Race',
 };
 
 interface LeaderboardEntry {
@@ -250,6 +250,7 @@ export default function LeaderboardSection({
                 rankPreference={rankPreference}
                 tiebreakers={tiebreakers}
                 playersById={playersById}
+                ended={ended}
               />
             )}
           </div>

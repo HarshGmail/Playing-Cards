@@ -15,6 +15,21 @@ export interface PositionRound {
 export interface RoundPositions {
   round: number;
   positions: Map<string, number>;
+  totals: Map<string, number>;
+}
+
+function hasDroppedOutBy(player: PositionRosterEntry, round: number): boolean {
+  return player.status === 'dnf' && player.dnfAfterRound !== null && round > player.dnfAfterRound;
+}
+
+function rosterStillPlaying(
+  roster: PositionRosterEntry[],
+  round: number,
+  playersWhoScored: Set<string>
+): PositionRosterEntry[] {
+  return roster
+    .filter((player) => playersWhoScored.has(player.userId) && !hasDroppedOutBy(player, round))
+    .map((player) => ({ ...player, status: 'active' as const, dnfAfterRound: null }));
 }
 
 export function buildPositionHistory(
@@ -34,12 +49,13 @@ export function buildPositionHistory(
       }))
     );
     const playersWhoScored = new Set(scoresSoFar.map((score) => score.playerId));
-    const rankedRoster = roster.filter((player) => playersWhoScored.has(player.userId));
+    const rankedRoster = rosterStillPlaying(roster, current.round, playersWhoScored);
     const board = computeMatchLeaderboard(rankedRoster, scoresSoFar, rankPreference, tiebreakers);
 
     return {
       round: current.round,
       positions: new Map(board.map((entry) => [entry.playerId, entry.position])),
+      totals: new Map(board.map((entry) => [entry.playerId, entry.total])),
     };
   });
 }
