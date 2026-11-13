@@ -16,7 +16,7 @@ export const DEFAULT_NOTIFICATION_TTL_MS = 2 * 24 * 60 * 60 * 1000;
 /** Types swept by the TTL index a day after they are created. */
 const EPHEMERAL_TYPES = new Set<Notification['type']>(['round-scored', 'game-time']);
 
-export const KEEP_UNTIL_READ_TYPES: Notification['type'][] = ['milestone'];
+export const KEEP_UNTIL_READ_TYPES: Notification['type'][] = ['milestone', 'avatar-removed'];
 
 const KEEP_UNTIL_READ = new Set<Notification['type']>(KEEP_UNTIL_READ_TYPES);
 

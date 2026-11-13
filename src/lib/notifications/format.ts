@@ -147,6 +147,12 @@ export function formatNotification(notification: FormattableNotification): Forma
         body: text(p.message) || 'Shuffle up! Round up your friends for a game tonight.',
         url: DASHBOARD_URL,
       };
+    case 'avatar-removed':
+      return {
+        title: 'Profile photo removed',
+        body: 'Your profile photo was removed for being inappropriate. You can upload a new one from your profile.',
+        url: PROFILE_URL,
+      };
     default:
       return { title: 'Notification', body: 'New notification', url: NOTIFICATIONS_URL };
   }

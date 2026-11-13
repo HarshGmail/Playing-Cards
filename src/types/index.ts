@@ -275,7 +275,8 @@ export type NotificationType =
   | 'round-scored'
   | 'match-won'
   | 'milestone'
-  | 'game-time';
+  | 'game-time'
+  | 'avatar-removed';
 
 export interface Notification {
   id: string;

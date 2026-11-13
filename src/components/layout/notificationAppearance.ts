@@ -3,6 +3,7 @@ import {
   Bell,
   Calculator,
   Flag,
+  ImageOff,
   LogIn,
   Mail,
   Sparkles,
@@ -75,6 +76,7 @@ const APPEARANCE_BY_TYPE: Record<NotificationType, NotificationAppearance> = {
   'match-won': { icon: Trophy, ...GOLD },
   milestone: { icon: Sparkles, ...MILESTONE },
   'game-time': { icon: AlarmClock, ...VIOLET },
+  'avatar-removed': { icon: ImageOff, ...RED },
 };
 
 const FALLBACK_APPEARANCE: NotificationAppearance = { icon: Bell, ...SLATE };

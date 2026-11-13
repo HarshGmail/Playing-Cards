@@ -1,7 +1,8 @@
 import { getUsers, User } from '@/lib/db/collections';
 import { success, error } from '@/lib/api/respond';
 import { createHandler } from '@/lib/api/handler';
-import { uploadAvatar, deleteAvatar } from '@/lib/storage/cloudinary';
+import { uploadAvatar } from '@/lib/storage/cloudinary';
+import { removeProfilePic } from '@/lib/users/removeProfilePic';
 import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
@@ -126,16 +127,12 @@ export const DELETE = createHandler(
       return error('Unauthorized', 'UNAUTHORIZED', 401);
     }
 
-    const result = await setProfilePicUrl(userId, null);
+    const result = await removeProfilePic(userId);
     if (!result) {
       return error('User not found', 'USER_NOT_FOUND', 404);
     }
 
-    // After the document is updated, so a Cloudinary failure can't leave the
-    // user pointing at an asset we already deleted.
-    await deleteAvatar(userId);
-
-    return success({ user: serializeUser(result as User) });
+    return success({ user: serializeUser(result) });
   },
   {
     rateLimitKey: 'delete-avatar',

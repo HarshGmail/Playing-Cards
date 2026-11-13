@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PlayerStatsSummary, RatingHistoryEntry, User } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
-import { userKeys, friendKeys, authKeys } from './keys';
+import { userKeys, friendKeys, authKeys, leaderboardKeys } from './keys';
 
 interface UserResponse {
   user: User;
@@ -85,6 +85,23 @@ export function useAvatarMutation() {
       // a separate query with a ~16 minute staleTime — without this the new
       // picture would not appear there until a full reload.
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
+    },
+  });
+}
+
+export function useModeratorRemoveAvatarMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (username: string) =>
+      apiFetch<UserResponse>(`/api/users/${encodeURIComponent(username)}/avatar`, {
+        method: 'DELETE',
+      }).then((res) => res.user),
+    onSuccess: (user) => {
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(user.username) });
+      queryClient.invalidateQueries({ queryKey: userKeys.stats(user.username) });
+      queryClient.invalidateQueries({ queryKey: friendKeys.list() });
+      queryClient.invalidateQueries({ queryKey: leaderboardKeys.all });
     },
   });
 }
