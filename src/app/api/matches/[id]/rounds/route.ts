@@ -4,10 +4,8 @@ import { getMatches, getScores } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { submitRoundSchema } from '@/lib/schemas/match';
-import { notifyRoundScored } from '@/lib/notifications/roundScored';
-import { withTransaction } from '@/lib/db/client';
+import { MatchServiceError, submitRound } from '@/lib/matches/service';
 import { ObjectId } from 'mongodb';
-import { onRoundsChanged } from '@/lib/events/matchEvents';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,121 +34,26 @@ export async function POST(
       scoreCount: body.scores?.length || 0,
     });
 
-    // Validate ObjectId format
-    if (!ObjectId.isValid(params.id)) {
-      logApiResponse(requestId, 404, Date.now() - startTime);
-      return notFound();
-    }
-
-    // Validate request body
     const parsed = submitRoundSchema.safeParse(body);
     if (!parsed.success) {
       logApiResponse(requestId, 400, Date.now() - startTime);
       return validationError(parsed.error.issues[0]?.message || 'Invalid input');
     }
 
-    const matchesCol = await getMatches();
-    const match = await matchesCol.findOne({
-      _id: new ObjectId(params.id),
-      deletedAt: null,
-    });
-
-    if (!match) {
-      logApiResponse(requestId, 404, Date.now() - startTime);
-      return notFound();
-    }
-
-    // Only creator can submit rounds
-    if (match.creatorId !== userId) {
-      logApiResponse(requestId, 403, Date.now() - startTime);
-      return forbidden();
-    }
-
-    // Verify all players in scores exist in roster and are active
-    const activePlayerIds = match.roster
-      .filter((r) => r.status === 'active')
-      .map((r) => r.userId);
-
-    // A one-player match is not a match, it is a scorer typing their own
-    // results in. Invited players are absent from the roster until they accept,
-    // so this is the state a freshly created match sits in — and rounds scored
-    // there would land on the creator's career stats unopposed.
-    if (activePlayerIds.length < 2) {
-      logApiResponse(requestId, 409, Date.now() - startTime);
-      return error(
-        'A round needs at least two active players — wait for your invites to be accepted.',
-        'NOT_ENOUGH_PLAYERS',
-        409
-      );
-    }
-
-    const submittedPlayerIds = new Set(parsed.data.scores.map((s) => s.playerId));
-
-    // Check that all active players have scores
-    for (const playerId of activePlayerIds) {
-      if (!submittedPlayerIds.has(playerId)) {
-        logApiResponse(requestId, 400, Date.now() - startTime);
-        return error('Missing scores for active players', 'INCOMPLETE_SCORES', 400);
-      }
-    }
-
-    // Check that no extra players are included
-    for (const playerId of submittedPlayerIds) {
-      if (!activePlayerIds.includes(playerId)) {
-        logApiResponse(requestId, 400, Date.now() - startTime);
-        return error('Scores for non-active players', 'INVALID_PLAYERS', 400);
-      }
-    }
-
-    // Get next round number
-    const nextRound = match.roundsPlayed + 1;
-    const scoresCol = await getScores();
-
-    // Insert score documents
-    const scoreDocuments = parsed.data.scores.map((score) => ({
+    const result = await submitRound({
       matchId: params.id,
-      round: nextRound,
-      playerId: score.playerId,
-      value: score.value,
-      enteredBy: userId,
-      enteredAt: new Date(),
-      editHistory: [],
-    }));
-
-    await withTransaction(async (session) => {
-      await scoresCol.insertMany(scoreDocuments, { session });
-      await matchesCol.updateOne(
-        { _id: new ObjectId(params.id) },
-        {
-          $set: { roundsPlayed: nextRound },
-          $inc: { version: 1 },
-        },
-        { session }
-      );
-    });
-
-    await notifyRoundScored({
-      match,
-      round: nextRound,
+      userId,
       scores: parsed.data.scores,
-      scoredBy: userId,
-      edited: false,
-    }).catch((err) => logError(requestId, err));
-
-    await onRoundsChanged(params.id).catch((err) => logError(requestId, err));
+    });
 
     logApiResponse(requestId, 201, Date.now() - startTime);
 
-    return success(
-      {
-        matchId: params.id,
-        round: nextRound,
-        scoreCount: scoreDocuments.length,
-        version: match.version + 1,
-      },
-      201
-    );
+    return success(result, 201);
   } catch (err) {
+    if (err instanceof MatchServiceError) {
+      logApiResponse(requestId, err.status, Date.now() - startTime);
+      return error(err.message, err.code, err.status);
+    }
     logError(requestId, err);
     logApiResponse(requestId, 500, Date.now() - startTime);
     return error('Internal server error', 'INTERNAL_ERROR', 500);

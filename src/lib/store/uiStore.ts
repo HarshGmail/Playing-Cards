@@ -1,4 +1,10 @@
 import { create } from 'zustand';
+import {
+  applyThemeChoice,
+  DEFAULT_THEME_CHOICE,
+  ThemeChoice,
+  writeStoredThemeChoice,
+} from '@/lib/theme/theme';
 
 export interface Toast {
   id: string;
@@ -8,10 +14,10 @@ export interface Toast {
 }
 
 export interface UIState {
-  theme: 'light' | 'dark' | 'system';
+  theme: ThemeChoice;
   isOnline: boolean;
   toasts: Toast[];
-  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setTheme: (theme: ThemeChoice) => void;
   setOnline: (isOnline: boolean) => void;
   addToast: (toast: Omit<Toast, 'id'>) => string;
   removeToast: (id: string) => void;
@@ -19,15 +25,15 @@ export interface UIState {
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-  theme: 'system',
+  theme: DEFAULT_THEME_CHOICE,
   isOnline: true,
   toasts: [],
 
-  setTheme: (theme: 'light' | 'dark' | 'system') => {
+  setTheme: (theme: ThemeChoice) => {
     set({ theme });
     if (typeof window !== 'undefined') {
-      localStorage.setItem('theme', theme);
-      updateTheme(theme);
+      writeStoredThemeChoice(theme);
+      applyThemeChoice(theme);
     }
   },
 
@@ -56,22 +62,3 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   clearToasts: () => set({ toasts: [] }),
 }));
-
-function updateTheme(theme: 'light' | 'dark' | 'system') {
-  if (typeof window === 'undefined') return;
-
-  const html = document.documentElement;
-  let effectiveTheme = theme;
-
-  if (theme === 'system') {
-    effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  }
-
-  if (effectiveTheme === 'dark') {
-    html.classList.add('dark');
-  } else {
-    html.classList.remove('dark');
-  }
-}

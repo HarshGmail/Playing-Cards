@@ -50,6 +50,11 @@ export const leaderboardKeys = {
     [...leaderboardKeys.all, scope, metric, game] as const,
 };
 
+export const apiTokenKeys = {
+  all: ['api-tokens'] as const,
+  list: () => [...apiTokenKeys.all, 'list'] as const,
+};
+
 export const joinKeys = {
   all: ['join'] as const,
   validate: (code: string) => [...joinKeys.all, 'validate', code] as const,

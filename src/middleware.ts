@@ -12,6 +12,7 @@ export async function middleware(request: NextRequest) {
     '/api/auth/recover/verify',
     '/api/auth/recover/reset',
     '/api/cron/game-time',
+    '/api/mcp',
   ];
   const isPublicRoute =
     request.nextUrl.pathname === '/' ||

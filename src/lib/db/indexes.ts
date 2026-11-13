@@ -10,6 +10,7 @@ import {
   getNotifications,
   getPlayerStats,
   getPushSubscriptions,
+  getApiTokens,
 } from './collections';
 
 export async function ensureIndexes(): Promise<void> {
@@ -74,4 +75,8 @@ export async function ensureIndexes(): Promise<void> {
   const pushSubscriptions = await getPushSubscriptions();
   await pushSubscriptions.createIndex({ endpoint: 1 }, { unique: true });
   await pushSubscriptions.createIndex({ userId: 1 });
+
+  const apiTokens = await getApiTokens();
+  await apiTokens.createIndex({ tokenHash: 1 }, { unique: true });
+  await apiTokens.createIndex({ userId: 1 });
 }

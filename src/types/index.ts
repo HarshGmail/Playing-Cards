@@ -309,3 +309,15 @@ export interface UserStats {
   worstScore: number;
   totalScore: number;
 }
+
+export interface ApiTokenSummary {
+  id: string;
+  name: string;
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+export interface CreatedApiToken extends ApiTokenSummary {
+  token: string;
+}

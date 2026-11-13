@@ -7,7 +7,7 @@ import { useUIStore } from '@/lib/store/uiStore';
 import Avatar from '@/components/common/Avatar';
 import NotificationBell from './NotificationBell';
 import Link from 'next/link';
-import { Sun, Moon, LogOut, Menu, BookOpen, User as UserIcon } from 'lucide-react';
+import { Sun, Moon, LogOut, Menu, BookOpen, User as UserIcon, Settings as SettingsIcon } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Header() {
@@ -25,8 +25,8 @@ export default function Header() {
   };
 
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
+    const isDarkNow = document.documentElement.classList.contains('dark');
+    setTheme(isDarkNow ? 'light' : 'dark');
   };
 
   return (
@@ -100,6 +100,13 @@ export default function Header() {
               )}
               {user?.name}
             </Link>
+            <Link
+              href="/settings"
+              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2"
+              aria-label="Settings"
+            >
+              <SettingsIcon className="w-5 h-5" />
+            </Link>
             <button
               onClick={handleLogout}
               className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2"
@@ -135,6 +142,13 @@ export default function Header() {
             className="block text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2"
           >
             Game rules
+          </Link>
+          <Link
+            href="/settings"
+            onClick={() => setIsMenuOpen(false)}
+            className="block text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2"
+          >
+            Settings
           </Link>
           <button
             onClick={handleLogout}

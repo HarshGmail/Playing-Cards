@@ -6,6 +6,7 @@ import { QueryProvider } from '@/components/providers/QueryProvider';
 import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister';
 import InstallBanner from '@/components/pwa/InstallBanner';
 import { INSTALL_CAPTURE_SCRIPT } from '@/lib/install/capture';
+import { THEME_INIT_SCRIPT } from '@/lib/theme/theme';
 
 const THEME_COLOR = '#4c1d95';
 
@@ -44,6 +45,7 @@ export default function RootLayout({
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials" />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE_SCRIPT }} />
       </head>
       <body>
