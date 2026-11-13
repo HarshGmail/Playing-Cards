@@ -94,7 +94,7 @@ describe('buildPositionHistory', () => {
     expect(round1.positions.get('b')).toBe(1);
   });
 
-  it('ranks a DNF player last from the round they dropped out', () => {
+  it('ranks a DNF player normally until they drop out, then stops plotting them', () => {
     const roster: PositionRosterEntry[] = [
       { userId: 'a', userName: 'a', status: 'active', dnfAfterRound: null },
       { userId: 'quitter', userName: 'quitter', status: 'dnf', dnfAfterRound: 1 },
@@ -118,9 +118,37 @@ describe('buildPositionHistory', () => {
       },
     ];
 
+    const [round1, round2] = buildPositionHistory(rounds, roster, 'lowest-first', []);
+
+    expect(round1.positions.get('quitter')).toBe(1);
+    expect(round2.positions.has('quitter')).toBe(false);
+    expect(round2.positions.get('b')).toBe(1);
+    expect(round2.positions.get('a')).toBe(2);
+  });
+
+  it('reports each ranked player running total', () => {
+    const roster = [active('a'), active('b')];
+    const rounds = [
+      {
+        round: 1,
+        scores: [
+          { playerId: 'a', value: 4 },
+          { playerId: 'b', value: 9 },
+        ],
+      },
+      {
+        round: 2,
+        scores: [
+          { playerId: 'a', value: 6 },
+          { playerId: 'b', value: 0 },
+        ],
+      },
+    ];
+
     const [, round2] = buildPositionHistory(rounds, roster, 'lowest-first', []);
 
-    expect(round2.positions.get('quitter')).toBe(3);
+    expect(round2.totals.get('a')).toBe(10);
+    expect(round2.totals.get('b')).toBe(9);
   });
 
   it('orders highest-first matches with the highest total on top', () => {
