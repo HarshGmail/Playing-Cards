@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import { useReducedMotion } from 'framer-motion';
@@ -10,6 +10,7 @@ import { ordinal } from '@/lib/domain/milestones';
 import { buildPositionHistory, type PositionRosterEntry } from '@/lib/domain/positionHistory';
 import { buildPositionStory, describeRace, type PositionStory } from '@/lib/domain/positionStory';
 import { buildPositionChartOptions, type PositionChartLayout } from './positionChartOptions';
+import { useRaceAnimation } from './useRaceAnimation';
 import type { PlayersById } from '@/types';
 
 interface PositionTrendChartProps {
@@ -21,8 +22,6 @@ interface PositionTrendChartProps {
   ended: boolean;
 }
 
-const FIRST_DRAW_DURATION_MS = 1000;
-const REPLAY_DURATION_MS = 3500;
 const MIN_ROLLERCOASTER_CHANGES = 3;
 
 const LAYOUTS: Array<{ value: PositionChartLayout; label: string; icon: typeof MoveVertical }> = [
@@ -117,6 +116,15 @@ export default function PositionTrendChart({
     (playerId: string) => setFocusedId((current) => (current === playerId ? null : playerId)),
     []
   );
+  const chartRef = useRef<HighchartsReact.RefObject>(null);
+  const frame = useRaceAnimation({
+    history,
+    roster,
+    chartRef,
+    animate: !reduceMotion,
+    replayCount,
+    layout,
+  });
 
   if (history.length === 0 || roster.length === 0) {
     return (
@@ -133,7 +141,6 @@ export default function PositionTrendChart({
     lastRound: history[history.length - 1].round,
   });
   const cards = buildStoryCards(story, history.length, nameOf);
-  const firstDrawDuration = replayCount > 0 ? REPLAY_DURATION_MS : FIRST_DRAW_DURATION_MS;
   const options = buildPositionChartOptions({
     history,
     story,
@@ -141,7 +148,7 @@ export default function PositionTrendChart({
     playersById,
     focusedId,
     layout,
-    animationDuration: reduceMotion ? false : firstDrawDuration,
+    frame,
     onToggleFocus: toggleFocus,
   });
 
@@ -190,7 +197,7 @@ export default function PositionTrendChart({
         </div>
       </div>
 
-      <HighchartsReact key={`${layout}-${replayCount}`} highcharts={Highcharts} options={options} />
+      <HighchartsReact key={layout} ref={chartRef} highcharts={Highcharts} options={options} />
 
       <p className="text-xs text-center text-gray-500 dark:text-gray-400">
         {focusedId
