@@ -260,6 +260,7 @@ export default function MatchPage() {
               players={match.roster}
               playersById={playersById}
               rankPreference={match.rankPreference}
+              tiebreakers={match.tiebreakers}
               ended={match.status === 'ended'}
               forecast={match.targetRounds ? forecast : null}
             />

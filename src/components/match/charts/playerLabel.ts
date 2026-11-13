@@ -50,6 +50,33 @@ interface PlayerLabelOptions {
   stacked?: boolean;
 }
 
+interface PlayerFaceOptions {
+  name: string;
+  profilePicUrl?: string | null;
+  size: number;
+  ringColor?: string;
+  extraStyle?: string;
+}
+
+export function playerFaceHtml({
+  name,
+  profilePicUrl,
+  size,
+  ringColor,
+  extraStyle = '',
+}: PlayerFaceOptions): string {
+  const ring = ringColor ? `box-shadow:0 0 0 2px ${escapeHtml(ringColor)};` : '';
+  const box =
+    `width:${size}px;height:${size}px;border-radius:9999px;flex-shrink:0;` +
+    `${ring}${escapeHtml(extraStyle)}`;
+
+  return profilePicUrl && isDeliverableImage(profilePicUrl)
+    ? `<img src="${escapeHtml(avatarUrl(profilePicUrl, size))}" alt="" style="${box}object-fit:cover;" />`
+    : `<span style="${box}display:flex;align-items:center;justify-content:center;` +
+        `background:#2563eb;color:#fff;font-size:${Math.round(size * 0.4)}px;font-weight:700;">` +
+        `${escapeHtml(initialsOf(name))}</span>`;
+}
+
 export function playerLabelHtml({
   name,
   profilePicUrl,
@@ -57,14 +84,7 @@ export function playerLabelHtml({
   stacked = true,
 }: PlayerLabelOptions): string {
   const safeName = escapeHtml(name);
-  const box = `width:${size}px;height:${size}px;border-radius:9999px;flex-shrink:0;`;
-
-  const face =
-    profilePicUrl && isDeliverableImage(profilePicUrl)
-      ? `<img src="${escapeHtml(avatarUrl(profilePicUrl, size))}" alt="" style="${box}object-fit:cover;" />`
-      : `<span style="${box}display:flex;align-items:center;justify-content:center;` +
-        `background:#2563eb;color:#fff;font-size:${Math.round(size * 0.4)}px;font-weight:700;">` +
-        `${escapeHtml(initialsOf(name))}</span>`;
+  const face = playerFaceHtml({ name, profilePicUrl, size });
 
   const layout = stacked
     ? 'flex-direction:column;gap:2px;'
