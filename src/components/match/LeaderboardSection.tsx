@@ -11,7 +11,7 @@ import WinChancePanel from '@/components/match/WinChancePanel';
 import { useRankTransition } from '@/components/match/useRankTransition';
 import { buildScoreboardRows } from '@/lib/domain/scoreboard';
 import { gameRunsByPlayer } from '@/lib/domain/streaks';
-import type { PlayersById, WinForecast } from '@/types';
+import type { PlayersById, RosterEntry, WinForecast } from '@/types';
 
 const TotalsChart = dynamic(() => import('@/components/match/charts/TotalsChart'), { ssr: false });
 const RoundsWonChart = dynamic(() => import('@/components/match/charts/RoundsWonChart'), {
@@ -20,6 +20,21 @@ const RoundsWonChart = dynamic(() => import('@/components/match/charts/RoundsWon
 const ScoreTrendChart = dynamic(() => import('@/components/match/charts/ScoreTrendChart'), {
   ssr: false,
 });
+const PositionTrendChart = dynamic(() => import('@/components/match/charts/PositionTrendChart'), {
+  ssr: false,
+});
+
+const TREND_MODES = [
+  { value: 'scores', label: 'Scores' },
+  { value: 'positions', label: 'Positions' },
+] as const;
+
+type TrendMode = (typeof TREND_MODES)[number]['value'];
+
+const TREND_TITLES: Record<TrendMode, string> = {
+  scores: 'Score Trend',
+  positions: 'Position Trend',
+};
 
 interface LeaderboardEntry {
   position: number;
@@ -41,10 +56,11 @@ interface LeaderboardSectionProps {
   matchId: string;
   entries: LeaderboardEntry[];
   rounds: Array<{ round: number; scores: Array<{ playerId: string; value: number }> }>;
-  players: Array<{ userId: string; userName: string }>;
+  players: RosterEntry[];
   /** Faces and handles keyed by userId, which is what `playerId` holds. */
   playersById: PlayersById;
   rankPreference: 'highest-first' | 'lowest-first';
+  tiebreakers: string[];
   ended?: boolean;
   forecast?: WinForecast | null;
 }
@@ -102,10 +118,12 @@ export default function LeaderboardSection({
   players,
   playersById,
   rankPreference,
+  tiebreakers,
   ended = false,
   forecast = null,
 }: LeaderboardSectionProps) {
   const [view, setView] = useState<'table' | 'chart'>('table');
+  const [trendMode, setTrendMode] = useState<TrendMode>('scores');
   const { entries, changes } = useRankTransition(matchId, latestEntries);
 
   const gameStreaks = useMemo(
@@ -202,10 +220,38 @@ export default function LeaderboardSection({
             </div>
           </div>
           <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">
-              Score Trend
-            </h3>
-            <ScoreTrendChart rounds={rounds} players={players} playersById={playersById} />
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
+                {TREND_TITLES[trendMode]}
+              </h3>
+              <div className="flex items-center gap-1">
+                {TREND_MODES.map((mode) => (
+                  <button
+                    key={mode.value}
+                    onClick={() => setTrendMode(mode.value)}
+                    aria-pressed={trendMode === mode.value}
+                    className={`px-2 py-1 rounded-md text-xs font-medium transition ${
+                      trendMode === mode.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {trendMode === 'scores' ? (
+              <ScoreTrendChart rounds={rounds} players={players} playersById={playersById} />
+            ) : (
+              <PositionTrendChart
+                rounds={rounds}
+                roster={players}
+                rankPreference={rankPreference}
+                tiebreakers={tiebreakers}
+                playersById={playersById}
+              />
+            )}
           </div>
         </div>
       )}
