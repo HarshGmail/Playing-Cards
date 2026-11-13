@@ -110,6 +110,14 @@ describe('formatNotification', () => {
     expect(spectator.body).toBe('Asha added you as a spectator of Friday Night');
   });
 
+  it('tells a user their photo was removed and sends them to their profile to replace it', () => {
+    expect(formatNotification({ type: 'avatar-removed', payload: {} })).toEqual({
+      title: 'Profile photo removed',
+      body: 'Your profile photo was removed for being inappropriate. You can upload a new one from your profile.',
+      url: '/profile',
+    });
+  });
+
   it('falls back for unknown types', () => {
     expect(formatNotification({ type: 'something-new', payload: {} })).toEqual({
       title: 'Notification',

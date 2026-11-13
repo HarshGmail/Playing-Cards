@@ -8,8 +8,11 @@ import MedalsTable from '@/components/profile/MedalsTable';
 import StreakStatsCard from '@/components/streaks/StreakStatsCard';
 import MilestonesSection from '@/components/streaks/MilestonesSection';
 import Leaderboard from '@/components/profile/Leaderboard';
-import { useUserStatsQuery } from '@/lib/queries/users';
-import { UserPlus, UserCheck, UserMinus } from 'lucide-react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { useModeratorRemoveAvatarMutation, useUserStatsQuery } from '@/lib/queries/users';
+import { useUIStore } from '@/lib/store/uiStore';
+import { isModerator } from '@/lib/domain/moderation';
+import { UserPlus, UserCheck, UserMinus, ImageOff } from 'lucide-react';
 
 export default function ProfilePage() {
   const params = useParams();
@@ -20,6 +23,9 @@ export default function ProfilePage() {
   const [friendStatus, setFriendStatus] = useState<'none' | 'pending' | 'friend'>('none');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmingAvatarRemoval, setConfirmingAvatarRemoval] = useState(false);
+  const removeAvatar = useModeratorRemoveAvatarMutation();
+  const { addToast } = useUIStore();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -74,6 +80,20 @@ export default function ProfilePage() {
     }
   };
 
+  const handleRemoveAvatar = () => {
+    removeAvatar.mutate(user.username, {
+      onSuccess: () => {
+        setUser((current: any) => ({ ...current, profilePicUrl: null }));
+        setConfirmingAvatarRemoval(false);
+        addToast({ type: 'success', message: `Removed ${user.name}'s profile photo` });
+      },
+      onError: () => {
+        setConfirmingAvatarRemoval(false);
+        addToast({ type: 'error', message: 'Could not remove the photo. Try again.' });
+      },
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 flex items-center justify-center">
@@ -90,8 +110,20 @@ export default function ProfilePage() {
     );
   }
 
+  const canRemoveAvatar =
+    isModerator(viewer?.username) && viewer?.username !== username && Boolean(user.profilePicUrl);
+
   const friendButton = (
     <>
+      {canRemoveAvatar && (
+        <button
+          onClick={() => setConfirmingAvatarRemoval(true)}
+          className="px-4 py-2 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-2 transition"
+        >
+          <ImageOff className="w-4 h-4" />
+          Remove photo
+        </button>
+      )}
       {friendStatus === 'none' && (
         <button
           onClick={handleAddFriend}
@@ -131,6 +163,16 @@ export default function ProfilePage() {
         <MilestonesSection stats={stats} />
         {viewer && viewer.username === username && <Leaderboard />}
       </div>
+      <ConfirmDialog
+        open={confirmingAvatarRemoval}
+        title="Remove profile photo?"
+        message={`${user.name}'s photo will be deleted and they'll get a notification saying it was removed for being inappropriate. They can upload a new one.`}
+        confirmLabel="Remove photo"
+        destructive
+        busy={removeAvatar.isPending}
+        onConfirm={handleRemoveAvatar}
+        onCancel={() => setConfirmingAvatarRemoval(false)}
+      />
     </div>
   );
 }

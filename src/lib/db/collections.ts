@@ -156,7 +156,8 @@ export interface Notification {
     | 'round-scored'
     | 'match-won'
     | 'milestone'
-    | 'game-time';
+    | 'game-time'
+    | 'avatar-removed';
   payload: Record<string, unknown>;
   read: boolean;
   createdAt: Date;
