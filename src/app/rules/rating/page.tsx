@@ -218,7 +218,7 @@ export default function RatingExplainerPage() {
             rank the leaderboards.
           </IdeaCard>
           <IdeaCard icon={<Percent className="w-5 h-5" />} title="Win %">
-            Rounds you won divided by rounds you played, across every match, finished or not.
+            Matches you won divided by matches you played. Strike rate is the same idea for rounds: rounds you won divided by rounds you played.
           </IdeaCard>
           <IdeaCard icon={<Crown className="w-5 h-5" />} title="Match wins">
             Finished matches where you came first. Each one is a crown in your trophy cabinet.

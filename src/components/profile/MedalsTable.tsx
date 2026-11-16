@@ -44,6 +44,11 @@ const EMPTY_STATS: UserStats = {
   totalRounds: 0,
 };
 
+function matchWinPct(matchWins: number, matchesPlayed: number): number {
+  if (matchesPlayed === 0) return 0;
+  return matchWins / matchesPlayed;
+}
+
 function strikeRate(gamesWon: number, gamesPlayed: number): string {
   if (gamesPlayed === 0) return '0.0';
   return ((gamesWon / gamesPlayed) * 100).toFixed(1);
@@ -151,7 +156,7 @@ export default function MedalsTable({ stats = EMPTY_STATS, username }: MedalsTab
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatTile
           label="Win %"
-          value={formatWinPct(stats.winPct)}
+          value={formatWinPct(matchWinPct(stats.matchWins, stats.matchesPlayed))}
           toneClasses="border-green-200 dark:border-green-800/60 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40"
           valueClassName="text-green-600 dark:text-green-500"
         />
