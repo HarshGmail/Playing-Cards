@@ -1,9 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Calculator } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { useLocalStorageRoundScores } from '@/lib/hooks/useLocalStorageRoundScores';
+import { loadRoundDraft, saveRoundDraft } from '@/lib/hooks/useLocalStorageRoundScores';
+import {
+  allScoresEntered,
+  emptyScoreDrafts,
+  enterKeyAction,
+  enterKeyHintFor,
+  sanitizeScoreInput,
+  toSubmittedScores,
+  type ScoreDrafts,
+} from '@/lib/domain/roundEntry';
 import ScoreCalculatorModal from './ScoreCalculatorModal';
 
 interface RoundFormProps {
@@ -13,12 +22,14 @@ interface RoundFormProps {
     userId: string;
     userName: string;
   }>;
-  onSubmit: (scores: Array<{ playerId: string; value: number }>) => Promise<void>;
-  /**
-   * Whether the card-based score calculator applies. It encodes Least Count's
-   * rules, so it has no business appearing on a match of some other game.
-   */
+  onSubmit: (scores: Array<{ playerId: string; value: number }>) => void;
   showCalculator?: boolean;
+  compact?: boolean;
+}
+
+interface DraftEntry {
+  round: number;
+  drafts: ScoreDrafts;
 }
 
 export default function RoundForm({
@@ -27,112 +38,134 @@ export default function RoundForm({
   players,
   onSubmit,
   showCalculator = false,
+  compact = false,
 }: RoundFormProps) {
   const { user } = useAuth();
-  const { loadSavedScores, saveScores, clearSavedScores } = useLocalStorageRoundScores({
-    matchId,
-    userId: user?.id || '',
-    round,
-    isEdit: false,
-  });
+  const userId = user?.id || '';
+  const playerIds = players.map((player) => player.userId);
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const submittedRoundRef = useRef<number | null>(null);
 
-  const [scores, setScores] = useState<Record<string, string>>(() => {
-    const saved = loadSavedScores();
-    return saved || Object.fromEntries(players.map((p) => [p.userId, '']));
-  });
-  const [loading, setLoading] = useState(false);
+  const draftFor = (targetRound: number): ScoreDrafts =>
+    loadRoundDraft({ matchId, userId, round: targetRound }) ?? emptyScoreDrafts(playerIds);
+
+  const [entry, setEntry] = useState<DraftEntry>(() => ({ round, drafts: draftFor(round) }));
   const [error, setError] = useState('');
   const [calculatingFor, setCalculatingFor] = useState<string | null>(null);
 
-  useEffect(() => {
-    saveScores(scores);
-  }, [scores, saveScores]);
+  if (entry.round !== round) {
+    submittedRoundRef.current = null;
+    setEntry({ round, drafts: draftFor(round) });
+    setError('');
+  }
 
-  const handleScoreChange = (playerId: string, value: string) => {
-    setScores((prev) => ({
-      ...prev,
-      [playerId]: value === '' ? '' : Math.max(0, Math.min(99999, parseInt(value) || 0)).toString(),
+  const { drafts } = entry;
+
+  useEffect(() => {
+    saveRoundDraft({ matchId, userId, round: entry.round }, entry.drafts);
+  }, [matchId, userId, entry]);
+
+  const canSubmit = allScoresEntered(playerIds, drafts);
+
+  const focusPlayer = (index: number, options?: FocusOptions) => {
+    const input = inputRefs.current[index];
+    if (!input) return;
+    input.focus(options);
+    input.select();
+  };
+
+  const updateScore = (playerId: string, rawValue: string) => {
+    setError('');
+    setEntry((current) => ({
+      ...current,
+      drafts: { ...current.drafts, [playerId]: sanitizeScoreInput(rawValue) },
     }));
   };
 
-  const hasMissingScore = players.some((p) => !scores[p.userId]);
-
-  const handleSubmit = async () => {
-    if (hasMissingScore) {
+  const submit = () => {
+    if (!canSubmit) {
       setError('All players must have scores');
       return;
     }
-
-    setLoading(true);
-    try {
-      const scoresArray = players.map((p) => ({
-        playerId: p.userId,
-        value: parseInt(scores[p.userId]),
-      }));
-      await onSubmit(scoresArray);
-      clearSavedScores();
-      setScores(Object.fromEntries(players.map((p) => [p.userId, ''])));
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit round');
-    } finally {
-      setLoading(false);
-    }
+    if (submittedRoundRef.current === round) return;
+    submittedRoundRef.current = round;
+    setError('');
+    onSubmit(toSubmittedScores(playerIds, drafts));
+    focusPlayer(0, { preventScroll: true });
   };
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    const action = enterKeyAction(index, players.length, canSubmit);
+    if (action === 'focus-next') focusPlayer(index + 1);
+    if (action === 'submit') submit();
+    if (action === 'none') setError('All players must have scores');
+  };
+
+  const rowSpacing = compact ? 'space-y-2' : 'space-y-3';
+
   return (
-    <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-      <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Round {round}</h3>
-      <div className="space-y-3 mb-4">
-        {players.map((player) => (
-          <div key={player.userId} className="flex items-center gap-3">
-            <label className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+    <div className="p-4 sm:p-5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Round {round}</h3>
+      <div className={`${rowSpacing} mb-4`}>
+        {players.map((player, index) => (
+          <div key={player.userId} className="flex items-center gap-2 sm:gap-3">
+            <label
+              htmlFor={`score-${player.userId}`}
+              className="flex-1 min-w-0 truncate text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
               {player.userName}
             </label>
             {showCalculator && (
               <button
                 type="button"
                 onClick={() => setCalculatingFor(player.userId)}
-                disabled={loading}
                 title={`Work out ${player.userName}'s score from their cards`}
                 aria-label={`Work out ${player.userName}'s score from their cards`}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition disabled:opacity-50"
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
               >
                 <Calculator className="w-5 h-5" />
               </button>
             )}
             <input
-              type="number"
-              min="0"
-              max="99999"
-              value={scores[player.userId] ?? ''}
-              onChange={(e) => handleScoreChange(player.userId, e.target.value)}
+              id={`score-${player.userId}`}
+              ref={(element) => {
+                inputRefs.current[index] = element;
+              }}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              enterKeyHint={enterKeyHintFor(index, players.length)}
+              value={drafts[player.userId] ?? ''}
+              onChange={(event) => updateScore(player.userId, event.target.value)}
+              onFocus={(event) => event.target.select()}
+              onKeyDown={(event) => handleKeyDown(event, index)}
               placeholder="0"
-              disabled={loading}
-              className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50"
+              className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right text-base tabular-nums focus:ring-2 focus:ring-blue-500 outline-none transition"
             />
           </div>
         ))}
       </div>
 
-      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+      {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
       <button
-        onClick={handleSubmit}
-        disabled={loading || hasMissingScore}
-        className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
+        type="button"
+        onClick={submit}
+        disabled={!canSubmit}
+        className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
       >
-        {loading ? 'Submitting...' : 'Submit Round'}
+        Submit Round
       </button>
 
       {calculatingFor && (
         <ScoreCalculatorModal
-          playerName={
-            players.find((p) => p.userId === calculatingFor)?.userName ?? 'player'
-          }
+          playerName={players.find((p) => p.userId === calculatingFor)?.userName ?? 'player'}
           onClose={() => setCalculatingFor(null)}
           onUse={(score) => {
-            handleScoreChange(calculatingFor, String(score));
+            updateScore(calculatingFor, String(score));
             setCalculatingFor(null);
           }}
         />
