@@ -31,10 +31,15 @@ import EditRoundModal from '@/components/match/EditRoundModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Confetti from '@/components/effects/Confetti';
 import { useMatchCelebration } from '@/components/effects/useMatchCelebration';
+import WaitingForPlayers from '@/components/match/WaitingForPlayers';
 import { gameDisplayName, rulesPathFor, toGameType } from '@/lib/games/catalog';
-import { Settings } from 'lucide-react';
+import { useFullscreen } from '@/lib/hooks/useFullscreen';
+import { clearRoundDraft } from '@/lib/hooks/useLocalStorageRoundScores';
+import { Maximize, Minimize, Settings } from 'lucide-react';
 
 const CONFETTI_AFTER_CEREMONY_MS = 900;
+
+const LIVE_TAB = 'live';
 
 export default function MatchPage() {
   const params = useParams();
@@ -42,7 +47,8 @@ export default function MatchPage() {
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const { addToast } = useUIStore();
-  const [tab, setTab] = useState('leaderboard');
+  const [tab, setTab] = useState(LIVE_TAB);
+  const fullscreen = useFullscreen();
   const [editingRound, setEditingRound] = useState<number | null>(null);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [confirmingResume, setConfirmingResume] = useState(false);
@@ -77,9 +83,21 @@ export default function MatchPage() {
     viewerWon,
   });
 
-  const handleRoundSubmit = async (scores: any[]) => {
-    await submitRoundMutation.mutateAsync({ scores });
-    setTab('leaderboard');
+  const handleRoundSubmit = (scores: Array<{ playerId: string; value: number }>) => {
+    if (!match || !user) return;
+    const submittedRound = match.roundsPlayed + 1;
+    submitRoundMutation.mutate(
+      { scores },
+      {
+        onSuccess: () =>
+          clearRoundDraft({ matchId, userId: user.id, round: submittedRound }),
+        onError: (submitError) =>
+          addToast({
+            type: 'error',
+            message: `${submitError.message || 'Could not submit the round.'} Your scores are back in the form.`,
+          }),
+      }
+    );
   };
 
   const handleRoundEdit = async (round: number, scores: any[], dnfPlayerIds: string[]) => {
@@ -162,13 +180,35 @@ export default function MatchPage() {
   // players, so surface why rather than letting the form 409.
   const activePlayers = match.roster.filter((r: any) => r.status === 'active');
   const canScoreRound = activePlayers.length >= 2;
-  const tabs = isCreator && match.status === 'active'
-    ? ['leaderboard', 'scoreboard', 'rounds', 'form', 'roster']
-    : ['leaderboard', 'scoreboard', 'rounds', 'roster'];
+  const canEnterRounds = isCreator && match.status === 'active';
+  const tabs = [
+    { id: LIVE_TAB, label: match.status === 'ended' ? 'Results' : 'Live' },
+    { id: 'scoreboard', label: 'Scoreboard' },
+    { id: 'rounds', label: 'Rounds' },
+    { id: 'roster', label: 'Roster' },
+  ];
+  const roundEntry = canEnterRounds ? (
+    canScoreRound ? (
+      <RoundForm
+        matchId={matchId}
+        round={match.roundsPlayed + 1}
+        players={activePlayers}
+        onSubmit={handleRoundSubmit}
+        showCalculator={isLeastCount}
+        compact
+      />
+    ) : (
+      <WaitingForPlayers pendingInviteCount={pendingInvites.length} />
+    )
+  ) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+    <div
+      className={`min-h-screen bg-gray-50 dark:bg-gray-900 px-4 ${
+        fullscreen.active ? 'py-4 sm:px-6' : 'py-8'
+      }`}
+    >
+      <div className={fullscreen.active ? 'max-w-none' : 'max-w-7xl mx-auto'}>
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             {match.name}
@@ -176,6 +216,21 @@ export default function MatchPage() {
           <div className="flex items-center gap-2 shrink-0">
             {match.status === 'ended' && match.roundsPlayed > 0 && (
               <MatchRecapButton matchId={matchId} matchName={match.name} />
+            )}
+            {fullscreen.supported && (
+              <button
+                type="button"
+                onClick={fullscreen.toggle}
+                aria-label={fullscreen.active ? 'Exit full screen' : 'Enter full screen'}
+                title={fullscreen.active ? 'Exit full screen' : 'Full screen'}
+                className="hidden sm:inline-flex p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition shrink-0"
+              >
+                {fullscreen.active ? (
+                  <Minimize className="w-5 h-5" />
+                ) : (
+                  <Maximize className="w-5 h-5" />
+                )}
+              </button>
             )}
             {isCreator && <ShareMatchButton matchId={matchId} />}
             {isCreator && (
@@ -236,22 +291,22 @@ export default function MatchPage() {
           <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 min-w-min">
             {tabs.map((t) => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
+                key={t.id}
+                onClick={() => setTab(t.id)}
                 className={`px-3 sm:px-4 py-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${
-                  tab === t
+                  tab === t.id
                     ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+                {t.label}
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-6">
-          {tab === 'leaderboard' && state && (
+          {tab === LIVE_TAB && state && (
             <LeaderboardSection
               key={matchId}
               matchId={matchId}
@@ -263,6 +318,8 @@ export default function MatchPage() {
               tiebreakers={match.tiebreakers}
               ended={match.status === 'ended'}
               forecast={match.targetRounds ? forecast : null}
+              roundEntry={roundEntry}
+              fullscreen={fullscreen.active}
             />
           )}
           {tab === 'scoreboard' && (
@@ -282,32 +339,6 @@ export default function MatchPage() {
               isCreator={isCreator}
               onEdit={setEditingRound}
             />
-          )}
-          {tab === 'form' && isCreator && match.status === 'active' && (
-            canScoreRound ? (
-              <RoundForm
-                matchId={matchId}
-                round={match.roundsPlayed + 1}
-                players={activePlayers}
-                onSubmit={handleRoundSubmit}
-                showCalculator={isLeastCount}
-              />
-            ) : (
-              <div className="p-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="font-medium text-yellow-900 dark:text-yellow-300">
-                  Waiting for players
-                </p>
-                <p className="text-sm text-yellow-800/80 dark:text-yellow-300/80 mt-1">
-                  {pendingInvites.length > 0
-                    ? `${pendingInvites.length} invited player${
-                        pendingInvites.length === 1 ? '' : 's'
-                      } ${
-                        pendingInvites.length === 1 ? 'has' : 'have'
-                      } not accepted yet. A round needs at least two active players.`
-                    : 'A round needs at least two active players. Invite someone from the Roster tab or share the join link.'}
-                </p>
-              </div>
-            )
           )}
           {tab === 'roster' && (
             <RosterPanel

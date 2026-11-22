@@ -8,13 +8,20 @@ import type { PlayersById } from '@/types';
 interface RoundsWonChartProps {
   entries: Array<{ playerId: string; name: string; gamesWon: number }>;
   playersById: PlayersById;
+  height?: number;
 }
 
-export default function RoundsWonChart({ entries, playersById }: RoundsWonChartProps) {
+const DEFAULT_HEIGHT = 280;
+
+export default function RoundsWonChart({
+  entries,
+  playersById,
+  height = DEFAULT_HEIGHT,
+}: RoundsWonChartProps) {
   const sorted = [...entries].sort((a, b) => b.gamesWon - a.gamesWon);
 
   const options: Highcharts.Options = {
-    chart: { type: 'column', backgroundColor: 'transparent', height: 280 },
+    chart: { type: 'column', backgroundColor: 'transparent', height },
     title: { text: undefined },
     credits: { enabled: false },
     xAxis: {

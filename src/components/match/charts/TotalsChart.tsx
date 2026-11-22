@@ -8,13 +8,20 @@ import type { PlayersById } from '@/types';
 interface TotalsChartProps {
   entries: Array<{ playerId: string; name: string; total: number; isDnf: boolean }>;
   playersById: PlayersById;
+  height?: number;
 }
 
-export default function TotalsChart({ entries, playersById }: TotalsChartProps) {
+const DEFAULT_HEIGHT = 280;
+
+export default function TotalsChart({
+  entries,
+  playersById,
+  height = DEFAULT_HEIGHT,
+}: TotalsChartProps) {
   const sorted = [...entries].sort((a, b) => b.total - a.total);
 
   const options: Highcharts.Options = {
-    chart: { type: 'column', backgroundColor: 'transparent', height: 280 },
+    chart: { type: 'column', backgroundColor: 'transparent', height },
     title: { text: undefined },
     credits: { enabled: false },
     xAxis: {

@@ -23,6 +23,7 @@ export interface PositionChartInput {
   focusedId: string | null;
   frame: RaceFrame;
   onToggleFocus: (playerId: string) => void;
+  height?: number;
 }
 
 const CROWN = '👑';
@@ -34,7 +35,7 @@ const LINE_WIDTH = 3;
 const FOCUSED_LINE_WIDTH = 5;
 const FADED_OPACITY = 0.15;
 const MIN_PLAYERS_FOR_LAST_PLACE = 4;
-const CHART_HEIGHT = 340;
+export const DEFAULT_POSITION_CHART_HEIGHT = 340;
 const AXIS_LABEL_COLOR = '#9ca3af';
 const GRID_LINE_COLOR = 'rgba(148, 163, 184, 0.2)';
 const LEADER_BAND_COLOR = 'rgba(168, 85, 247, 0.14)';
@@ -162,7 +163,16 @@ function headRoomPx(history: RoundPositions[], roster: PositionRosterEntry[]): n
 }
 
 export function buildPositionChartOptions(input: PositionChartInput): Highcharts.Options {
-  const { history, story, roster, playersById, focusedId, frame, onToggleFocus } = input;
+  const {
+    history,
+    story,
+    roster,
+    playersById,
+    focusedId,
+    frame,
+    onToggleFocus,
+    height = DEFAULT_POSITION_CHART_HEIGHT,
+  } = input;
   const fieldSize = largestFieldSize(history);
   const playerById = new Map(roster.map((player) => [player.userId, player]));
   const isFaded = (playerId: string) => focusedId !== null && focusedId !== playerId;
@@ -227,7 +237,7 @@ export function buildPositionChartOptions(input: PositionChartInput): Highcharts
     chart: {
       type: 'line',
       backgroundColor: 'transparent',
-      height: CHART_HEIGHT,
+      height,
       animation: false,
       spacingRight: headRoom,
       spacingTop: CROWN_CLEARANCE_PX + CROWN_HEIGHT_PX,

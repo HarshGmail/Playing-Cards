@@ -20,6 +20,7 @@ interface PositionTrendChartProps {
   tiebreakers: string[];
   playersById: PlayersById;
   ended: boolean;
+  height?: number;
 }
 
 const MIN_ROLLERCOASTER_CHANGES = 3;
@@ -91,6 +92,7 @@ export default function PositionTrendChart({
   tiebreakers,
   playersById,
   ended,
+  height,
 }: PositionTrendChartProps) {
   const reduceMotion = useReducedMotion();
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export default function PositionTrendChart({
     focusedId,
     frame,
     onToggleFocus: toggleFocus,
+    height,
   });
 
   return (
