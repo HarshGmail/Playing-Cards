@@ -1,6 +1,7 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GameType, Match, MatchState, RosterEntry, WinForecast } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
+import { applyOptimisticRound, type CachedRound } from '@/lib/domain/optimisticRound';
 import { gameKeys, matchKeys } from './keys';
 
 interface MatchResponse {
@@ -24,12 +25,20 @@ interface RoundsResponse {
   }>;
 }
 
+const LIVE_POLL_INTERVAL_MS = 5_000;
+
+function useLivePollInterval(matchId: string) {
+  const submittingRound = useIsMutating({ mutationKey: matchKeys.submitRound(matchId) }) > 0;
+  return submittingRound ? false : LIVE_POLL_INTERVAL_MS;
+}
+
 export function useMatchQuery(id: string) {
+  const refetchInterval = useLivePollInterval(id);
   return useQuery({
     queryKey: matchKeys.detail(id),
     queryFn: () =>
       apiFetch<MatchResponse>(`/api/matches/${id}`).then((data) => data.match),
-    refetchInterval: 5_000,
+    refetchInterval,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -37,13 +46,14 @@ export function useMatchQuery(id: string) {
 }
 
 export function useMatchStateQuery(id: string) {
+  const refetchInterval = useLivePollInterval(id);
   return useQuery({
     queryKey: matchKeys.state(id),
     queryFn: () =>
       apiFetch<MatchStateResponse>(`/api/matches/${id}/state`).then(
         (data) => data.state
       ),
-    refetchInterval: 5_000,
+    refetchInterval,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -51,13 +61,14 @@ export function useMatchStateQuery(id: string) {
 }
 
 export function useMatchRoundsQuery(id: string) {
+  const refetchInterval = useLivePollInterval(id);
   return useQuery({
     queryKey: matchKeys.rounds(id),
     queryFn: () =>
       apiFetch<RoundsResponse>(`/api/matches/${id}/rounds`).then(
         (data) => data.rounds
       ),
-    refetchInterval: 5_000,
+    refetchInterval,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -68,20 +79,60 @@ interface SubmitRoundRequest {
   scores: Array<{ playerId: string; value: number }>;
 }
 
+interface SubmitRoundContext {
+  previousMatch: Match | undefined;
+  previousState: MatchState | undefined;
+  previousRounds: CachedRound[] | undefined;
+}
+
 export function useSubmitRoundMutation(matchId: string) {
   const queryClient = useQueryClient();
+  const matchKey = matchKeys.detail(matchId);
+  const stateKey = matchKeys.state(matchId);
+  const roundsKey = matchKeys.rounds(matchId);
 
-  return useMutation({
-    mutationFn: (data: SubmitRoundRequest) =>
+  return useMutation<void, Error, SubmitRoundRequest, SubmitRoundContext>({
+    mutationKey: matchKeys.submitRound(matchId),
+    mutationFn: (data) =>
       apiFetch<void>(`/api/matches/${matchId}/rounds`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
-      queryClient.invalidateQueries({ queryKey: matchKeys.state(matchId) });
-      queryClient.invalidateQueries({ queryKey: matchKeys.rounds(matchId) });
+    onMutate: async ({ scores }) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: matchKey, exact: true }),
+        queryClient.cancelQueries({ queryKey: stateKey }),
+        queryClient.cancelQueries({ queryKey: roundsKey }),
+      ]);
+
+      const previousMatch = queryClient.getQueryData<Match>(matchKey);
+      const previousState = queryClient.getQueryData<MatchState>(stateKey);
+      const previousRounds = queryClient.getQueryData<CachedRound[]>(roundsKey);
+
+      if (previousMatch) {
+        const optimistic = applyOptimisticRound({
+          match: previousMatch,
+          rounds: previousRounds ?? [],
+          state: previousState,
+          scores,
+          enteredAt: new Date().toISOString(),
+        });
+        queryClient.setQueryData(matchKey, optimistic.match);
+        queryClient.setQueryData(roundsKey, optimistic.rounds);
+        if (optimistic.state) queryClient.setQueryData(stateKey, optimistic.state);
+      }
+
+      return { previousMatch, previousState, previousRounds };
+    },
+    onError: (_error, _variables, context) => {
+      if (!context) return;
+      queryClient.setQueryData(matchKey, context.previousMatch);
+      queryClient.setQueryData(stateKey, context.previousState);
+      queryClient.setQueryData(roundsKey, context.previousRounds);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: matchKey });
     },
   });
 }

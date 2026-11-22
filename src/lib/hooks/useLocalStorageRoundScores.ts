@@ -1,54 +1,49 @@
-import { useEffect, useState } from 'react';
-
-interface UseLocalStorageRoundScoresOptions {
+interface RoundDraftTarget {
   matchId: string;
   userId: string;
   round: number;
   isEdit?: boolean;
 }
 
-export function useLocalStorageRoundScores({
-  matchId,
-  userId,
-  round,
-  isEdit = false,
-}: UseLocalStorageRoundScoresOptions) {
-  const getStorageKey = () => {
-    const prefix = isEdit ? 'edit' : 'add';
-    return `round_scores_${prefix}_${matchId}_${userId}_round${round}`;
-  };
+type RoundDrafts = Record<string, string>;
 
-  const loadSavedScores = (): Record<string, string> | null => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const saved = localStorage.getItem(getStorageKey());
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  };
+export function roundDraftKey({ matchId, userId, round, isEdit = false }: RoundDraftTarget) {
+  const prefix = isEdit ? 'edit' : 'add';
+  return `round_scores_${prefix}_${matchId}_${userId}_round${round}`;
+}
 
-  const saveScores = (scores: Record<string, string>) => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(getStorageKey(), JSON.stringify(scores));
-    } catch {
-      // Silently fail if localStorage is full or unavailable
-    }
-  };
+export function loadRoundDraft(target: RoundDraftTarget): RoundDrafts | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem(roundDraftKey(target));
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
 
-  const clearSavedScores = () => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.removeItem(getStorageKey());
-    } catch {
-      // Silently fail
-    }
-  };
+export function saveRoundDraft(target: RoundDraftTarget, drafts: RoundDrafts) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(roundDraftKey(target), JSON.stringify(drafts));
+  } catch {
+    return;
+  }
+}
 
+export function clearRoundDraft(target: RoundDraftTarget) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(roundDraftKey(target));
+  } catch {
+    return;
+  }
+}
+
+export function useLocalStorageRoundScores(target: RoundDraftTarget) {
   return {
-    loadSavedScores,
-    saveScores,
-    clearSavedScores,
+    loadSavedScores: () => loadRoundDraft(target),
+    saveScores: (scores: RoundDrafts) => saveRoundDraft(target, scores),
+    clearSavedScores: () => clearRoundDraft(target),
   };
 }
