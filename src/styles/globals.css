@@ -30,6 +30,12 @@
   }
 }
 
+@layer base {
+  html:fullscreen [data-app-header] {
+    display: none;
+  }
+}
+
 @layer components {
   .tap-highlight {
     @apply transition-colors duration-150 active:opacity-75;
