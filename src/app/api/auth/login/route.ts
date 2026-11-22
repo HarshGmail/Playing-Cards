@@ -1,3 +1,4 @@
+import { isAppAdmin } from '@/lib/auth/admin';
 import { loginSchema } from '@/lib/schemas/auth';
 import { getUsers } from '@/lib/db/collections';
 import { comparePasswords } from '@/lib/auth/password';
@@ -40,6 +41,7 @@ export const POST = createHandler(
         name: user.name,
         username: user.username,
         email: user.email,
+        isAdmin: isAppAdmin(user),
       },
     });
 

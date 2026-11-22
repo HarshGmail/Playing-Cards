@@ -11,10 +11,12 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 interface ShareMatchButtonProps {
   matchId: string;
+  canForceAdd?: boolean;
 }
 
-export default function ShareMatchButton({ matchId }: ShareMatchButtonProps) {
+export default function ShareMatchButton({ matchId, canForceAdd = false }: ShareMatchButtonProps) {
   const [open, setOpen] = useState(false);
+  const [addDirectly, setAddDirectly] = useState(false);
   const [role, setRole] = useState<'player' | 'spectator'>('player');
   const [shareLink, setShareLink] = useState('');
   const [shareExpiresAt, setShareExpiresAt] = useState<Date | null>(null);
@@ -85,7 +87,11 @@ export default function ShareMatchButton({ matchId }: ShareMatchButtonProps) {
     setAddingUserId(userId);
     setAddError('');
     try {
-      await addToMatchMutation.mutateAsync({ userId, role });
+      await addToMatchMutation.mutateAsync({
+        userId,
+        role,
+        force: forceAddSelected,
+      });
       setAddedUserIds((prev) => new Set(prev).add(userId));
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Failed to add user');
@@ -94,8 +100,9 @@ export default function ShareMatchButton({ matchId }: ShareMatchButtonProps) {
     }
   };
 
-  const addActionLabel = role === 'player' ? 'Invite' : 'Add';
-  const addedLabel = role === 'player' ? 'Invited' : 'Added';
+  const forceAddSelected = canForceAdd && role === 'player' && addDirectly;
+  const addActionLabel = role === 'player' && !forceAddSelected ? 'Invite' : 'Add';
+  const addedLabel = role === 'player' && !forceAddSelected ? 'Invited' : 'Added';
 
   return (
     <div className="relative shrink-0" ref={containerRef}>
@@ -136,6 +143,18 @@ export default function ShareMatchButton({ matchId }: ShareMatchButtonProps) {
               Spectate
             </button>
           </div>
+
+          {canForceAdd && role === 'player' && (
+            <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={addDirectly}
+                onChange={(e) => setAddDirectly(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600"
+              />
+              <span>Add directly, skipping the invite</span>
+            </label>
+          )}
 
           <div className="space-y-2">
             <div className="relative">

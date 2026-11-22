@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Avatar from '@/components/common/Avatar';
+import { useAddToMatchMutation } from '@/lib/queries/matchDetail';
 import type { PendingInvite } from '@/types';
 
 interface RosterEntry {
@@ -18,6 +19,7 @@ interface RosterPanelProps {
   /** Invited players who have not answered. Not scoreable until they accept. */
   pendingInvites?: PendingInvite[];
   isCreator: boolean;
+  canForceAdd?: boolean;
   onChange: () => void;
 }
 
@@ -26,10 +28,25 @@ export default function RosterPanel({
   roster,
   pendingInvites = [],
   isCreator,
+  canForceAdd = false,
   onChange,
 }: RosterPanelProps) {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  const addToMatchMutation = useAddToMatchMutation(matchId);
+
+  const handleAddDirectly = async (userId: string) => {
+    setPendingUserId(userId);
+    setActionError('');
+    try {
+      await addToMatchMutation.mutateAsync({ userId, role: 'player', force: true });
+      onChange();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to add player');
+    } finally {
+      setPendingUserId(null);
+    }
+  };
 
   const handleAction = async (userId: string, action: 'mark-dnf' | 'rejoin') => {
     setPendingUserId(userId);
@@ -118,9 +135,21 @@ export default function RosterPanel({
                     )}
                   </div>
                 </div>
-                <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
-                  Awaiting reply
-                </span>
+                <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+                  <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                    Awaiting reply
+                  </span>
+                  {canForceAdd && (
+                    <button
+                      type="button"
+                      disabled={pendingUserId === invite.userId}
+                      onClick={() => handleAddDirectly(invite.userId)}
+                      className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
+                    >
+                      {pendingUserId === invite.userId ? 'Adding...' : 'Add directly'}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

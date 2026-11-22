@@ -10,7 +10,7 @@ import {
 } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
-import { withTransaction } from '@/lib/db/client';
+import { rosterPlayerAndAcceptInvites } from '@/lib/domain/matchInvites';
 import { notifyUser } from '@/lib/notifications/create';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
@@ -141,39 +141,12 @@ export async function POST(
       return error('User not found', 'USER_NOT_FOUND', 404);
     }
 
-    const joinedAtRound = match.roundsPlayed + 1;
-
-    // Roster entry and invite status move together: a half-applied accept would
-    // either leave a player unable to accept a match they aren't in, or leave a
-    // pending invite for a match they are already playing.
-    await withTransaction(async (session) => {
-      await matchesCol.updateOne(
-        {
-          _id: new ObjectId(invite.matchId),
-          // Guards a double-submit from pushing two entries for one player.
-          'roster.userId': { $ne: userId },
-        },
-        {
-          $push: {
-            roster: {
-              userId,
-              userName: user.name,
-              joinedAtRound,
-              status: 'active' as const,
-              dnfAfterRound: null,
-              order: match.roster.length,
-            },
-          },
-          $inc: { version: 1 },
-        },
-        { session }
-      );
-
-      await invitesCol.updateOne(
-        { _id: new ObjectId(params.id), status: 'pending' },
-        { $set: { status: 'accepted', respondedAt } },
-        { session }
-      );
+    const { joinedAtRound, version } = await rosterPlayerAndAcceptInvites({
+      matchId: invite.matchId,
+      match,
+      player: { userId, userName: user.name },
+      inviteFilter: { _id: new ObjectId(params.id) },
+      respondedAt,
     });
 
     await notifyUser(invite.invitedBy, 'match-invite-accepted', {
@@ -190,7 +163,7 @@ export async function POST(
       matchId: invite.matchId,
       status: 'accepted',
       joinedAtRound,
-      version: match.version + 1,
+      version,
     });
   } catch (err) {
     logError(requestId, err);

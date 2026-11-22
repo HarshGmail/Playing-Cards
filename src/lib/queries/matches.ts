@@ -18,6 +18,7 @@ interface CreateMatchRequest {
   players: string[];
   spectatorIds?: string[];
   targetRounds?: number | null;
+  addDirectly?: boolean;
 }
 
 interface CreateMatchResponse {
@@ -27,6 +28,7 @@ interface CreateMatchResponse {
   status: string;
   /** Players sent an invite. They are not on the roster until they accept. */
   invitedCount: number;
+  addedDirectlyCount: number;
 }
 
 export function useMatchesQuery() {

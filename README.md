@@ -42,6 +42,7 @@ Open <http://localhost:3000>.
 | `MONGODB_URI` | MongoDB connection string |
 | `JWT_SECRET` | Auth token signing secret (32+ chars) |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Profile picture storage |
+| `APP_ADMIN_EMAILS` | Comma-separated account emails allowed to add players directly into matches. Defaults to `maddalaharshvardhan@gmail.com` when unset |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web push |
 
 ## Scripts

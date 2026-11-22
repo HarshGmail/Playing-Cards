@@ -53,6 +53,8 @@ export default function CreateMatchStep3({
   const [spectators, setSpectators] = useState<AddedPlayer[]>([]);
   const [addError, setAddError] = useState('');
   const [createError, setCreateError] = useState('');
+  const [addEveryoneDirectly, setAddEveryoneDirectly] = useState(false);
+  const canAddDirectly = !!user?.isAdmin;
   const debouncedIdentifier = useDebouncedValue(identifier, 300);
   const { data: suggestions = [], isLoading: searching } =
     useUserSearchQuery(debouncedIdentifier);
@@ -131,6 +133,7 @@ export default function CreateMatchStep3({
         tiebreakers,
         players: players.map((p) => p.id),
         spectatorIds: spectators.map((s) => s.id),
+        ...(canAddDirectly && addEveryoneDirectly ? { addDirectly: true } : {}),
       });
       router.push(`/matches/${result.id}`);
     } catch (err: any) {
@@ -141,7 +144,27 @@ export default function CreateMatchStep3({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-medium text-gray-900 dark:text-white mb-1">Invite players</h2>
+        <h2 className="font-medium text-gray-900 dark:text-white mb-1">
+          {canAddDirectly && addEveryoneDirectly ? 'Add players' : 'Invite players'}
+        </h2>
+        {canAddDirectly && (
+          <label className="flex items-start gap-3 mb-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={addEveryoneDirectly}
+              onChange={(e) => setAddEveryoneDirectly(e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-gray-300 dark:border-gray-600"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-900 dark:text-white">
+                Add everyone directly
+              </span>
+              <span className="block text-xs text-gray-600 dark:text-gray-400">
+                Players join the match straight away without accepting an invite.
+              </span>
+            </span>
+          </label>
+        )}
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Search by username or name, or enter an exact email/phone. Each player gets an
           invite and joins the match once they accept — you can start scoring as soon as
@@ -239,7 +262,9 @@ export default function CreateMatchStep3({
             </div>
           ))}
           {players.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">No players invited yet.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {canAddDirectly && addEveryoneDirectly ? 'No players added yet.' : 'No players invited yet.'}
+            </p>
           )}
         </div>
 
