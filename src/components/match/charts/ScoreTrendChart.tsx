@@ -10,12 +10,16 @@ interface ScoreTrendChartProps {
   rounds: Array<{ round: number; scores: Array<{ playerId: string; value: number }> }>;
   players: Array<{ userId: string; userName: string }>;
   playersById: PlayersById;
+  height?: number;
 }
+
+const DEFAULT_HEIGHT = 320;
 
 export default function ScoreTrendChart({
   rounds,
   players,
   playersById,
+  height = DEFAULT_HEIGHT,
 }: ScoreTrendChartProps) {
   if (rounds.length === 0 || players.length === 0) {
     return (
@@ -37,7 +41,7 @@ export default function ScoreTrendChart({
   });
 
   const options: Highcharts.Options = {
-    chart: { type: 'line', backgroundColor: 'transparent', height: 320 },
+    chart: { type: 'line', backgroundColor: 'transparent', height },
     title: { text: undefined },
     credits: { enabled: false },
     xAxis: {

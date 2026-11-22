@@ -21,7 +21,7 @@ Score tracker for card games (house variant: Least Count, see `docs/LEAST_COUNT.
 - `src/lib/notifications/` (in-app, `notifyMany` also fans out web push), `src/lib/push/`, `public/sw.js`.
 
 Name collisions to be aware of:
-- `components/match/Leaderboard.tsx` = live leaderboard inside a match; `components/profile/Leaderboard.tsx` = global/friends rating leaderboard.
+- `components/match/StandingsTable.tsx` = live standings inside a match (inside `LeaderboardSection.tsx`, the live dashboard); `components/profile/Leaderboard.tsx` = global/friends rating leaderboard.
 - `components/match/Podium.tsx` is the podium visual; `LeaderboardPodium.tsx` wraps it with leaderboard data.
 - `lib/cloudinaryUrl.ts` = client URL transforms; `lib/storage/cloudinary.ts` = server upload.
 

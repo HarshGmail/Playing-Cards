@@ -1,40 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
+import { useMemo, type ReactNode } from 'react';
 import { LayoutGroup, MotionConfig } from 'framer-motion';
-import { Table, BarChart3 } from 'lucide-react';
-import Leaderboard from '@/components/match/Leaderboard';
+import { Plus } from 'lucide-react';
 import LeaderboardPodium from '@/components/match/LeaderboardPodium';
-import RoundsWonTable from '@/components/match/RoundsWonTable';
+import LiveChartPanel from '@/components/match/LiveChartPanel';
+import StandingsTable from '@/components/match/StandingsTable';
 import WinChancePanel from '@/components/match/WinChancePanel';
 import { useRankTransition } from '@/components/match/useRankTransition';
-import { buildScoreboardRows } from '@/lib/domain/scoreboard';
 import { gameRunsByPlayer } from '@/lib/domain/streaks';
+import { useIsInView } from '@/lib/hooks/useIsInView';
 import type { PlayersById, RosterEntry, WinForecast } from '@/types';
-
-const TotalsChart = dynamic(() => import('@/components/match/charts/TotalsChart'), { ssr: false });
-const RoundsWonChart = dynamic(() => import('@/components/match/charts/RoundsWonChart'), {
-  ssr: false,
-});
-const ScoreTrendChart = dynamic(() => import('@/components/match/charts/ScoreTrendChart'), {
-  ssr: false,
-});
-const PositionTrendChart = dynamic(() => import('@/components/match/charts/PositionTrendChart'), {
-  ssr: false,
-});
-
-const TREND_MODES = [
-  { value: 'scores', label: 'Scores' },
-  { value: 'positions', label: 'Positions' },
-] as const;
-
-type TrendMode = (typeof TREND_MODES)[number]['value'];
-
-const TREND_TITLES: Record<TrendMode, string> = {
-  scores: 'Score Trend',
-  positions: 'Position Race',
-};
 
 interface LeaderboardEntry {
   position: number;
@@ -63,6 +39,8 @@ interface LeaderboardSectionProps {
   tiebreakers: string[];
   ended?: boolean;
   forecast?: WinForecast | null;
+  roundEntry?: ReactNode;
+  fullscreen?: boolean;
 }
 
 function findBestSingleRound(
@@ -111,6 +89,8 @@ function findMostConsistent(entries: LeaderboardEntry[]) {
   return eligible.reduce((best, e) => (e.stdDev < best.stdDev ? e : best), eligible[0]);
 }
 
+const ROUND_ENTRY_SCROLL_DELAY_MS = 350;
+
 export default function LeaderboardSection({
   matchId,
   entries: latestEntries,
@@ -121,10 +101,11 @@ export default function LeaderboardSection({
   tiebreakers,
   ended = false,
   forecast = null,
+  roundEntry = null,
+  fullscreen = false,
 }: LeaderboardSectionProps) {
-  const [view, setView] = useState<'table' | 'chart'>('table');
-  const [trendMode, setTrendMode] = useState<TrendMode>('scores');
   const { entries, changes } = useRankTransition(matchId, latestEntries);
+  const { ref: roundEntryRef, inView: roundEntryInView } = useIsInView<HTMLDivElement>();
 
   const gameStreaks = useMemo(
     () =>
@@ -139,7 +120,6 @@ export default function LeaderboardSection({
 
   const bestRound = findBestSingleRound(rounds, players, rankPreference);
   const mostConsistent = findMostConsistent(entries);
-  // DNF players are excluded, matching how the leaderboard rows order them last.
   const podium = entries.filter((e) => !e.isDnf).slice(0, 3);
   const nameById = useMemo(() => new Map(players.map((p) => [p.userId, p.userName])), [players]);
   const showForecast = !!forecast && !ended;
@@ -151,120 +131,76 @@ export default function LeaderboardSection({
     [forecast, showForecast]
   );
 
+  const scrollToRoundEntry = () => {
+    const container = roundEntryRef.current;
+    if (!container) return;
+    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(
+      () => container.querySelector('input')?.focus({ preventScroll: true }),
+      ROUND_ENTRY_SCROLL_DELAY_MS
+    );
+  };
+
+  const sidebarPosition = fullscreen
+    ? 'lg:top-4 lg:max-h-[calc(100vh-2rem)]'
+    : 'lg:top-20 lg:max-h-[calc(100vh-6rem)]';
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-1 justify-end">
-        <button
-          onClick={() => setView('table')}
-          aria-label="Table view"
-          className={`p-2 rounded-lg transition ${
-            view === 'table'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
-        >
-          <Table className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => setView('chart')}
-          aria-label="Chart view"
-          className={`p-2 rounded-lg transition ${
-            view === 'chart'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-        </button>
-      </div>
+      {ended && (
+        <MotionConfig reducedMotion="user">
+          <LayoutGroup id={`podium-${matchId}`}>
+            <LeaderboardPodium
+              entries={podium}
+              playersById={playersById}
+              changes={changes}
+              gameStreaks={gameStreaks}
+              ended
+            />
+          </LayoutGroup>
+        </MotionConfig>
+      )}
 
-      {view === 'table' ? (
-        <div className="space-y-6">
-          {/* Spans both tables: the top three summarise the match rather than
-              belonging to the leaderboard column. */}
+      <div className="grid gap-4 lg:grid-cols-12 lg:items-start">
+        <div
+          className={`space-y-4 lg:col-span-5 xl:col-span-4 lg:sticky lg:overflow-y-auto lg:pr-1 ${sidebarPosition}`}
+        >
           <MotionConfig reducedMotion="user">
-            <LayoutGroup id={`leaderboard-${matchId}`}>
-              <LeaderboardPodium
-                entries={podium}
+            <LayoutGroup id={`standings-${matchId}`}>
+              <StandingsTable
+                entries={entries}
                 playersById={playersById}
                 changes={changes}
                 gameStreaks={gameStreaks}
-                ended={ended}
+                winChanceById={winChanceById}
+                large={fullscreen}
               />
-              <div className="grid md:grid-cols-2 gap-4">
-                <Leaderboard
-                  entries={entries}
-                  playersById={playersById}
-                  changes={changes}
-                  gameStreaks={gameStreaks}
-                  winChanceById={winChanceById}
-                  compact
-                />
-                <RoundsWonTable entries={entries} playersById={playersById} />
-              </div>
             </LayoutGroup>
           </MotionConfig>
+          {roundEntry && <div ref={roundEntryRef}>{roundEntry}</div>}
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">Totals</h3>
-              <TotalsChart entries={entries} playersById={playersById} />
-            </div>
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">
-                Rounds Won
-              </h3>
-              <RoundsWonChart entries={entries} playersById={playersById} />
-            </div>
-          </div>
-          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
-                {TREND_TITLES[trendMode]}
-              </h3>
-              <div className="flex items-center gap-1">
-                {TREND_MODES.map((mode) => (
-                  <button
-                    key={mode.value}
-                    onClick={() => setTrendMode(mode.value)}
-                    aria-pressed={trendMode === mode.value}
-                    className={`px-2 py-1 rounded-md text-xs font-medium transition ${
-                      trendMode === mode.value
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {trendMode === 'scores' ? (
-              <ScoreTrendChart rounds={rounds} players={players} playersById={playersById} />
-            ) : (
-              <PositionTrendChart
-                rounds={rounds}
-                roster={players}
-                rankPreference={rankPreference}
-                tiebreakers={tiebreakers}
-                playersById={playersById}
-                ended={ended}
-              />
-            )}
-          </div>
-        </div>
-      )}
 
-      {showForecast && (
-        <WinChancePanel forecast={forecast!} playersById={playersById} nameById={nameById} />
-      )}
+        <div className="space-y-4 min-w-0 lg:col-span-7 xl:col-span-8">
+          <LiveChartPanel
+            entries={entries}
+            rounds={rounds}
+            players={players}
+            playersById={playersById}
+            rankPreference={rankPreference}
+            tiebreakers={tiebreakers}
+            ended={ended}
+            fullscreen={fullscreen}
+          />
+          {showForecast && (
+            <WinChancePanel forecast={forecast!} playersById={playersById} nameById={nameById} />
+          )}
+        </div>
+      </div>
 
       {(bestRound || mostConsistent) && (
         <div className="grid md:grid-cols-2 gap-4">
           {mostConsistent && (
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
               <p className="text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">
                 MOST CONSISTENT
               </p>
@@ -275,7 +211,7 @@ export default function LeaderboardSection({
             </div>
           )}
           {bestRound && (
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
               <p className="text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">
                 BEST SINGLE ROUND
               </p>
@@ -288,6 +224,17 @@ export default function LeaderboardSection({
             </div>
           )}
         </div>
+      )}
+
+      {roundEntry && !roundEntryInView && (
+        <button
+          type="button"
+          onClick={scrollToRoundEntry}
+          className="lg:hidden fixed right-4 z-30 inline-flex items-center gap-2 px-4 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-lg transition bottom-[calc(1rem+env(safe-area-inset-bottom))]"
+        >
+          <Plus className="w-5 h-5" />
+          Add round
+        </button>
       )}
     </div>
   );

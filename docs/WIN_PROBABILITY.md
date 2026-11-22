@@ -14,7 +14,7 @@ match's leaderboard. The player-facing explainer is `/rules/win-chances`
 | API | `src/app/api/matches/[id]/forecast/route.ts` |
 | Client hook | `useWinForecastQuery` in `src/lib/queries/matchDetail.ts` |
 | Query key | `matchKeys.forecast(id, version)` in `src/lib/queries/keys.ts` |
-| UI | `src/components/match/WinChancePanel.tsx`, the `winChanceById` prop on `components/match/Leaderboard.tsx` |
+| UI | `src/components/match/WinChancePanel.tsx`, the `winChanceById` prop on `components/match/StandingsTable.tsx` |
 | Planned-rounds input | `src/components/match/TargetRoundsField.tsx` (create step 1 and match settings) |
 
 ## Inputs
