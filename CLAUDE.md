@@ -18,6 +18,7 @@ Score tracker for card games (house variant: Least Count, see `docs/LEAST_COUNT.
 - `src/lib/events/matchEvents.ts` = `onRoundsChanged` / `onMatchEnded` hooks that recompute standings, stats and send notifications.
 - `src/lib/db/collections.ts` = DB doc types + collection getters. `src/types/index.ts` = client/API types.
 - `src/lib/queries/` = React Query hooks per area; all keys in `queries/keys.ts`.
+- Admin force-add (`APP_ADMIN_EMAILS`, `lib/auth/admin.ts` `isAppAdmin`, `lib/auth/adminAccess.ts`): admins skip the invite via `force: true` on POST `/api/matches/[id]/roster` and `addDirectly` on POST `/api/matches`. Both end in `rosterPlayerAndAcceptInvites` / `forceAddPlayerToMatch` in `lib/domain/matchInvites.ts`, the same function invite acceptance uses. `/api/auth/me` returns `user.isAdmin` for the UI.
 - `src/lib/notifications/` (in-app, `notifyMany` also fans out web push), `src/lib/push/`, `public/sw.js`.
 
 Name collisions to be aware of:

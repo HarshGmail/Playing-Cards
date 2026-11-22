@@ -1,5 +1,9 @@
-import { getMatchInvites, MatchInvite } from '@/lib/db/collections';
-import { notifyMany } from '@/lib/notifications/create';
+import { ObjectId, type Filter } from 'mongodb';
+import { getMatches, getMatchInvites, Match, MatchInvite } from '@/lib/db/collections';
+import { withTransaction } from '@/lib/db/client';
+import { notifyMany, notifyUser } from '@/lib/notifications/create';
+import { logError } from '@/lib/logger';
+import { buildRosterEntry } from '@/lib/domain/rosterEntry';
 
 export interface InvitePlayersArgs {
   matchId: string;
@@ -92,4 +96,77 @@ export async function invitePlayersToMatch({
   );
 
   return invited;
+}
+
+export interface RosterPlayerArgs {
+  matchId: string;
+  match: Pick<Match, 'roster' | 'roundsPlayed' | 'version'>;
+  player: { userId: string; userName: string };
+  inviteFilter: Filter<MatchInvite>;
+  respondedAt: Date;
+}
+
+export async function rosterPlayerAndAcceptInvites({
+  matchId,
+  match,
+  player,
+  inviteFilter,
+  respondedAt,
+}: RosterPlayerArgs): Promise<{ joinedAtRound: number; version: number }> {
+  const matchesCol = await getMatches();
+  const invitesCol = await getMatchInvites();
+  const entry = buildRosterEntry(match, player);
+
+  await withTransaction(async (session) => {
+    await matchesCol.updateOne(
+      {
+        _id: new ObjectId(matchId),
+        'roster.userId': { $ne: player.userId },
+      },
+      {
+        $push: { roster: entry },
+        $inc: { version: 1 },
+      },
+      { session }
+    );
+
+    await invitesCol.updateMany(
+      { ...inviteFilter, status: 'pending' },
+      { $set: { status: 'accepted', respondedAt } },
+      { session }
+    );
+  });
+
+  return { joinedAtRound: entry.joinedAtRound, version: match.version + 1 };
+}
+
+export interface ForceAddArgs {
+  matchId: string;
+  match: RosterPlayerArgs['match'] & { name: string };
+  player: { userId: string; userName: string };
+  addedByName: string;
+}
+
+export async function forceAddPlayerToMatch({
+  matchId,
+  match,
+  player,
+  addedByName,
+}: ForceAddArgs): Promise<{ joinedAtRound: number; version: number }> {
+  const result = await rosterPlayerAndAcceptInvites({
+    matchId,
+    match,
+    player,
+    inviteFilter: { matchId, userId: player.userId },
+    respondedAt: new Date(),
+  });
+
+  await notifyUser(player.userId, 'added-to-match', {
+    matchId,
+    matchName: match.name,
+    role: 'player',
+    invitedByName: addedByName,
+  }).catch((err) => logError('force-add-player', err));
+
+  return result;
 }

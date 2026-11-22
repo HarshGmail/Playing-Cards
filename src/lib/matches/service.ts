@@ -11,6 +11,7 @@ import { withTransaction } from '@/lib/db/client';
 import { logError } from '@/lib/logger';
 import { CreateMatchInput } from '@/lib/schemas/match';
 import { invitePlayersToMatch } from '@/lib/domain/matchInvites';
+import { buildRosterEntry } from '@/lib/domain/rosterEntry';
 import { computeMatchLeaderboard, LeaderboardEntry } from '@/lib/domain/ranking';
 import { notifyUsers } from '@/lib/notifications/create';
 import { notifyRoundScored } from '@/lib/notifications/roundScored';
@@ -45,6 +46,7 @@ export interface CreatedMatch {
   creatorId: string;
   status: Match['status'];
   invitedCount: number;
+  addedDirectlyCount: number;
 }
 
 export interface SubmittedRound {
@@ -138,7 +140,17 @@ export async function listFriends(userId: string): Promise<MatchPlayer[]> {
   return docs.map(toMatchPlayer);
 }
 
-export async function createMatch(userId: string, input: CreateMatchInput): Promise<CreatedMatch> {
+export interface CreateMatchOptions {
+  canAddDirectly?: boolean;
+}
+
+export async function createMatch(
+  userId: string,
+  input: CreateMatchInput,
+  { canAddDirectly = false }: CreateMatchOptions = {}
+): Promise<CreatedMatch> {
+  if (input.addDirectly && !canAddDirectly) throw FORBIDDEN();
+
   const matchesCol = await getMatches();
   const usersCol = await getUsers();
 
@@ -163,7 +175,7 @@ export async function createMatch(userId: string, input: CreateMatchInput): Prom
 
   const creator = players.find((p) => p._id?.toString() === userId);
 
-  const roster = [
+  const roster: RosterEntry[] = [
     {
       userId,
       userName: creator?.name || '',
@@ -173,6 +185,19 @@ export async function createMatch(userId: string, input: CreateMatchInput): Prom
       order: 0,
     },
   ];
+
+  const directlyAddedPlayers = input.addDirectly
+    ? invitedIds.map((id) => players.find((p) => p._id?.toString() === id)!)
+    : [];
+
+  directlyAddedPlayers.forEach((player) => {
+    roster.push(
+      buildRosterEntry(
+        { roster, roundsPlayed: 0 },
+        { userId: player._id!.toString(), userName: player.name }
+      )
+    );
+  });
 
   const spectatorIds = input.spectatorIds.filter((id) => !playerIds.includes(id));
   const spectatorUsers = spectatorIds.length
@@ -211,13 +236,26 @@ export async function createMatch(userId: string, input: CreateMatchInput): Prom
   const result = await matchesCol.insertOne(matchDoc);
   const matchId = result.insertedId.toString();
 
-  const invited = await invitePlayersToMatch({
-    matchId,
-    matchName: matchDoc.name,
-    invitedBy: userId,
-    invitedByName: creator?.name || '',
-    userIds: invitedIds,
-  });
+  const invited = input.addDirectly
+    ? []
+    : await invitePlayersToMatch({
+        matchId,
+        matchName: matchDoc.name,
+        invitedBy: userId,
+        invitedByName: creator?.name || '',
+        userIds: invitedIds,
+      });
+
+  await notifyUsers(
+    directlyAddedPlayers.map((player) => player._id!.toString()),
+    'added-to-match',
+    {
+      matchId,
+      matchName: matchDoc.name,
+      role: 'player',
+      invitedByName: creator?.name || '',
+    }
+  ).catch((err) => logError('create-match', err));
 
   await notifyUsers(spectatorIds, 'added-to-match', {
     matchId,
@@ -232,6 +270,7 @@ export async function createMatch(userId: string, input: CreateMatchInput): Prom
     creatorId: matchDoc.creatorId,
     status: matchDoc.status,
     invitedCount: invited.length,
+    addedDirectlyCount: directlyAddedPlayers.length,
   };
 }
 

@@ -110,6 +110,21 @@ describe('formatNotification', () => {
     expect(spectator.body).toBe('Asha added you as a spectator of Friday Night');
   });
 
+  it('names who added a player directly, and falls back when the name is unknown', () => {
+    const named = formatNotification({
+      type: 'added-to-match',
+      payload: { matchId: 'm1', matchName: 'Friday Night', role: 'player', invitedByName: 'Harsh' },
+    });
+    expect(named.body).toBe('Harsh added you to Friday Night');
+    expect(named.url).toBe('/matches/m1');
+
+    const anonymous = formatNotification({
+      type: 'added-to-match',
+      payload: { matchId: 'm1', matchName: 'Friday Night', role: 'player' },
+    });
+    expect(anonymous.body).toBe('You were added to Friday Night');
+  });
+
   it('tells a user their photo was removed and sends them to their profile to replace it', () => {
     expect(formatNotification({ type: 'avatar-removed', payload: {} })).toEqual({
       title: 'Profile photo removed',

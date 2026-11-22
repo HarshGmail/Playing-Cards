@@ -3,7 +3,9 @@ import { requireAuth } from '@/lib/api/auth';
 import { getMatches, getUsers } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError, conflict } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
-import { invitePlayersToMatch } from '@/lib/domain/matchInvites';
+import { forceAddPlayerToMatch, invitePlayersToMatch } from '@/lib/domain/matchInvites';
+import { decideDirectAdd } from '@/lib/domain/rosterEntry';
+import { isAppAdminUserId } from '@/lib/auth/adminAccess';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
@@ -11,6 +13,7 @@ export const dynamic = 'force-dynamic';
 
 const addPlayerSchema = z.object({
   userId: z.string(),
+  force: z.boolean().optional().default(false),
 });
 
 /**
@@ -68,15 +71,15 @@ export async function POST(
       return notFound();
     }
 
-    // Only creator can add players
-    if (match.creatorId !== userId) {
+    if (parsed.data.force && !(await isAppAdminUserId(userId))) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }
 
-    if (match.status === 'ended') {
-      logApiResponse(requestId, 409, Date.now() - startTime);
-      return conflict('Match has ended');
+    // Only creator can add players
+    if (match.creatorId !== userId) {
+      logApiResponse(requestId, 403, Date.now() - startTime);
+      return forbidden();
     }
 
     const newUserId = parsed.data.userId;
@@ -86,8 +89,12 @@ export async function POST(
       return error('User not found', 'USER_NOT_FOUND', 404);
     }
 
-    // Check player is not already in roster
-    if (match.roster.some((r) => r.userId === newUserId)) {
+    const decision = decideDirectAdd(match, newUserId);
+    if (decision === 'match-ended') {
+      logApiResponse(requestId, 409, Date.now() - startTime);
+      return conflict('Match has ended');
+    }
+    if (decision === 'already-in-match') {
       logApiResponse(requestId, 409, Date.now() - startTime);
       return conflict('Player already in match');
     }
@@ -102,6 +109,30 @@ export async function POST(
     }
 
     const creator = await usersCol.findOne({ _id: new ObjectId(userId) });
+
+    if (parsed.data.force) {
+      const added = await forceAddPlayerToMatch({
+        matchId: params.id,
+        match,
+        player: { userId: newUserId, userName: user.name },
+        addedByName: creator?.name || '',
+      });
+
+      logApiResponse(requestId, 201, Date.now() - startTime);
+
+      return success(
+        {
+          matchId: params.id,
+          userId: newUserId,
+          userName: user.name,
+          inviteId: null,
+          status: 'added',
+          joinedAtRound: added.joinedAtRound,
+          version: added.version,
+        },
+        201
+      );
+    }
 
     const invited = await invitePlayersToMatch({
       matchId: params.id,

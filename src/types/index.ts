@@ -7,6 +7,7 @@ export interface User {
   name: string;
   username: string;
   email: string;
+  isAdmin?: boolean;
   phone?: string;
   dob?: string;
   /** Cloudinary `secure_url`, including its cache-busting version segment. */

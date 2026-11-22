@@ -5,6 +5,7 @@ import { success, validationError, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { createMatch, MatchServiceError } from '@/lib/matches/service';
+import { isAppAdminUserId } from '@/lib/auth/adminAccess';
 import { ObjectId } from 'mongodb';
 import { leaderOf } from '@/lib/domain/playerStats';
 import { toGameType } from '@/lib/games/catalog';
@@ -40,7 +41,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const created = await createMatch(userId, parsed.data);
+    const canAddDirectly = parsed.data.addDirectly ? await isAppAdminUserId(userId) : false;
+    const created = await createMatch(userId, parsed.data, { canAddDirectly });
 
     logApiResponse(requestId, 201, Date.now() - startTime);
 

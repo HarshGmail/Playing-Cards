@@ -305,6 +305,7 @@ export function useDeleteMatchMutation(matchId: string) {
 interface AddToMatchRequest {
   userId: string;
   role: 'player' | 'spectator';
+  force?: boolean;
 }
 
 const ADD_TO_MATCH_PATH = {
@@ -316,14 +317,15 @@ export function useAddToMatchMutation(matchId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ userId, role }: AddToMatchRequest) =>
+    mutationFn: ({ userId, role, force = false }: AddToMatchRequest) =>
       apiFetch<void>(`/api/matches/${matchId}/${ADD_TO_MATCH_PATH[role]}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify(force ? { userId, force } : { userId }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+      queryClient.invalidateQueries({ queryKey: matchKeys.state(matchId) });
     },
   });
 }

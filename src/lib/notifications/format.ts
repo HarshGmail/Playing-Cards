@@ -112,7 +112,9 @@ export function formatNotification(notification: FormattableNotification): Forma
           }
         : {
             title: 'Added to a match',
-            body: `You were added to ${matchName}`,
+            body: text(p.invitedByName)
+              ? `${text(p.invitedByName)} added you to ${matchName}`
+              : `You were added to ${matchName}`,
             url: matchUrl(p),
           };
     case 'match-ended':

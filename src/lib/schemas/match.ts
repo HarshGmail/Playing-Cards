@@ -17,6 +17,7 @@ export const createMatchSchema = z
     players: z.array(z.string()).min(1),
     spectatorIds: z.array(z.string()).optional().default([]),
     targetRounds: targetRoundsSchema.optional().default(null),
+    addDirectly: z.boolean().optional().default(false),
   })
   .transform((data) => ({
     ...data,

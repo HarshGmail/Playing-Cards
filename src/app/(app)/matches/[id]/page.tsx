@@ -232,7 +232,12 @@ export default function MatchPage() {
                 )}
               </button>
             )}
-            {isCreator && <ShareMatchButton matchId={matchId} />}
+            {isCreator && (
+              <ShareMatchButton
+                matchId={matchId}
+                canForceAdd={!!user?.isAdmin && match.status === 'active'}
+              />
+            )}
             {isCreator && (
               <button
                 type="button"
@@ -346,6 +351,7 @@ export default function MatchPage() {
               roster={match.roster}
               pendingInvites={pendingInvites}
               isCreator={isCreator}
+              canForceAdd={isCreator && !!user?.isAdmin && match.status === 'active'}
               onChange={handleRosterChange}
             />
           )}

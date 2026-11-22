@@ -1,3 +1,4 @@
+import { isAppAdmin } from '@/lib/auth/admin';
 import { NextRequest } from 'next/server';
 import { getUsers } from '@/lib/db/collections';
 import { success, error } from '@/lib/api/respond';
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
         name: user.name,
         username: user.username,
         email: user.email,
+        isAdmin: isAppAdmin(user),
         phone: user.phone,
         dob: user.dob,
         // Every surface driven by useAuth() reads the session user from here, so
