@@ -74,6 +74,7 @@ export default function MyProfilePage() {
         <ProfileCard
           user={user}
           isOwnProfile
+          hasMilestones={(stats?.milestones.length ?? 0) > 0}
           actions={
             <>
               <button

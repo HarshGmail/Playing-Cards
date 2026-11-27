@@ -2,19 +2,18 @@
 
 import { useEffect, useRef, type RefObject } from 'react';
 import type HighchartsReact from 'highcharts-react-official';
-import type { PositionRosterEntry, RoundPositions } from '@/lib/domain/positionHistory';
-import { buildRaceFrame, finalRaceProgress, type RaceFrame } from './positionChartOptions';
+import type { RaceFrame } from './raceFrame';
 
 const MS_PER_ROUND = 220;
 const MAX_RACE_MS = 4500;
 const MIN_STEP_MS = 600;
 
 interface RaceAnimationArgs {
-  history: RoundPositions[];
-  roster: PositionRosterEntry[];
   chartRef: RefObject<HighchartsReact.RefObject>;
   animate: boolean;
   replayCount: number;
+  finish: number;
+  buildFrame: (progress: number) => RaceFrame;
 }
 
 function raceDurationMs(start: number, finish: number): number {
@@ -23,20 +22,19 @@ function raceDurationMs(start: number, finish: number): number {
 }
 
 export function useRaceAnimation({
-  history,
-  roster,
   chartRef,
   animate,
   replayCount,
+  finish,
+  buildFrame,
 }: RaceAnimationArgs): RaceFrame {
-  const finish = finalRaceProgress(history);
   const shownProgressRef = useRef<number | null>(null);
   const frameRef = useRef<RaceFrame | null>(null);
   const lastReplayRef = useRef(replayCount);
 
   if (shownProgressRef.current === null) shownProgressRef.current = animate ? 0 : finish;
   if (frameRef.current === null) {
-    frameRef.current = buildRaceFrame(history, roster, shownProgressRef.current);
+    frameRef.current = buildFrame(shownProgressRef.current);
   }
 
   useEffect(() => {
@@ -50,7 +48,7 @@ export function useRaceAnimation({
     }
 
     const draw = (progress: number) => {
-      const next = buildRaceFrame(history, roster, progress);
+      const next = buildFrame(progress);
       frame.dataByPlayer = next.dataByPlayer;
       frame.heads = next.heads;
       chart.series.forEach((series) =>
@@ -75,7 +73,7 @@ export function useRaceAnimation({
     });
 
     return () => cancelAnimationFrame(frameId);
-  }, [chartRef, history, roster, animate, replayCount, finish]);
+  }, [chartRef, buildFrame, animate, replayCount, finish]);
 
   return frameRef.current;
 }

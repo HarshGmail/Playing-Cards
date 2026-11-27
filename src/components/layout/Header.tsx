@@ -9,6 +9,8 @@ import NotificationBell from './NotificationBell';
 import Link from 'next/link';
 import { Sun, Moon, LogOut, Menu, BookOpen, User as UserIcon, Settings as SettingsIcon } from 'lucide-react';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { profileGlowMotion } from '@/components/milestones/profileGlow';
 
 export default function Header() {
   const router = useRouter();
@@ -16,7 +18,8 @@ export default function Header() {
   const { user } = useAuth();
   const isOnOwnProfile = pathname === '/profile';
   const logoutMutation = useLogoutMutation();
-  const { theme, setTheme } = useUIStore();
+  const { theme, setTheme, profilePulseKey } = useUIStore();
+  const pulse = profilePulseKey > 0 ? profileGlowMotion() : {};
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -66,9 +69,15 @@ export default function Header() {
           </button>
 
           {user && (
+            <motion.div
+              key={`mobile-${profilePulseKey}`}
+              {...pulse}
+              className="sm:hidden rounded-full"
+            >
             <Link
               href="/profile"
               aria-label="My profile"
+              data-milestone-target="profile"
               onClick={() => setIsMenuOpen(false)}
               className={`sm:hidden rounded-full p-0.5 transition ${
                 isOnOwnProfile ? 'ring-2 ring-blue-500' : 'ring-1 ring-gray-300 dark:ring-gray-700'
@@ -76,6 +85,7 @@ export default function Header() {
             >
               <Avatar name={user.name} profilePicUrl={user.profilePicUrl} size={30} />
             </Link>
+            </motion.div>
           )}
 
           {/* Mobile Menu Button */}
@@ -90,8 +100,10 @@ export default function Header() {
 
           {/* User Menu */}
           <div className="hidden sm:flex items-center gap-2">
+            <motion.div key={`desktop-${profilePulseKey}`} {...pulse} className="rounded-full">
             <Link
               href="/profile"
+              data-milestone-target="profile"
               className={`flex items-center gap-2 rounded-full pl-1 pr-3 py-1 text-sm transition ${
                 isOnOwnProfile
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
@@ -103,6 +115,7 @@ export default function Header() {
               )}
               {user?.name}
             </Link>
+            </motion.div>
             <Link
               href="/settings"
               className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2"
