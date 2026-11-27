@@ -13,6 +13,8 @@ import {
   toSubmittedScores,
   type ScoreDrafts,
 } from '@/lib/domain/roundEntry';
+import type { SubmittedScore as SubmittedRoundScore } from '@/lib/domain/optimisticRound';
+import { WRONG_SHOW_PENALTY, withWrongShowPenalty } from '@/lib/domain/showdownStats';
 import ScoreCalculatorModal from './ScoreCalculatorModal';
 
 interface RoundFormProps {
@@ -22,8 +24,9 @@ interface RoundFormProps {
     userId: string;
     userName: string;
   }>;
-  onSubmit: (scores: Array<{ playerId: string; value: number }>) => void;
+  onSubmit: (scores: SubmittedRoundScore[]) => void;
   showCalculator?: boolean;
+  showWrongShow?: boolean;
   compact?: boolean;
 }
 
@@ -38,6 +41,7 @@ export default function RoundForm({
   players,
   onSubmit,
   showCalculator = false,
+  showWrongShow = false,
   compact = false,
 }: RoundFormProps) {
   const { user } = useAuth();
@@ -52,10 +56,12 @@ export default function RoundForm({
   const [entry, setEntry] = useState<DraftEntry>(() => ({ round, drafts: draftFor(round) }));
   const [error, setError] = useState('');
   const [calculatingFor, setCalculatingFor] = useState<string | null>(null);
+  const [wrongShowBy, setWrongShowBy] = useState<string | null>(null);
 
   if (entry.round !== round) {
     submittedRoundRef.current = null;
     setEntry({ round, drafts: draftFor(round) });
+    setWrongShowBy(null);
     setError('');
   }
 
@@ -90,7 +96,13 @@ export default function RoundForm({
     if (submittedRoundRef.current === round) return;
     submittedRoundRef.current = round;
     setError('');
-    onSubmit(toSubmittedScores(playerIds, drafts));
+    onSubmit(
+      toSubmittedScores(playerIds, drafts).map((score) =>
+        score.playerId === wrongShowBy
+          ? { ...score, value: withWrongShowPenalty(score.value, true), wrongShow: true }
+          : score
+      )
+    );
     focusPlayer(0, { preventScroll: true });
   };
 
@@ -106,56 +118,89 @@ export default function RoundForm({
   const rowSpacing = compact ? 'space-y-2' : 'space-y-3';
 
   return (
-    <div className="p-4 sm:p-5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-      <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Round {round}</h3>
+    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 sm:p-5">
+      <h3 className="mb-3 font-semibold text-gray-900 dark:text-white">Round {round}</h3>
       <div className={`${rowSpacing} mb-4`}>
-        {players.map((player, index) => (
-          <div key={player.userId} className="flex items-center gap-2 sm:gap-3">
-            <label
-              htmlFor={`score-${player.userId}`}
-              className="flex-1 min-w-0 truncate text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
-              {player.userName}
-            </label>
-            {showCalculator && (
-              <button
-                type="button"
-                onClick={() => setCalculatingFor(player.userId)}
-                title={`Work out ${player.userName}'s score from their cards`}
-                aria-label={`Work out ${player.userName}'s score from their cards`}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
+        {players.map((player, index) => {
+          const isWrongShow = wrongShowBy === player.userId;
+          const typed = drafts[player.userId] ?? '';
+          return (
+            <div key={player.userId} className="flex items-center gap-2 sm:gap-3">
+              <label
+                htmlFor={`score-${player.userId}`}
+                className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700 dark:text-gray-300"
               >
-                <Calculator className="w-5 h-5" />
-              </button>
-            )}
-            <input
-              id={`score-${player.userId}`}
-              ref={(element) => {
-                inputRefs.current[index] = element;
-              }}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="off"
-              enterKeyHint={enterKeyHintFor(index, players.length)}
-              value={drafts[player.userId] ?? ''}
-              onChange={(event) => updateScore(player.userId, event.target.value)}
-              onFocus={(event) => event.target.select()}
-              onKeyDown={(event) => handleKeyDown(event, index)}
-              placeholder="0"
-              className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right text-base tabular-nums focus:ring-2 focus:ring-blue-500 outline-none transition"
-            />
-          </div>
-        ))}
+                {player.userName}
+                {isWrongShow && typed !== '' && (
+                  <span className="block text-[11px] font-semibold tabular-nums text-red-600 dark:text-red-400">
+                    Wrong show: {typed} → {withWrongShowPenalty(Number(typed), true)}
+                  </span>
+                )}
+              </label>
+              {showWrongShow && (
+                <button
+                  type="button"
+                  onClick={() => setWrongShowBy(isWrongShow ? null : player.userId)}
+                  aria-pressed={isWrongShow}
+                  title={
+                    isWrongShow
+                      ? 'Undo wrong show'
+                      : `Mark ${player.userName}'s show as wrong (+${WRONG_SHOW_PENALTY})`
+                  }
+                  className={`shrink-0 rounded-lg border px-2 py-1.5 text-xs font-bold tabular-nums transition ${
+                    isWrongShow
+                      ? 'border-red-500 bg-red-500 text-white'
+                      : 'border-gray-300 text-gray-500 hover:border-red-400 hover:text-red-600 dark:border-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  +{WRONG_SHOW_PENALTY}
+                </button>
+              )}
+              {showCalculator && (
+                <button
+                  type="button"
+                  onClick={() => setCalculatingFor(player.userId)}
+                  title={`Work out ${player.userName}'s score from their cards`}
+                  aria-label={`Work out ${player.userName}'s score from their cards`}
+                  className="p-2 text-gray-500 transition hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
+                >
+                  <Calculator className="h-5 w-5" />
+                </button>
+              )}
+              <input
+                id={`score-${player.userId}`}
+                ref={(element) => {
+                  inputRefs.current[index] = element;
+                }}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                enterKeyHint={enterKeyHintFor(index, players.length)}
+                value={drafts[player.userId] ?? ''}
+                onChange={(event) => updateScore(player.userId, event.target.value)}
+                onFocus={(event) => event.target.select()}
+                onKeyDown={(event) => handleKeyDown(event, index)}
+                placeholder="0"
+                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-base tabular-nums text-gray-900 outline-none transition focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+          );
+        })}
       </div>
+      {showWrongShow && (
+        <p className="-mt-2 mb-3 text-[11px] text-gray-500 dark:text-gray-400">
+          Enter card totals. Tap +{WRONG_SHOW_PENALTY} on whoever called a wrong show.
+        </p>
+      )}
 
-      {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+      {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
 
       <button
         type="button"
         onClick={submit}
         disabled={!canSubmit}
-        className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
+        className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
       >
         Submit Round
       </button>

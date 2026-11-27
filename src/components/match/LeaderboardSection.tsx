@@ -1,13 +1,15 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import { LayoutGroup, MotionConfig } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, MotionConfig } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import LeaderboardPodium from '@/components/match/LeaderboardPodium';
 import LiveChartPanel from '@/components/match/LiveChartPanel';
 import StandingsTable from '@/components/match/StandingsTable';
 import WinChancePanel from '@/components/match/WinChancePanel';
 import RecordsOnTheLine from '@/components/records/RecordsOnTheLine';
+import RoundMomentOverlay from '@/components/match/RoundMomentOverlay';
+import { useRoundMoment } from '@/components/match/useRoundMoment';
 import { useRankTransition } from '@/components/match/useRankTransition';
 import { gameRunsByPlayer } from '@/lib/domain/streaks';
 import { useIsInView } from '@/lib/hooks/useIsInView';
@@ -41,6 +43,7 @@ interface LeaderboardSectionProps {
   ended?: boolean;
   forecast?: WinForecast | null;
   roundEntry?: ReactNode;
+  canAddRound?: boolean;
   fullscreen?: boolean;
 }
 
@@ -103,9 +106,17 @@ export default function LeaderboardSection({
   ended = false,
   forecast = null,
   roundEntry = null,
+  canAddRound = false,
   fullscreen = false,
 }: LeaderboardSectionProps) {
   const { entries, changes } = useRankTransition(matchId, latestEntries);
+  const { shown: roundMoment, dismiss: dismissRoundMoment } = useRoundMoment({
+    rounds,
+    roster: players,
+    rankPreference,
+    tiebreakers,
+    enabled: !ended,
+  });
   const { ref: roundEntryRef, inView: roundEntryInView } = useIsInView<HTMLDivElement>();
 
   const gameStreaks = useMemo(
@@ -233,7 +244,19 @@ export default function LeaderboardSection({
         </div>
       )}
 
-      {roundEntry && !roundEntryInView && (
+      <AnimatePresence>
+        {roundMoment && (
+          <RoundMomentOverlay
+            key={roundMoment.round}
+            moment={roundMoment.moment}
+            round={roundMoment.round}
+            playersById={playersById}
+            onDone={dismissRoundMoment}
+          />
+        )}
+      </AnimatePresence>
+
+      {canAddRound && roundEntry && !roundEntryInView && (
         <button
           type="button"
           onClick={scrollToRoundEntry}

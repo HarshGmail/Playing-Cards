@@ -4,12 +4,13 @@ import { ObjectId } from 'mongodb';
 const findOneMatch = vi.fn();
 const updateOne = vi.fn();
 const insertMany = vi.fn();
+const findOneScore = vi.fn();
 const notifyRoundScored = vi.fn();
 const onRoundsChanged = vi.fn();
 
 vi.mock('@/lib/db/collections', () => ({
   getMatches: async () => ({ findOne: findOneMatch, updateOne }),
-  getScores: async () => ({ insertMany, find: () => ({ toArray: async () => [] }) }),
+  getScores: async () => ({ insertMany, findOne: findOneScore, find: () => ({ toArray: async () => [] }) }),
   getUsers: async () => ({}),
   getFriendships: async () => ({}),
 }));
@@ -70,6 +71,7 @@ describe('submitRound', () => {
     findOneMatch.mockReset();
     updateOne.mockReset();
     insertMany.mockReset();
+    findOneScore.mockReset().mockResolvedValue(null);
     onRoundsChanged.mockReset().mockResolvedValue(undefined);
     notifyRoundScored.mockReset().mockResolvedValue(undefined);
     findOneMatch.mockResolvedValue(matchDoc());
@@ -132,5 +134,34 @@ describe('submitRound', () => {
     expect(updateOne.mock.calls[0][1]).toMatchObject({ $set: { roundsPlayed: 3 }, $inc: { version: 1 } });
     expect(notifyRoundScored).toHaveBeenCalledWith(expect.objectContaining({ round: 3, scoredBy: CREATOR }));
     expect(onRoundsChanged).toHaveBeenCalledWith(MATCH_ID);
+  });
+
+  it('stores the wrong-show flag and the client round id on the scores', async () => {
+    await submitRound({
+      matchId: MATCH_ID,
+      userId: CREATOR,
+      scores: [
+        { playerId: CREATOR, value: 58, wrongShow: true },
+        { playerId: SECOND, value: 8 },
+        { playerId: THIRD, value: 20 },
+      ],
+      clientRoundId: 'round-abc',
+    });
+    const [creatorScore, secondScore] = insertMany.mock.calls[0][0];
+    expect(creatorScore).toMatchObject({ wrongShow: true, clientRoundId: 'round-abc' });
+    expect(secondScore.wrongShow).toBeUndefined();
+  });
+
+  it('does not record a retried round twice', async () => {
+    findOneScore.mockResolvedValue({ round: 3 });
+    const result = await submitRound({
+      matchId: MATCH_ID,
+      userId: CREATOR,
+      scores: allScores([CREATOR, SECOND, THIRD]),
+      clientRoundId: 'round-abc',
+    });
+    expect(result).toMatchObject({ round: 3, version: 5 });
+    expect(insertMany).not.toHaveBeenCalled();
+    expect(onRoundsChanged).not.toHaveBeenCalled();
   });
 });

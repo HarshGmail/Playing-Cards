@@ -1,7 +1,10 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GameType, Match, MatchState, RosterEntry, WinForecast } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
-import { applyOptimisticRound, type CachedRound } from '@/lib/domain/optimisticRound';
+import { applyOptimisticRound, type CachedRound, type SubmittedScore } from '@/lib/domain/optimisticRound';
+import { isNetworkFailure, queuedFor, type QueuedRound } from '@/lib/domain/roundOutbox';
+import { useRoundOutboxStore } from '@/lib/store/roundOutboxStore';
 import { gameKeys, matchKeys } from './keys';
 
 interface MatchResponse {
@@ -18,6 +21,7 @@ interface RoundsResponse {
     scores: Array<{
       playerId: string;
       value: number;
+      wrongShow?: boolean;
       enteredBy: string;
       /** Serialized from a BSON Date, so it arrives as an ISO string. */
       enteredAt: string;
@@ -27,56 +31,68 @@ interface RoundsResponse {
 
 const LIVE_POLL_INTERVAL_MS = 5_000;
 
-function useLivePollInterval(matchId: string) {
+export function useQueuedRounds(matchId: string): QueuedRound[] {
+  const entries = useRoundOutboxStore((state) => state.entries);
+  const hydrate = useRoundOutboxStore((state) => state.hydrate);
+  useEffect(() => hydrate(), [hydrate]);
+  return useMemo(() => queuedFor(entries, matchId), [entries, matchId]);
+}
+
+function useLiveRefresh(matchId: string) {
   const submittingRound = useIsMutating({ mutationKey: matchKeys.submitRound(matchId) }) > 0;
-  return submittingRound ? false : LIVE_POLL_INTERVAL_MS;
+  const hasQueuedRounds = useQueuedRounds(matchId).length > 0;
+  const holdStill = submittingRound || hasQueuedRounds;
+  return {
+    refetchInterval: holdStill ? (false as const) : LIVE_POLL_INTERVAL_MS,
+    refetchOnWindowFocus: !hasQueuedRounds,
+    refetchOnReconnect: !hasQueuedRounds,
+  };
 }
 
 export function useMatchQuery(id: string) {
-  const refetchInterval = useLivePollInterval(id);
+  const liveRefresh = useLiveRefresh(id);
   return useQuery({
     queryKey: matchKeys.detail(id),
     queryFn: () =>
       apiFetch<MatchResponse>(`/api/matches/${id}`).then((data) => data.match),
-    refetchInterval,
+    ...liveRefresh,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
   });
 }
 
 export function useMatchStateQuery(id: string) {
-  const refetchInterval = useLivePollInterval(id);
+  const liveRefresh = useLiveRefresh(id);
   return useQuery({
     queryKey: matchKeys.state(id),
     queryFn: () =>
       apiFetch<MatchStateResponse>(`/api/matches/${id}/state`).then(
         (data) => data.state
       ),
-    refetchInterval,
+    ...liveRefresh,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
   });
 }
 
 export function useMatchRoundsQuery(id: string) {
-  const refetchInterval = useLivePollInterval(id);
+  const liveRefresh = useLiveRefresh(id);
   return useQuery({
     queryKey: matchKeys.rounds(id),
     queryFn: () =>
       apiFetch<RoundsResponse>(`/api/matches/${id}/rounds`).then(
         (data) => data.rounds
       ),
-    refetchInterval,
+    ...liveRefresh,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
   });
 }
 
 interface SubmitRoundRequest {
-  scores: Array<{ playerId: string; value: number }>;
+  scores: SubmittedScore[];
+  clientRoundId: string;
+}
+
+export interface SubmitRoundResult {
+  queued: boolean;
 }
 
 interface SubmitRoundContext {
@@ -85,20 +101,42 @@ interface SubmitRoundContext {
   previousRounds: CachedRound[] | undefined;
 }
 
+function isOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
+export function postRound(matchId: string, round: Pick<SubmitRoundRequest, 'scores' | 'clientRoundId'>) {
+  return apiFetch<void>(`/api/matches/${matchId}/rounds`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(round),
+  });
+}
+
 export function useSubmitRoundMutation(matchId: string) {
   const queryClient = useQueryClient();
+  const enqueue = useRoundOutboxStore((state) => state.enqueue);
   const matchKey = matchKeys.detail(matchId);
   const stateKey = matchKeys.state(matchId);
   const roundsKey = matchKeys.rounds(matchId);
 
-  return useMutation<void, Error, SubmitRoundRequest, SubmitRoundContext>({
+  const queueForLater = ({ scores, clientRoundId }: SubmitRoundRequest): SubmitRoundResult => {
+    enqueue({ clientRoundId, matchId, scores, queuedAt: new Date().toISOString() });
+    return { queued: true };
+  };
+
+  return useMutation<SubmitRoundResult, Error, SubmitRoundRequest, SubmitRoundContext>({
     mutationKey: matchKeys.submitRound(matchId),
-    mutationFn: (data) =>
-      apiFetch<void>(`/api/matches/${matchId}/rounds`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      }),
+    mutationFn: async (round) => {
+      if (isOffline()) return queueForLater(round);
+      try {
+        await postRound(matchId, round);
+        return { queued: false };
+      } catch (err) {
+        if (isNetworkFailure(err)) return queueForLater(round);
+        throw err;
+      }
+    },
     onMutate: async ({ scores }) => {
       await Promise.all([
         queryClient.cancelQueries({ queryKey: matchKey, exact: true }),
@@ -131,10 +169,59 @@ export function useSubmitRoundMutation(matchId: string) {
       queryClient.setQueryData(stateKey, context.previousState);
       queryClient.setQueryData(roundsKey, context.previousRounds);
     },
-    onSettled: () => {
+    onSettled: (result) => {
+      if (result?.queued) return;
       queryClient.invalidateQueries({ queryKey: matchKey });
     },
   });
+}
+
+const OUTBOX_RETRY_INTERVAL_MS = 15_000;
+
+export function useRoundOutboxSync(matchId: string, onRejected: (message: string) => void) {
+  const queryClient = useQueryClient();
+  const queued = useQueuedRounds(matchId);
+  const remove = useRoundOutboxStore((state) => state.remove);
+  const flushing = useRef(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const flush = useCallback(async () => {
+    if (flushing.current || queued.length === 0 || isOffline()) return;
+    flushing.current = true;
+    setSyncing(true);
+    let sentAny = false;
+    try {
+      for (const round of queued) {
+        try {
+          await postRound(matchId, round);
+          remove(round.clientRoundId);
+          sentAny = true;
+        } catch (err) {
+          if (isNetworkFailure(err)) break;
+          remove(round.clientRoundId);
+          sentAny = true;
+          onRejected(err instanceof Error ? err.message : 'A saved round could not be recorded.');
+        }
+      }
+    } finally {
+      flushing.current = false;
+      setSyncing(false);
+      if (sentAny) queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+    }
+  }, [matchId, queued, remove, onRejected, queryClient]);
+
+  useEffect(() => {
+    if (queued.length === 0) return;
+    flush();
+    window.addEventListener('online', flush);
+    const timer = window.setInterval(flush, OUTBOX_RETRY_INTERVAL_MS);
+    return () => {
+      window.removeEventListener('online', flush);
+      window.clearInterval(timer);
+    };
+  }, [queued.length, flush]);
+
+  return { pendingCount: queued.length, syncing };
 }
 
 export function useEditRoundMutation(matchId: string) {
@@ -148,7 +235,8 @@ export function useEditRoundMutation(matchId: string) {
     }: {
       round: number;
       dnfPlayerIds: string[];
-    } & SubmitRoundRequest) =>
+      scores: SubmittedScore[];
+    }) =>
       apiFetch<void>(`/api/matches/${matchId}/rounds/${round}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

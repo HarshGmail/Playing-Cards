@@ -45,6 +45,7 @@ export async function POST(
       matchId: params.id,
       userId,
       scores: parsed.data.scores,
+      clientRoundId: parsed.data.clientRoundId,
     });
 
     logApiResponse(requestId, 201, Date.now() - startTime);
@@ -129,6 +130,7 @@ export async function GET(
         value: s.value,
         enteredBy: s.enteredBy,
         enteredAt: s.enteredAt,
+        ...(s.wrongShow ? { wrongShow: true } : {}),
       })),
     }));
 

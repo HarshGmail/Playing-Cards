@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,7 +17,13 @@ import {
   useEndMatchMutation,
   useResumeMatchMutation,
   useWinForecastQuery,
+  useRoundOutboxSync,
 } from '@/lib/queries/matchDetail';
+import type { SubmittedScore } from '@/lib/domain/optimisticRound';
+import { newClientRoundId } from '@/lib/domain/roundOutbox';
+import { isLeastShowdown } from '@/lib/games/catalog';
+import OfflineRoundsBanner from '@/components/match/OfflineRoundsBanner';
+import ShowdownPanel from '@/components/match/ShowdownPanel';
 import LeaderboardSection from '@/components/match/LeaderboardSection';
 import Scoreboard from '@/components/match/Scoreboard';
 import RoundForm from '@/components/match/RoundForm';
@@ -69,6 +75,12 @@ export default function MatchPage() {
     !!match && match.status === 'active' && !!match.targetRounds
   );
 
+  const showRejectedRound = useCallback(
+    (message: string) => addToast({ type: 'error', message: `A round saved offline was not recorded: ${message}` }),
+    [addToast]
+  );
+  const outbox = useRoundOutboxSync(matchId, showRejectedRound);
+
   const loading = matchLoading || stateLoading || roundsLoading;
   const error = matchError?.message || '';
 
@@ -84,14 +96,21 @@ export default function MatchPage() {
     viewerWon,
   });
 
-  const handleRoundSubmit = (scores: Array<{ playerId: string; value: number }>) => {
+  const handleRoundSubmit = (scores: SubmittedScore[]) => {
     if (!match || !user) return;
     const submittedRound = match.roundsPlayed + 1;
     submitRoundMutation.mutate(
-      { scores },
+      { scores, clientRoundId: newClientRoundId() },
       {
-        onSuccess: () =>
-          clearRoundDraft({ matchId, userId: user.id, round: submittedRound }),
+        onSuccess: (result) => {
+          clearRoundDraft({ matchId, userId: user.id, round: submittedRound });
+          if (result.queued) {
+            addToast({
+              type: 'info',
+              message: `No connection. Round ${submittedRound} is saved on this device and will sync when you're back online.`,
+            });
+          }
+        },
         onError: (submitError) =>
           addToast({
             type: 'error',
@@ -173,10 +192,11 @@ export default function MatchPage() {
   // Matches predating the gameType field resolve to Least Count; 'other' games
   // carry a free-text label and have no rules page to link to.
   const gameName = gameDisplayName(match.gameType, match.gameLabel);
-  const rulesPath = rulesPathFor(match.gameType);
+  const rulesPath = rulesPathFor(match.gameType, match.gameLabel);
   // The score calculator encodes Least Count's rules, so it must not appear on
   // a match of some other game.
   const isLeastCount = toGameType(match.gameType) === 'least-count';
+  const isShowdown = isLeastShowdown(match.gameType, match.gameLabel);
   // The scorer alone is not a match. Rounds are rejected below two active
   // players, so surface why rather than letting the form 409.
   const activePlayers = match.roster.filter((r: any) => r.status === 'active');
@@ -188,20 +208,31 @@ export default function MatchPage() {
     { id: 'rounds', label: 'Rounds' },
     { id: 'roster', label: 'Roster' },
   ];
-  const roundEntry = canEnterRounds ? (
-    canScoreRound ? (
-      <RoundForm
-        matchId={matchId}
-        round={match.roundsPlayed + 1}
-        players={activePlayers}
-        onSubmit={handleRoundSubmit}
-        showCalculator={isLeastCount}
-        compact
-      />
-    ) : (
-      <WaitingForPlayers pendingInviteCount={pendingInvites.length} />
-    )
+  const roundForm = (
+    <RoundForm
+      matchId={matchId}
+      round={match.roundsPlayed + 1}
+      players={activePlayers}
+      onSubmit={handleRoundSubmit}
+      showCalculator={isLeastCount}
+      showWrongShow={isShowdown}
+      compact
+    />
+  );
+  const scoringEntry = canEnterRounds ? (
+    canScoreRound ? roundForm : <WaitingForPlayers pendingInviteCount={pendingInvites.length} />
   ) : null;
+  const roundEntry = isShowdown ? (
+    <ShowdownPanel
+      rounds={rounds}
+      players={match.roster}
+      playersById={playersById}
+      roundsPlayed={match.roundsPlayed}
+      form={scoringEntry}
+    />
+  ) : (
+    scoringEntry
+  );
 
   return (
     <div
@@ -287,6 +318,8 @@ export default function MatchPage() {
           )}
         </p>
 
+        <OfflineRoundsBanner pendingCount={outbox.pendingCount} syncing={outbox.syncing} />
+
         {isCreator && (
           <div className="mb-6">
             <JoinRequestsPanel matchId={matchId} isCreator={isCreator} />
@@ -325,6 +358,7 @@ export default function MatchPage() {
               ended={match.status === 'ended'}
               forecast={match.targetRounds ? forecast : null}
               roundEntry={roundEntry}
+              canAddRound={canEnterRounds && canScoreRound}
               fullscreen={fullscreen.active}
             />
           )}
@@ -335,6 +369,7 @@ export default function MatchPage() {
               playersById={playersById}
               leaderboard={state?.leaderboard}
               rankPreference={match.rankPreference}
+              showdown={isShowdown}
             />
           )}
           {tab === 'rounds' && (
@@ -360,7 +395,14 @@ export default function MatchPage() {
       </div>
 
       <Confetti active={celebrating} delayMs={CONFETTI_AFTER_CEREMONY_MS} />
-      <MatchMilestoneCelebrations matchId={matchId} currentUserId={user?.id} />
+      <MatchMilestoneCelebrations
+        matchId={matchId}
+        currentUserId={user?.id}
+        rounds={rounds}
+        roster={match.roster}
+        rankPreference={match.rankPreference}
+        tiebreakers={match.tiebreakers}
+      />
 
       <ConfirmDialog
         open={confirmingEnd}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useConfettiBurst } from '@/components/effects/useConfettiBurst';
 import { findMilestone } from '@/lib/domain/milestones';
+import { milestoneTagline, roundContextFor } from '@/lib/domain/roundMoments';
 import { useMatchCelebrationsQuery } from '@/lib/queries/records';
 import type { MatchCelebration } from '@/types';
 import { MILESTONE_THEMES } from './milestoneStyles';
@@ -35,11 +36,13 @@ function CelebrationCard({
   celebration,
   isSelf,
   remaining,
+  tagline,
   onDismiss,
 }: {
   celebration: MatchCelebration;
   isSelf: boolean;
   remaining: number;
+  tagline: string;
   onDismiss: () => void;
 }) {
   const reduceMotion = useReducedMotion();
@@ -72,6 +75,7 @@ function CelebrationCard({
         <span className="block truncate text-xs opacity-90">
           {milestone.tier} · {milestone.trackLabel}
         </span>
+        <span className="mt-0.5 block text-xs font-semibold italic">{tagline}</span>
       </span>
       {remaining > 1 && (
         <span className="shrink-0 self-start rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-semibold tabular-nums">
@@ -85,9 +89,20 @@ function CelebrationCard({
 interface MatchMilestoneCelebrationsProps {
   matchId: string;
   currentUserId?: string;
+  rounds: Parameters<typeof roundContextFor>[1];
+  roster: Parameters<typeof roundContextFor>[2];
+  rankPreference: 'highest-first' | 'lowest-first';
+  tiebreakers: string[];
 }
 
-export default function MatchMilestoneCelebrations({ matchId, currentUserId }: MatchMilestoneCelebrationsProps) {
+export default function MatchMilestoneCelebrations({
+  matchId,
+  currentUserId,
+  rounds,
+  roster,
+  rankPreference,
+  tiebreakers,
+}: MatchMilestoneCelebrationsProps) {
   const { data: celebrations = [] } = useMatchCelebrationsQuery(matchId);
   const [seen, setSeen] = useState<Set<string> | null>(null);
 
@@ -125,6 +140,7 @@ export default function MatchMilestoneCelebrations({ matchId, currentUserId }: M
             celebration={current}
             isSelf={current.userId === currentUserId}
             remaining={queue.length}
+            tagline={milestoneTagline(roundContextFor(current.userId, rounds, roster, rankPreference, tiebreakers))}
             onDismiss={dismiss}
           />
         )}

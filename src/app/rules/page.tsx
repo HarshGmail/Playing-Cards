@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { GAMES, GAME_TYPES } from '@/lib/games/catalog';
+import { GAMES, GAME_TYPES, NAMED_VARIANTS } from '@/lib/games/catalog';
 
 export const metadata: Metadata = {
   title: 'Game Rules | Playing Cards',
@@ -33,6 +33,17 @@ export default function RulesIndexPage() {
               <span className="block mt-1 text-sm text-gray-600 dark:text-gray-400">
                 {game.blurb}
               </span>
+            </Link>
+          </li>
+        ))}
+        {NAMED_VARIANTS.map((variant) => (
+          <li key={variant.key}>
+            <Link
+              href={variant.rulesPath}
+              className="block rounded-lg border border-gray-200 dark:border-gray-800 p-4 hover:border-blue-500 dark:hover:border-blue-500 transition"
+            >
+              <span className="font-semibold text-gray-900 dark:text-white">{variant.label}</span>
+              <span className="block mt-1 text-sm text-gray-600 dark:text-gray-400">{variant.blurb}</span>
             </Link>
           </li>
         ))}

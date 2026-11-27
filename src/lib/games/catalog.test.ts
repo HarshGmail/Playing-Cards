@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gameDisplayName, ratingGameFor, rulesPathFor, toGameType } from './catalog';
+import { gameDisplayName, isLeastShowdown, ratingGameFor, rulesPathFor, toGameType } from './catalog';
 
 describe('toGameType', () => {
   it('passes through known game types', () => {
@@ -49,6 +49,21 @@ describe('rulesPathFor', () => {
 
   it('has no rules page for an unspecified game', () => {
     expect(rulesPathFor('other')).toBeNull();
+    expect(rulesPathFor('other', 'Exploding Kittens')).toBeNull();
+  });
+
+  it('links a named variant typed as Other to its own rules', () => {
+    expect(rulesPathFor('other', 'Least Showdown')).toBe('/rules/least-showdown');
+    expect(rulesPathFor('other', '  least showdown ')).toBe('/rules/least-showdown');
+  });
+});
+
+describe('isLeastShowdown', () => {
+  it('recognises the Least Showdown label regardless of spacing or case', () => {
+    expect(isLeastShowdown('other', 'Least Showdown')).toBe(true);
+    expect(isLeastShowdown('other', 'LEAST  SHOWDOWN')).toBe(true);
+    expect(isLeastShowdown('least-count')).toBe(false);
+    expect(isLeastShowdown('other', 'Least Count')).toBe(false);
   });
 });
 

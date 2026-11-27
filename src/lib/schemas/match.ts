@@ -49,8 +49,10 @@ export const submitRoundSchema = z.object({
     z.object({
       playerId: z.string(),
       value: z.number().int().min(0).max(99999),
+      wrongShow: z.boolean().optional(),
     })
   ),
+  clientRoundId: z.string().trim().min(1).max(64).optional(),
 });
 
 export const updateRoundSchema = z.object({
