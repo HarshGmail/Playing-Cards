@@ -88,6 +88,28 @@ export interface MatchSummary {
   leader: MatchLeader | null;
 }
 
+export interface FeedStanding {
+  playerId: string;
+  name: string;
+  username: string;
+  profilePicUrl: string | null;
+  position: number;
+  total: number;
+}
+
+export interface FriendMatchCard {
+  id: string;
+  name: string;
+  gameName: string;
+  status: 'active' | 'ended';
+  roundsPlayed: number;
+  createdAt: string;
+  endedAt: string | null;
+  friendNames: string[];
+  playerCount: number;
+  standings: FeedStanding[];
+}
+
 export interface MatchLeader {
   playerId: string;
   name: string;
@@ -194,9 +216,15 @@ export interface FastestRecordView {
   viewer: { count: number; at: string } | null;
 }
 
+export interface RecordProgressView {
+  wins: number;
+  played: number;
+}
+
 export interface FastestRecordsResponse {
   matchWins: FastestRecordView[];
   gameWins: FastestRecordView[];
+  viewerProgress: Record<RecordKind, RecordProgressView | null>;
   games: RatedGame[];
 }
 

@@ -6,6 +6,8 @@ export const authKeys = {
 export const matchKeys = {
   all: ['matches'] as const,
   list: () => [...matchKeys.all, 'list'] as const,
+  live: () => [...matchKeys.list(), 'live'] as const,
+  friendsFeed: () => [...matchKeys.all, 'friends-feed'] as const,
   detail: (id: string) => [...matchKeys.all, id] as const,
   state: (id: string) => [...matchKeys.all, id, 'state'] as const,
   rounds: (id: string) => [...matchKeys.all, id, 'rounds'] as const,
@@ -53,7 +55,7 @@ export const leaderboardKeys = {
 
 export const recordKeys = {
   all: ['records'] as const,
-  fastest: (game: string) => [...recordKeys.all, 'fastest', game] as const,
+  fastest: (game: string, scope: string) => [...recordKeys.all, 'fastest', game, scope] as const,
   onTheLine: (matchId: string, roundsPlayed: number) =>
     [...recordKeys.all, 'on-the-line', matchId, roundsPlayed] as const,
   celebrations: (matchId: string) => [...recordKeys.all, 'celebrations', matchId] as const,

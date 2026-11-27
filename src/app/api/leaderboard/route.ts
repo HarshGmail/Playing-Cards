@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getFriendships, getPlayerStats } from '@/lib/db/collections';
+import { getPlayerStats } from '@/lib/db/collections';
 import { success, validationError, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
@@ -13,6 +13,7 @@ import {
   rankableStatsFor,
 } from '@/lib/stats/leaderboard';
 import { loadIdentities, UNKNOWN_IDENTITY } from '@/lib/stats/identities';
+import { viewerAndFriendIds } from '@/lib/stats/friends';
 import { loadRatedGames } from '@/lib/stats/ratingGames';
 import type { LeaderboardMetric, LeaderboardScope } from '@/types';
 
@@ -64,16 +65,6 @@ function zeroSource(userId: string): LeaderboardSource {
   return { userId, ...ZERO_PLAYER_STATS, podiums: { ...ZERO_PLAYER_STATS.podiums } };
 }
 
-async function friendIdsOf(viewerId: string): Promise<string[]> {
-  const friendshipsCol = await getFriendships();
-  const friendships = await friendshipsCol
-    .find({ $or: [{ userA: viewerId }, { userB: viewerId }] }, { projection: { userA: 1, userB: 1 } })
-    .toArray();
-  return Array.from(
-    new Set([viewerId, ...friendships.map((f) => (f.userA === viewerId ? f.userB : f.userA))])
-  );
-}
-
 async function loadSources({ scope, viewerId }: LeaderboardQuery): Promise<LeaderboardSource[]> {
   const playerStatsCol = await getPlayerStats();
   if (scope === 'global') {
@@ -81,7 +72,7 @@ async function loadSources({ scope, viewerId }: LeaderboardQuery): Promise<Leade
       .find(HAS_PLAYED, { projection: SOURCE_PROJECTION })
       .toArray()) as unknown as LeaderboardSource[];
   }
-  const memberIds = await friendIdsOf(viewerId);
+  const memberIds = await viewerAndFriendIds(viewerId);
   const docs = (await playerStatsCol
     .find({ userId: { $in: memberIds } }, { projection: SOURCE_PROJECTION })
     .toArray()) as unknown as LeaderboardSource[];

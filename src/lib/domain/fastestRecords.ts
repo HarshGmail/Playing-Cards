@@ -137,6 +137,13 @@ export function progressOf(chronologicalEvents: PlayEvent[]): Map<string, Record
   return progress;
 }
 
+export function reachedBy(
+  reached: Map<string, Map<number, Achievement>>,
+  playerIds: Set<string>
+): Map<string, Map<number, Achievement>> {
+  return new Map(Array.from(reached).filter(([playerId]) => playerIds.has(playerId)));
+}
+
 function isFaster(candidate: Achievement, current: Achievement | undefined): boolean {
   if (!current) return true;
   if (candidate.count !== current.count) return candidate.count < current.count;
