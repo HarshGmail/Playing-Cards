@@ -51,6 +51,14 @@ export const leaderboardKeys = {
     [...leaderboardKeys.all, scope, metric, game] as const,
 };
 
+export const recordKeys = {
+  all: ['records'] as const,
+  fastest: (game: string) => [...recordKeys.all, 'fastest', game] as const,
+  onTheLine: (matchId: string, roundsPlayed: number) =>
+    [...recordKeys.all, 'on-the-line', matchId, roundsPlayed] as const,
+  celebrations: (matchId: string) => [...recordKeys.all, 'celebrations', matchId] as const,
+};
+
 export const apiTokenKeys = {
   all: ['api-tokens'] as const,
   list: () => [...apiTokenKeys.all, 'list'] as const,

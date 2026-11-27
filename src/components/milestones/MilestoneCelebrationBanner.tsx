@@ -3,7 +3,7 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
-import { fireConfetti } from '@/components/effects/Confetti';
+import { useConfettiBurst } from '@/components/effects/useConfettiBurst';
 import { celebrationFor, unseenMilestonesFrom, type UnseenMilestone } from '@/lib/domain/milestoneCelebration';
 import { useMarkAsReadMutation, useNotificationsQuery } from '@/lib/queries/notifications';
 import { useUIStore } from '@/lib/store/uiStore';
@@ -39,22 +39,6 @@ function flightPath(from: DOMRect | undefined, to: DOMRect | null): Omit<Flight,
   };
 }
 
-function usePopConfetti(key: string | undefined) {
-  useEffect(() => {
-    if (!key) return;
-    let stop: (() => void) | undefined;
-    let cancelled = false;
-    fireConfetti().then((cancel) => {
-      if (cancelled) cancel();
-      else stop = cancel;
-    });
-    return () => {
-      cancelled = true;
-      stop?.();
-    };
-  }, [key]);
-}
-
 interface BannerCardProps {
   item: UnseenMilestone;
   position: number;
@@ -71,7 +55,7 @@ const BannerCard = forwardRef<HTMLDivElement, BannerCardProps>(function BannerCa
   const { milestone } = item;
   const { headline, cheer } = celebrationFor(milestone, position);
   const theme = MILESTONE_THEMES[milestone.color];
-  usePopConfetti(item.notificationId);
+  useConfettiBurst(item.notificationId);
 
   const flyingTarget = reduceMotion
     ? { opacity: 0, scale: 0.96 }

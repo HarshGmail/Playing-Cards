@@ -7,6 +7,7 @@ import LeaderboardPodium from '@/components/match/LeaderboardPodium';
 import LiveChartPanel from '@/components/match/LiveChartPanel';
 import StandingsTable from '@/components/match/StandingsTable';
 import WinChancePanel from '@/components/match/WinChancePanel';
+import RecordsOnTheLine from '@/components/records/RecordsOnTheLine';
 import { useRankTransition } from '@/components/match/useRankTransition';
 import { gameRunsByPlayer } from '@/lib/domain/streaks';
 import { useIsInView } from '@/lib/hooks/useIsInView';
@@ -194,6 +195,12 @@ export default function LeaderboardSection({
           {showForecast && (
             <WinChancePanel forecast={forecast!} playersById={playersById} nameById={nameById} />
           )}
+          <RecordsOnTheLine
+            matchId={matchId}
+            roundsPlayed={rounds.length}
+            active={!ended}
+            playersById={playersById}
+          />
         </div>
       </div>
 

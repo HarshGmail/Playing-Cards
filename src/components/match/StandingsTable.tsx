@@ -21,6 +21,7 @@ interface StandingsEntry {
   name: string;
   total: number;
   gapToLeader: number;
+  gapToAhead: number | null;
   isDnf: boolean;
   isSharedPosition: boolean;
   isLast: boolean;
@@ -37,10 +38,16 @@ interface StandingsTableProps {
 }
 
 const ROW_GRID =
-  'grid grid-cols-[1.75rem_minmax(0,1fr)_2.5rem_3.25rem] sm:grid-cols-[1.75rem_minmax(0,1fr)_2.5rem_3.25rem_3rem] items-center gap-x-2 sm:gap-x-3';
+  'grid grid-cols-[1.75rem_minmax(0,1fr)_2.5rem_3.25rem_2.75rem] sm:grid-cols-[1.75rem_minmax(0,1fr)_2.5rem_3.25rem_3rem_3rem] items-center gap-x-2 sm:gap-x-3';
+
+const NO_GAP = '—';
 
 function formatGap(entry: StandingsEntry): string {
-  return entry.position === 1 || entry.gapToLeader === 0 ? '—' : `+${entry.gapToLeader}`;
+  return entry.position === 1 || entry.gapToLeader === 0 ? NO_GAP : `+${entry.gapToLeader}`;
+}
+
+function formatInterval(entry: StandingsEntry): string {
+  return entry.gapToAhead === null || entry.gapToAhead === 0 ? NO_GAP : `+${entry.gapToAhead}`;
 }
 
 export default function StandingsTable({
@@ -77,7 +84,12 @@ export default function StandingsTable({
           Won
         </span>
         <span className="text-right">Total</span>
-        <span className="hidden sm:block text-right">Gap</span>
+        <span className="hidden sm:block text-right" title="Gap to the leader">
+          Gap
+        </span>
+        <span className="text-right" title="Interval: gap to the player just above">
+          Int.
+        </span>
       </div>
 
       <div className="divide-y divide-gray-100 dark:divide-gray-700/60">
@@ -136,6 +148,9 @@ export default function StandingsTable({
               </p>
               <p className="relative hidden sm:block text-right text-xs tabular-nums text-gray-500 dark:text-gray-400">
                 {formatGap(entry)}
+              </p>
+              <p className="relative text-right text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-300">
+                {formatInterval(entry)}
               </p>
             </motion.div>
           );
