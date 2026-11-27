@@ -96,6 +96,10 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 200, hero: '🦸' },
       { threshold: 300, hero: '🧙' },
       { threshold: 500, hero: '🐐' },
+      { threshold: 750, hero: '🏹' },
+      { threshold: 1000, hero: '🐉' },
+      { threshold: 1500, hero: '🔱' },
+      { threshold: 2000, hero: '🌌' },
     ],
     describe: (n) => `${ordinal(n)} game win`,
     cheers: [
@@ -117,6 +121,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 25, hero: '🎩' },
       { threshold: 50, hero: '🦁' },
       { threshold: 100, hero: '🏆' },
+      { threshold: 200, hero: '🦄' },
     ],
     describe: (n) => (n === 1 ? 'First match win' : `${n} match wins`),
     cheers: [
@@ -138,6 +143,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 50, hero: '🎟️' },
       { threshold: 100, hero: '📚' },
       { threshold: 250, hero: '🏟️' },
+      { threshold: 500, hero: '🎡' },
     ],
     describe: (n) => (n === 1 ? 'First match played' : `${n} matches played`),
     cheers: [
@@ -158,6 +164,10 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 250, hero: '🎰' },
       { threshold: 500, hero: '🧩' },
       { threshold: 1000, hero: '🌍' },
+      { threshold: 1500, hero: '🛸' },
+      { threshold: 2000, hero: '🗿' },
+      { threshold: 3000, hero: '🏛️' },
+      { threshold: 5000, hero: '♾️' },
     ],
     describe: (n) => `${n} games played`,
     cheers: [
@@ -178,6 +188,10 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 10, hero: '🥈' },
       { threshold: 25, hero: '🏅' },
       { threshold: 50, hero: '🎗️' },
+      { threshold: 75, hero: '🏵️' },
+      { threshold: 100, hero: '💎' },
+      { threshold: 150, hero: '🛡️' },
+      { threshold: 250, hero: '🗽' },
     ],
     describe: (n) => (n === 1 ? 'First podium finish' : `${n} podium finishes`),
     cheers: [
@@ -197,6 +211,9 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 1400, hero: '🧗' },
       { threshold: 1500, hero: '🏔️' },
       { threshold: 1600, hero: '🚀' },
+      { threshold: 1700, hero: '🛰️' },
+      { threshold: 1800, hero: '🌙' },
+      { threshold: 2000, hero: '☀️' },
     ],
     describe: (n) => `Peak rating ${n}`,
     cheers: [

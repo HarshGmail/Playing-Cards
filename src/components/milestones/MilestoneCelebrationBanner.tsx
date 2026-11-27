@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { motion, useReducedMotion } from 'framer-motion';
 import { fireConfetti } from '@/components/effects/Confetti';
 import { celebrationFor, unseenMilestonesFrom, type UnseenMilestone } from '@/lib/domain/milestoneCelebration';
 import { useMarkAsReadMutation, useNotificationsQuery } from '@/lib/queries/notifications';
@@ -11,11 +11,17 @@ import { MILESTONE_THEMES } from './milestoneStyles';
 
 const PROFILE_TARGET_SELECTOR = '[data-milestone-target="profile"]';
 const ENTRANCE = { type: 'spring', stiffness: 360, damping: 26 } as const;
-const FLIGHT = { duration: 0.6, ease: [0.6, 0, 0.3, 1] } as const;
+const FLIGHT_DURATION_S = 0.7;
+const FLIGHT_EASE = [0.55, 0, 0.35, 1] as const;
+const MIN_FLIGHT_SCALE = 0.08;
+const FALLBACK_FLIGHT = { x: 0, y: -120, scale: 0.6 };
+const MATCH_PAGE_PREFIX = '/matches/';
 
 interface Flight {
+  notificationId: string;
   x: number;
   y: number;
+  scale: number;
 }
 
 function visibleProfileTarget(): DOMRect | null {
@@ -24,11 +30,12 @@ function visibleProfileTarget(): DOMRect | null {
   return visible ? visible.getBoundingClientRect() : null;
 }
 
-function flightTo(from: DOMRect, to: DOMRect | null): Flight {
-  if (!to) return { x: 0, y: -48 };
+function flightPath(from: DOMRect | undefined, to: DOMRect | null): Omit<Flight, 'notificationId'> {
+  if (!from || !to) return FALLBACK_FLIGHT;
   return {
     x: to.left + to.width / 2 - (from.left + from.width / 2),
     y: to.top + to.height / 2 - (from.top + from.height / 2),
+    scale: Math.max(MIN_FLIGHT_SCALE, to.height / from.height),
   };
 }
 
@@ -36,10 +43,15 @@ function usePopConfetti(key: string | undefined) {
   useEffect(() => {
     if (!key) return;
     let stop: (() => void) | undefined;
+    let cancelled = false;
     fireConfetti().then((cancel) => {
-      stop = cancel;
+      if (cancelled) cancel();
+      else stop = cancel;
     });
-    return () => stop?.();
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
   }, [key]);
 }
 
@@ -47,45 +59,35 @@ interface BannerCardProps {
   item: UnseenMilestone;
   position: number;
   remaining: number;
-  onCollect: (item: UnseenMilestone, flight: Flight) => void;
-  onFlown: (id: string) => void;
-  flying: boolean;
+  flight: Flight | null;
+  onFlown: () => void;
 }
 
-function BannerCard({ item, position, remaining, onCollect, onFlown, flying }: BannerCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
+const BannerCard = forwardRef<HTMLDivElement, BannerCardProps>(function BannerCard(
+  { item, position, remaining, flight, onFlown },
+  ref
+) {
   const reduceMotion = useReducedMotion();
   const { milestone } = item;
   const { headline, cheer } = celebrationFor(milestone, position);
   const theme = MILESTONE_THEMES[milestone.color];
   usePopConfetti(item.notificationId);
 
-  const collect = () => {
-    if (flying || !cardRef.current) return;
-    onCollect(item, flightTo(cardRef.current.getBoundingClientRect(), visibleProfileTarget()));
-  };
+  const flyingTarget = reduceMotion
+    ? { opacity: 0, scale: 0.96 }
+    : { x: flight?.x, y: flight?.y, scale: flight?.scale, opacity: [1, 1, 0.85] };
 
   return (
     <motion.div
-      ref={cardRef}
-      role="button"
-      tabIndex={0}
-      aria-label={`${headline} ${milestone.title}. Tap to add it to your profile`}
-      onClick={collect}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          collect();
-        }
-      }}
+      ref={ref}
+      role="status"
       initial={reduceMotion ? false : { y: -140, opacity: 0, scale: 0.9 }}
-      animate={flying ? { opacity: 0, scale: 0.25 } : { y: 0, opacity: 1, scale: 1 }}
-      transition={flying ? FLIGHT : ENTRANCE}
+      animate={flight ? flyingTarget : { x: 0, y: 0, opacity: 1, scale: 1 }}
+      transition={flight ? { duration: reduceMotion ? 0.2 : FLIGHT_DURATION_S, ease: FLIGHT_EASE } : ENTRANCE}
       onAnimationComplete={() => {
-        if (flying) onFlown(item.notificationId);
+        if (flight) onFlown();
       }}
-      exit={{ opacity: 0 }}
-      className={`pointer-events-auto relative flex w-full max-w-md cursor-pointer items-center gap-3 overflow-hidden rounded-2xl p-3 pr-4 shadow-2xl ring-2 ring-amber-300/80 focus:outline-none focus-visible:ring-4 ${theme.card}`}
+      className={`pointer-events-none relative flex w-full max-w-md items-center gap-3 overflow-hidden rounded-2xl p-3 pr-4 shadow-2xl ring-2 ring-white/40 ${theme.card}`}
     >
       <div
         aria-hidden
@@ -98,29 +100,29 @@ function BannerCard({ item, position, remaining, onCollect, onFlown, flying }: B
         <p className="truncate text-base font-extrabold leading-tight">{milestone.title}</p>
         <p className="truncate text-xs italic opacity-90">{cheer}</p>
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-1 text-[11px] font-semibold opacity-90">
-        {remaining > 1 && (
-          <span className="rounded-full bg-white/25 px-2 py-0.5 tabular-nums">+{remaining - 1} more</span>
-        )}
-        <span className="flex items-center gap-0.5">
-          Tap <ChevronRight className="h-3 w-3" aria-hidden />
+      {remaining > 1 && (
+        <span className="shrink-0 self-start rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-semibold tabular-nums">
+          +{remaining - 1} more
         </span>
-      </div>
+      )}
     </motion.div>
   );
-}
+});
 
 interface MilestoneCelebrationBannerProps {
   enabled: boolean;
 }
 
 export default function MilestoneCelebrationBanner({ enabled }: MilestoneCelebrationBannerProps) {
+  const pathname = usePathname();
+  const isOnMatchPage = pathname?.startsWith(MATCH_PAGE_PREFIX) ?? false;
   const { data: notifications } = useNotificationsQuery(enabled);
   const markAsRead = useMarkAsReadMutation();
   const pulseProfile = useUIStore((state) => state.pulseProfile);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [collectedIds, setCollectedIds] = useState<string[]>([]);
-  const [flying, setFlying] = useState<{ id: string; flight: Flight } | null>(null);
   const [collectedCount, setCollectedCount] = useState(0);
+  const [flight, setFlight] = useState<Flight | null>(null);
 
   const queue = useMemo(
     () =>
@@ -129,38 +131,69 @@ export default function MilestoneCelebrationBanner({ enabled }: MilestoneCelebra
       ),
     [notifications, collectedIds]
   );
-  const current = queue[0] ?? null;
+  const current = enabled && !isOnMatchPage ? queue[0] ?? null : null;
+  const isLastOne = queue.length <= 1;
 
-  const finishCollect = (id: string) => {
-    setCollectedIds((ids) => [...ids, id]);
-    setFlying(null);
+  const collect = useCallback(() => {
+    if (!current || flight) return;
+    const path = flightPath(cardRef.current?.getBoundingClientRect(), visibleProfileTarget());
+    setFlight({ notificationId: current.notificationId, ...path });
+  }, [current, flight]);
+
+  const land = () => {
+    if (!current) return;
+    pulseProfile(MILESTONE_THEMES[current.milestone.color].glow);
+    markAsRead.mutate(current.notificationId);
+    setCollectedIds((ids) => [...ids, current.notificationId]);
     setCollectedCount((count) => count + 1);
-    markAsRead.mutate(id);
-    pulseProfile();
+    setFlight(null);
   };
 
-  const handleCollect = (item: UnseenMilestone, flight: Flight) => {
-    setFlying({ id: item.notificationId, flight });
-  };
+  useEffect(() => {
+    if (!current) return;
+    const collectOnKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') collect();
+    };
+    window.addEventListener('keydown', collectOnKey);
+    return () => window.removeEventListener('keydown', collectOnKey);
+  }, [current, collect]);
 
-  if (!enabled || !current) return null;
+  if (!current) return null;
+
+  const backdropFading = flight !== null && isLastOne;
 
   return (
-    <div
-      aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 top-20 z-[70] flex justify-center px-4"
-    >
-      <AnimatePresence mode="popLayout">
+    <>
+      <motion.button
+        type="button"
+        aria-label={`Add ${current.milestone.title} to your profile`}
+        onClick={collect}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: backdropFading ? 0 : 1 }}
+        transition={{ duration: 0.3 }}
+        className="fixed inset-0 z-[35] cursor-pointer bg-gray-950/40 backdrop-blur-[2px] focus:outline-none"
+      />
+      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-20 z-[65] flex flex-col items-center gap-2 px-4">
         <BannerCard
           key={current.notificationId}
+          ref={cardRef}
           item={current}
           position={collectedCount}
           remaining={queue.length}
-          flying={flying?.id === current.notificationId}
-          onCollect={handleCollect}
-          onFlown={finishCollect}
+          flight={flight?.notificationId === current.notificationId ? flight : null}
+          onFlown={land}
         />
-      </AnimatePresence>
-    </div>
+        {!flight && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="rounded-full bg-gray-900/70 px-3 py-1 text-xs font-medium text-white"
+          >
+            Tap anywhere to add it to your profile
+          </motion.p>
+        )}
+      </div>
+    </>
   );
 }

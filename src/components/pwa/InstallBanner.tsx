@@ -4,10 +4,9 @@ import { useEffect, useState } from 'react';
 import { Download, Share, X } from 'lucide-react';
 import { isIosDevice, readPlatformSnapshot } from '@/lib/push/platform';
 import { useInstallPrompt } from './useInstallPrompt';
+import { isSnoozed, snooze, PROMPT_SNOOZE_DAYS } from './snooze';
 
 const SNOOZE_KEY = 'playing-cards-install-banner-snoozed-until';
-const SNOOZE_DAYS = 14;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const BANNER_CLASS =
   'border-b border-violet-200 bg-violet-50 text-gray-900 dark:border-violet-800 dark:bg-violet-950/40 dark:text-gray-100';
@@ -15,22 +14,6 @@ const INSTALL_BUTTON_CLASS =
   'inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-700';
 const DISMISS_BUTTON_CLASS =
   'shrink-0 rounded-lg p-1.5 text-gray-500 transition hover:bg-violet-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-violet-900/40 dark:hover:text-gray-100';
-
-function isSnoozed(): boolean {
-  try {
-    return Number(localStorage.getItem(SNOOZE_KEY) ?? 0) > Date.now();
-  } catch {
-    return false;
-  }
-}
-
-function snoozeBanner(): void {
-  try {
-    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DAYS * DAY_MS));
-  } catch {
-    return;
-  }
-}
 
 export default function InstallBanner() {
   const { canInstall, install } = useInstallPrompt();
@@ -43,7 +26,7 @@ export default function InstallBanner() {
     const markInstalled = () => setIsInstalled(true);
 
     setIsIos(isIosDevice(snapshot));
-    setIsEligible(!snapshot.isStandalone && !isSnoozed());
+    setIsEligible(!snapshot.isStandalone && !isSnoozed(SNOOZE_KEY));
     window.addEventListener('appinstalled', markInstalled);
     return () => window.removeEventListener('appinstalled', markInstalled);
   }, []);
@@ -51,7 +34,7 @@ export default function InstallBanner() {
   if (!isEligible || isInstalled || (!canInstall && !isIos)) return null;
 
   const dismiss = () => {
-    snoozeBanner();
+    snooze(SNOOZE_KEY);
     setIsEligible(false);
   };
 
@@ -76,7 +59,13 @@ export default function InstallBanner() {
             Install
           </button>
         )}
-        <button type="button" onClick={dismiss} aria-label="Hide for now" className={DISMISS_BUTTON_CLASS}>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label={`Hide for ${PROMPT_SNOOZE_DAYS} days`}
+          title={`Hide for ${PROMPT_SNOOZE_DAYS} days`}
+          className={DISMISS_BUTTON_CLASS}
+        >
           <X className="h-4 w-4" />
         </button>
       </div>

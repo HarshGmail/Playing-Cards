@@ -1,197 +1,260 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSignupMutation } from '@/lib/queries/auth';
+import { signupSchema } from '@/lib/schemas/auth';
+import {
+  hasNoProblems,
+  phoneKeystroke,
+  signupPayload,
+  signupProblems,
+  suggestUsername,
+  usernameAlternatives,
+  usernameFormatError,
+  usernameKeystroke,
+  type DobParts,
+  type SignupField,
+  type SignupPayload,
+} from '@/lib/domain/signupForm';
+import UsernameField from './signup/UsernameField';
+import DobField from './signup/DobField';
+import PasswordFields from './signup/PasswordFields';
+import { useUsernameAvailability } from './signup/useUsernameAvailability';
+import { ERROR_CLASS, INPUT_CLASS, LABEL_CLASS } from './signup/fieldStyles';
 
 interface SignupFormProps {
   onSuccess?: () => void;
 }
 
+const EMPTY_DOB: DobParts = { day: '', month: '', year: '' };
+const FOCUSABLE_SELECTOR = 'input, select';
+const SUBMIT_SELECTOR = 'button[type="submit"]';
+const NAME_MAX_LENGTH = 100;
+
+function serverAccepts(field: keyof SignupPayload, value: string): boolean {
+  return signupSchema.shape[field].safeParse(value).success;
+}
+
 export default function SignupForm({ onSuccess }: SignupFormProps) {
   const router = useRouter();
   const signupMutation = useSignupMutation();
-  const [formData, setFormData] = useState({
-    name: '',
-    username: '',
-    email: '',
-    phone: '',
-    dob: '',
-    password: '',
-    confirmPassword: '',
-  });
-  const [error, setError] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [usernameEdited, setUsernameEdited] = useState(false);
+  const [usernameRejection, setUsernameRejection] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [dobParts, setDobParts] = useState<DobParts>(EMPTY_DOB);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [touched, setTouched] = useState<Set<SignupField>>(() => new Set());
+  const [showAllErrors, setShowAllErrors] = useState(false);
+  const [serverError, setServerError] = useState('');
 
   const isLoading = signupMutation.isPending;
+  const availability = useUsernameAvailability(username, usernameFormatError(username) === null);
+  const alternatives = useMemo(
+    () => (availability === 'taken' ? usernameAlternatives(username) : []),
+    [availability, username]
+  );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+  const draft = { name, username, email, phone, dobParts, password, confirmPassword };
+  const problems = signupProblems(draft, availability, serverAccepts);
+
+  const markTouched = (field: SignupField) =>
+    setTouched((current) => (current.has(field) ? current : new Set(current).add(field)));
+  const visibleProblem = (field: SignupField) =>
+    showAllErrors || touched.has(field) ? problems[field] : null;
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (!usernameEdited) {
+      setUsername(suggestUsername(value));
+      setUsernameRejection(null);
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const handleUsernameChange = (raw: string) => {
+    const { value, rejection } = usernameKeystroke(raw);
+    setUsername(value);
+    setUsernameRejection(rejection);
+    setUsernameEdited(true);
+  };
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+  const pickAlternative = (candidate: string) => {
+    setUsername(candidate);
+    setUsernameRejection(null);
+    setUsernameEdited(true);
+  };
+
+  const submitViaButton = () => {
+    formRef.current?.querySelector<HTMLButtonElement>(SUBMIT_SELECTOR)?.click();
+  };
+
+  const focusNextField = (current: HTMLElement) => {
+    const form = formRef.current;
+    if (!form) return;
+    const fields = Array.from(form.querySelectorAll<HTMLInputElement>(FOCUSABLE_SELECTOR)).filter(
+      (field) => !field.disabled
+    );
+    const next = fields[fields.indexOf(current as HTMLInputElement) + 1];
+    if (next) next.focus();
+    else submitViaButton();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+    const target = event.target as HTMLElement;
+    if (target.tagName !== 'INPUT' && target.tagName !== 'SELECT') return;
+    event.preventDefault();
+    focusNextField(target);
+  };
+
+  const focusFirstProblem = () => {
+    window.requestAnimationFrame(() => {
+      formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+    });
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isLoading) return;
+    setServerError('');
+    if (!hasNoProblems(problems)) {
+      setShowAllErrors(true);
+      focusFirstProblem();
       return;
     }
 
     try {
-      await signupMutation.mutateAsync({
-        name: formData.name,
-        username: formData.username,
-        email: formData.email,
-        phone: formData.phone,
-        dob: formData.dob,
-        password: formData.password,
-      });
-
+      await signupMutation.mutateAsync(signupPayload(draft));
       if (onSuccess) {
         onSuccess();
       } else {
         router.push('/dashboard');
       }
-    } catch (err: any) {
-      setError(err.message || 'Signup failed');
+    } catch (err: unknown) {
+      setServerError(err instanceof Error ? err.message : 'Signup failed. Please try again.');
     }
   };
 
+  const nameProblem = visibleProblem('name');
+  const emailProblem = visibleProblem('email');
+  const phoneProblem = visibleProblem('phone');
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded text-sm">
-          {error}
+    <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleKeyDown} noValidate className="space-y-5">
+      {serverError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
+        >
+          {serverError}
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Full Name
+        <label htmlFor="signup-name" className={LABEL_CLASS}>
+          Full name
         </label>
         <input
+          id="signup-name"
           type="text"
           name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          autoComplete="name"
+          autoCapitalize="words"
+          enterKeyHint="next"
+          maxLength={NAME_MAX_LENGTH}
+          value={name}
+          onChange={(event) => handleNameChange(event.target.value)}
+          onBlur={() => markTouched('name')}
           placeholder="John Doe"
-          required
           disabled={isLoading}
+          aria-invalid={!!nameProblem}
+          className={INPUT_CLASS}
         />
+        {nameProblem && <p className={ERROR_CLASS}>{nameProblem}</p>}
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Username
-        </label>
-        <input
-          type="text"
-          name="username"
-          value={formData.username}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="john_doe"
-          pattern="^[a-z0-9_]+$"
-          required
-          disabled={isLoading}
-        />
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          3-20 chars, lowercase letters, numbers, underscores only
-        </p>
-      </div>
+      <UsernameField
+        value={username}
+        onChange={handleUsernameChange}
+        rejection={usernameRejection}
+        formatError={usernameFormatError(username)}
+        availability={availability}
+        alternatives={alternatives}
+        onPickAlternative={pickAlternative}
+        showErrors={showAllErrors}
+        disabled={isLoading}
+      />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="signup-email" className={LABEL_CLASS}>
           Email
         </label>
         <input
+          id="signup-email"
           type="email"
           name="email"
-          value={formData.email}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="email"
+          enterKeyHint="next"
+          value={email}
+          onChange={(event) => setEmail(event.target.value.replace(/\s/g, ''))}
+          onBlur={() => markTouched('email')}
           placeholder="john@example.com"
-          required
           disabled={isLoading}
+          aria-invalid={!!emailProblem}
+          className={INPUT_CLASS}
         />
+        {emailProblem && <p className={ERROR_CLASS}>{emailProblem}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="signup-phone" className={LABEL_CLASS}>
           Phone
         </label>
         <input
+          id="signup-phone"
           type="tel"
           name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="+1234567890"
-          required
+          autoComplete="tel"
+          inputMode="tel"
+          enterKeyHint="next"
+          value={phone}
+          onChange={(event) => setPhone(phoneKeystroke(event.target.value))}
+          onBlur={() => markTouched('phone')}
+          placeholder="+91 98765 43210"
           disabled={isLoading}
+          aria-invalid={!!phoneProblem}
+          className={INPUT_CLASS}
         />
+        {phoneProblem && <p className={ERROR_CLASS}>{phoneProblem}</p>}
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Date of Birth
-        </label>
-        <input
-          type="date"
-          name="dob"
-          value={formData.dob}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-          disabled={isLoading}
-        />
-      </div>
+      <DobField parts={dobParts} onChange={setDobParts} showError={showAllErrors} disabled={isLoading} />
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Password
-        </label>
-        <input
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="••••••••"
-          required
-          disabled={isLoading}
-        />
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Min 8 chars, 1 number, 1 special char (!@#$%^&*)
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Confirm Password
-        </label>
-        <input
-          type="password"
-          name="confirmPassword"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="••••••••"
-          required
-          disabled={isLoading}
-        />
-      </div>
+      <PasswordFields
+        password={password}
+        confirmPassword={confirmPassword}
+        onPasswordChange={setPassword}
+        onConfirmChange={setConfirmPassword}
+        showErrors={showAllErrors}
+        disabled={isLoading}
+      />
 
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+        className="w-full rounded-xl bg-violet-600 py-3 text-base font-semibold text-white shadow-md shadow-violet-600/25 transition hover:bg-violet-700 disabled:opacity-60"
       >
-        {isLoading ? 'Creating Account...' : 'Sign Up'}
+        {isLoading ? 'Creating your account...' : 'Create account'}
       </button>
     </form>
   );

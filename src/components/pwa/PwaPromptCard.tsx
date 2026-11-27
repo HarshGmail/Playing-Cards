@@ -6,6 +6,7 @@ import { BellRing, BellOff, Download, Share, PlusSquare, Loader2, X } from 'luci
 import { useInstallPrompt } from './useInstallPrompt';
 import { usePushNotifications } from './usePushNotifications';
 import PushTestButton from './PushTestButton';
+import { INSTALL_SETTINGS_URL, NOTIFICATIONS_SETTINGS_URL } from './settingsLinks';
 import {
   CARD_CLASS,
   ICON_BADGE_CLASS,
@@ -59,9 +60,6 @@ function IosInstallHelp({ onDismiss }: { onDismiss: () => void }) {
     </div>
   );
 }
-
-export const NOTIFICATIONS_SETTINGS_URL = '/settings#settings-notifications';
-export const INSTALL_SETTINGS_URL = '/settings#settings-install';
 
 export default function PwaPromptCard() {
   const router = useRouter();
