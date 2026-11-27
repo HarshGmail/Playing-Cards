@@ -1,18 +1,47 @@
 'use client';
 
+import { useState } from 'react';
 import { Timer } from 'lucide-react';
-import Avatar from '@/components/common/Avatar';
 import PlayerNameLink from '@/components/common/PlayerNameLink';
+import SegmentedToggle from '@/components/profile/SegmentedToggle';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useFastestRecordsQuery } from '@/lib/queries/records';
-import { recordGoal, recordSpent } from '@/lib/domain/recordCopy';
+import { ALL_GAMES_KEY } from '@/lib/games/catalog';
 import { APP_TIME_ZONE } from '@/lib/domain/streaks';
 import type { FastestRecordView, RecordKind } from '@/types';
 
-const COLUMNS: Array<{ kind: RecordKind; title: string; emoji: string }> = [
-  { kind: 'matchWins', title: 'Match wins', emoji: '👑' },
-  { kind: 'gameWins', title: 'Game wins', emoji: '🥇' },
+interface TrackStyle {
+  title: string;
+  emoji: string;
+  spentUnit: [string, string];
+  goalUnit: [string, string];
+  badge: string;
+}
+
+const TRACKS: Array<{ kind: RecordKind } & TrackStyle> = [
+  {
+    kind: 'matchWins',
+    title: 'Match wins',
+    emoji: '👑',
+    spentUnit: ['match', 'matches'],
+    goalUnit: ['match win', 'match wins'],
+    badge: 'from-violet-500 to-purple-700',
+  },
+  {
+    kind: 'gameWins',
+    title: 'Game wins',
+    emoji: '🥇',
+    spentUnit: ['game', 'games'],
+    goalUnit: ['game win', 'game wins'],
+    badge: 'from-amber-400 to-orange-600',
+  },
 ];
+
+const ALL_GAMES_OPTION = { value: ALL_GAMES_KEY, label: 'All included' };
+
+function unitFor(count: number, [singular, plural]: [string, string]): string {
+  return count === 1 ? singular : plural;
+}
 
 function formatRecordDate(at: string): string {
   return new Date(at).toLocaleDateString('en-IN', {
@@ -23,22 +52,30 @@ function formatRecordDate(at: string): string {
   });
 }
 
-function RecordRow({ record, viewerId }: { record: FastestRecordView; viewerId?: string }) {
-  const { holder, viewer, kind, threshold } = record;
+function RecordRow({ record, track, viewerId }: { record: FastestRecordView; track: TrackStyle; viewerId?: string }) {
+  const { holder, viewer, threshold } = record;
   const viewerHolds = holder.userId === viewerId;
 
   return (
     <li
-      className={`rounded-lg px-3 py-2.5 ${
-        viewerHolds ? 'bg-amber-50 ring-1 ring-amber-300 dark:bg-amber-900/20 dark:ring-amber-700' : 'bg-gray-50 dark:bg-gray-800/60'
+      className={`flex items-center gap-3 rounded-xl border p-3 transition ${
+        viewerHolds
+          ? 'border-amber-300 bg-amber-50/80 dark:border-amber-700/70 dark:bg-amber-900/15'
+          : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40'
       }`}
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-        Fastest to {recordGoal(kind, threshold)}
-      </p>
-      <div className="mt-1 flex items-center gap-2 min-w-0">
-        <Avatar name={holder.name} profilePicUrl={holder.profilePicUrl} size={24} />
-        <span className="min-w-0 truncate font-medium text-gray-900 dark:text-white">
+      <div
+        className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm ${track.badge}`}
+        aria-label={`${threshold} ${unitFor(threshold, track.goalUnit)}`}
+      >
+        <span className="text-lg font-black leading-none tabular-nums">{threshold.toLocaleString('en-IN')}</span>
+        <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide opacity-90">
+          {unitFor(threshold, ['win', 'wins'])}
+        </span>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-gray-900 dark:text-white">
           <PlayerNameLink
             userId={holder.userId}
             userName={holder.username}
@@ -46,53 +83,99 @@ function RecordRow({ record, viewerId }: { record: FastestRecordView; viewerId?:
             profilePicUrl={holder.profilePicUrl}
             className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
           />
-          {viewerHolds && <span className="ml-1 text-xs text-amber-700 dark:text-amber-400">(you)</span>}
-        </span>
-        <span className="ml-auto shrink-0 text-right text-sm font-bold tabular-nums text-gray-900 dark:text-white">
-          {recordSpent(kind, holder.count)}
-        </span>
+          {viewerHolds && <span className="ml-1 text-xs font-medium text-amber-700 dark:text-amber-400">(you)</span>}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{formatRecordDate(holder.at)}</p>
       </div>
-      <p className="mt-0.5 flex justify-between gap-2 text-[11px] text-gray-500 dark:text-gray-400">
-        <span>{formatRecordDate(holder.at)}</span>
-        {viewer && !viewerHolds && <span className="tabular-nums">You: {recordSpent(kind, viewer.count)}</span>}
-      </p>
+
+      <div className="shrink-0 text-right">
+        <p className="text-xl font-black leading-none tabular-nums text-gray-900 dark:text-white">
+          {holder.count.toLocaleString('en-IN')}
+        </p>
+        <p className="text-[11px] text-gray-500 dark:text-gray-400">{unitFor(holder.count, track.spentUnit)}</p>
+        {viewer && !viewerHolds && (
+          <p className="mt-1 text-[11px] font-medium tabular-nums text-violet-700 dark:text-violet-300">
+            You: {viewer.count.toLocaleString('en-IN')}
+          </p>
+        )}
+      </div>
     </li>
   );
 }
 
-export default function FastestRecords({ gameKey }: { gameKey: string }) {
+function RecordsSkeleton() {
+  return (
+    <div className="grid gap-5 md:grid-cols-2" aria-busy="true" aria-label="Loading records">
+      {[0, 1].map((column) => (
+        <div key={column} className="space-y-2">
+          {[0, 1, 2].map((row) => (
+            <div key={row} className="h-[4.5rem] animate-pulse rounded-xl bg-gray-100 dark:bg-gray-700/60" />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function FastestRecords() {
   const { user } = useAuth();
-  const { data, isPending, isError } = useFastestRecordsQuery(gameKey);
+  const [gameKey, setGameKey] = useState(ALL_GAMES_KEY);
+  const { data, isPending, isError, isPlaceholderData } = useFastestRecordsQuery(gameKey);
+  const games = data?.games ?? [];
 
   return (
-    <section aria-labelledby="fastest-records-heading" className="mt-6 border-t border-gray-200 pt-5 dark:border-gray-700">
-      <h4 id="fastest-records-heading" className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
-        <Timer className="h-5 w-5 text-violet-600 dark:text-violet-400" aria-hidden />
-        Fastest to
-      </h4>
-      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-        Fewest matches or games to get there. Anyone can break these.
-      </p>
+    <section
+      aria-labelledby="fastest-records-heading"
+      className="rounded-xl bg-white p-4 shadow-lg dark:bg-gray-800 sm:p-6"
+    >
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 id="fastest-records-heading" className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
+            <Timer className="h-5 w-5 text-violet-600 dark:text-violet-400" aria-hidden />
+            Fastest to
+          </h3>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+            Fewest matches or games to get there. Records change hands whenever someone does it quicker.
+          </p>
+        </div>
+        {games.length > 1 && (
+          <div className="max-w-full overflow-x-auto">
+            <SegmentedToggle
+              ariaLabel="Records format"
+              options={[ALL_GAMES_OPTION, ...games.map((game) => ({ value: game.key, label: game.name }))]}
+              value={gameKey}
+              onChange={setGameKey}
+            />
+          </div>
+        )}
+      </div>
 
-      {isPending && <div className="mt-3 h-24 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" aria-hidden />}
-      {isError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">Could not load records.</p>}
+      {isPending && <RecordsSkeleton />}
+      {isError && <p className="text-sm text-red-600 dark:text-red-400">Could not load records.</p>}
 
       {data && (
-        <div className="mt-3 grid gap-4 md:grid-cols-2">
-          {COLUMNS.map(({ kind, title, emoji }) => {
-            const records = data[kind];
+        <div className={`grid gap-5 md:grid-cols-2 ${isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}`}>
+          {TRACKS.map((track) => {
+            const records = data[track.kind];
             return (
-              <div key={kind}>
+              <div key={track.kind}>
                 <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  <span aria-hidden>{emoji}</span>
-                  {title}
+                  <span aria-hidden>{track.emoji}</span>
+                  {track.title}
                 </p>
                 {records.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No records yet.</p>
+                  <p className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
+                    No records yet. Be the first.
+                  </p>
                 ) : (
                   <ul className="space-y-2">
                     {records.map((record) => (
-                      <RecordRow key={`${kind}-${record.threshold}`} record={record} viewerId={user?.id} />
+                      <RecordRow
+                        key={`${track.kind}-${record.threshold}`}
+                        record={record}
+                        track={track}
+                        viewerId={user?.id}
+                      />
                     ))}
                   </ul>
                 )}

@@ -6,7 +6,6 @@ import PlayerNameLink from '@/components/common/PlayerNameLink';
 import SegmentedToggle from '@/components/profile/SegmentedToggle';
 import { StreakBadges } from '@/components/streaks/StreakBadge';
 import RatingHelpLink from '@/components/rating/RatingHelpLink';
-import FastestRecords from '@/components/records/FastestRecords';
 import { useLeaderboardQuery } from '@/lib/queries/leaderboard';
 import { formatWinPct, getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
 import { ALL_GAMES_KEY, PRIMARY_RATING_GAME } from '@/lib/games/catalog';
@@ -261,8 +260,6 @@ export default function Leaderboard() {
           )}
         </div>
       )}
-
-      <FastestRecords gameKey={gameKey} />
     </div>
   );
 }

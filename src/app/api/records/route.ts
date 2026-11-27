@@ -6,6 +6,7 @@ import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { ALL_GAMES_KEY, RATING_GAME_KEY_PATTERN } from '@/lib/games/catalog';
 import { loadIdentities, UNKNOWN_IDENTITY } from '@/lib/stats/identities';
 import { loadRecordBook, recordHolderIds, toRecordHolder, type RecordTrack } from '@/lib/stats/fastestRecords';
+import { loadRatedGames } from '@/lib/stats/ratingGames';
 import type { FastestRecordView, RecordKind } from '@/types';
 import type { PlayerIdentity } from '@/lib/stats/identities';
 
@@ -57,13 +58,14 @@ export async function GET(request: NextRequest) {
       return validationError(`game must be a lowercase slug or ${ALL_GAMES_KEY}`);
     }
 
-    const book = await loadRecordBook(parsed.data.game);
+    const [book, games] = await Promise.all([loadRecordBook(parsed.data.game), loadRatedGames()]);
     const identities = await loadIdentities(recordHolderIds(book));
 
     logApiResponse(requestId, 200, Date.now() - startTime);
     return success({
       matchWins: toViews('matchWins', book.matchWins, identities, userId),
       gameWins: toViews('gameWins', book.gameWins, identities, userId),
+      games,
     });
   } catch (err) {
     logError(requestId, err);

@@ -8,6 +8,7 @@ import MedalsTable from '@/components/profile/MedalsTable';
 import StreakStatsCard from '@/components/streaks/StreakStatsCard';
 import MilestonesSection from '@/components/streaks/MilestonesSection';
 import Leaderboard from '@/components/profile/Leaderboard';
+import FastestRecords from '@/components/records/FastestRecords';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useModeratorRemoveAvatarMutation, useUserStatsQuery } from '@/lib/queries/users';
 import { useUIStore } from '@/lib/store/uiStore';
@@ -162,6 +163,7 @@ export default function ProfilePage() {
         <StreakStatsCard stats={stats} />
         <MilestonesSection stats={stats} />
         {viewer && viewer.username === username && <Leaderboard />}
+        {viewer && viewer.username === username && <FastestRecords />}
       </div>
       <ConfirmDialog
         open={confirmingAvatarRemoval}
