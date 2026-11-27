@@ -76,8 +76,9 @@ function FormatStat({ label, value }: { label: string; value: ReactNode }) {
 
 function FormatStats({ record }: { record: FormatRecordSummary }) {
   return (
-    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+    <div className="mt-4 grid grid-cols-3 sm:grid-cols-5 gap-2">
       <FormatStat label="Matches" value={record.matchesPlayed} />
+      <FormatStat label="Match Wins" value={record.matchWins} />
       <FormatStat label="Games" value={record.gamesPlayed} />
       <FormatStat
         label="Strike Rate"
