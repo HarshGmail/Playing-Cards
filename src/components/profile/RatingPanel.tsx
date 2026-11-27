@@ -81,11 +81,11 @@ function FormatStats({ record }: { record: FormatRecordSummary }) {
       <FormatStat label="Match Wins" value={record.matchWins} />
       <FormatStat label="Games" value={record.gamesPlayed} />
       <FormatStat
-        label="Strike Rate"
+        label="Game Strike Rate"
         value={formatStrikeRate(strikeRate(record.gamesWon, record.gamesPlayed))}
       />
       <FormatStat
-        label="Win %"
+        label="Match Win %"
         value={formatWinPct(matchWinRate(record.matchWins, record.matchesPlayed))}
       />
     </div>

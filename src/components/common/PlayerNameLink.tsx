@@ -230,7 +230,7 @@ export default function PlayerNameLink({
                   <div className="text-lg font-bold text-green-600 dark:text-green-400 flex items-center justify-center">
                     {formatWinPct(stats.winPct)}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Win %</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Match Win %</p>
                 </div>
               </div>
 
