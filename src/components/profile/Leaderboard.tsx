@@ -18,7 +18,7 @@ const SCOPE_OPTIONS: { value: LeaderboardScope; label: string }[] = [
 
 const METRIC_OPTIONS: { value: LeaderboardMetric; label: string }[] = [
   { value: 'rating', label: 'Rating' },
-  { value: 'winPct', label: 'Win %' },
+  { value: 'winPct', label: 'Match Win %' },
   { value: 'matchWins', label: 'Match wins' },
   { value: 'gamesWon', label: 'Game wins' },
 ];

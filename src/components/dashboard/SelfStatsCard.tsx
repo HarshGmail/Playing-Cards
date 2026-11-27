@@ -93,8 +93,7 @@ export default function SelfStatsCard({ user }: SelfStatsCardProps) {
             <StatTile value={stats.matchesPlayed.toLocaleString('en-IN')} label="Matches played" />
             <StatTile
               value={`${formatStrikeRate(strikeRate(stats.gamesWon, stats.gamesPlayed))}%`}
-              label="Strike rate"
-              caption="games won"
+              label="Game Strike Rate"
             />
           </div>
         )}

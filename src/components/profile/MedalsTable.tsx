@@ -146,13 +146,13 @@ export default function MedalsTable({ stats = EMPTY_STATS, username }: MedalsTab
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatTile
-          label="Win %"
+          label="Match Win %"
           value={formatWinPct(matchWinRate(stats.matchWins, stats.matchesPlayed))}
           toneClasses="border-green-200 dark:border-green-800/60 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40"
           valueClassName="text-green-600 dark:text-green-500"
         />
         <StatTile
-          label="Strike Rate"
+          label="Game Strike Rate"
           value={formatStrikeRate(strikeRate(stats.gamesWon, stats.gamesPlayed))}
           icon={<Target className="w-4 h-4" />}
           toneClasses="border-rose-200 dark:border-rose-800/60 bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/20 dark:to-rose-900/40"

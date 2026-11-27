@@ -211,14 +211,14 @@ export default function RatingExplainerPage() {
       </section>
 
       <section className="space-y-5">
-        <SectionHeading eyebrow="Other numbers on your profile" title="Rating vs Win % vs match wins" />
+        <SectionHeading eyebrow="Other numbers on your profile" title="Rating vs Match Win % vs match wins" />
         <div className="grid gap-4 sm:grid-cols-3">
           <IdeaCard icon={<Gauge className="w-5 h-5" />} title="Rating">
             How strong you are, taking into account who you played and how long the matches were. Used to
             rank the leaderboards.
           </IdeaCard>
-          <IdeaCard icon={<Percent className="w-5 h-5" />} title="Win %">
-            Matches you won divided by matches you played. Strike rate is the same idea for rounds: rounds you won divided by rounds you played.
+          <IdeaCard icon={<Percent className="w-5 h-5" />} title="Match Win %">
+            Matches you won divided by matches you played. Game Strike Rate is the same idea for games: games you won divided by games you played.
           </IdeaCard>
           <IdeaCard icon={<Crown className="w-5 h-5" />} title="Match wins">
             Finished matches where you came first. Each one is a crown in your trophy cabinet.
