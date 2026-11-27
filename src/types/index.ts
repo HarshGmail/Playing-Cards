@@ -186,7 +186,7 @@ export interface LeaderboardRow {
   username: string;
   profilePicUrl: string | null;
   rating: number;
-  winPct: number;
+  matchWinRate: number;
   matchWins: number;
   podiums: PodiumCounts;
   gamesWon: number;

@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { Award } from 'lucide-react';
 import {
   ALL_MILESTONES,
   milestoneProgress,
+  type Milestone,
   type MilestoneProgress,
   type MilestoneStats,
 } from '@/lib/domain/milestones';
 import type { UserStats } from '@/lib/queries/users';
 import MilestoneCard from '@/components/milestones/MilestoneCard';
+import MilestoneFlipCard from '@/components/milestones/MilestoneFlipCard';
 
 export const MILESTONES_SECTION_ID = 'milestones';
 
@@ -57,6 +59,51 @@ function useScrollToMilestonesHash(sectionRef: React.RefObject<HTMLElement>, isL
     });
     return () => cancelAnimationFrame(frame);
   }, [isLoaded, prefersReducedMotion, sectionRef]);
+}
+
+interface MilestoneTileProps {
+  milestone: Milestone;
+  progress: MilestoneProgress;
+  unlocked: boolean;
+  achievedAt?: string;
+  isNew: boolean;
+  progressPercent?: number;
+  progressLabel?: string;
+}
+
+function MilestoneTile({ milestone, progress, unlocked, achievedAt, isNew, progressPercent, progressLabel }: MilestoneTileProps) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        title={unlocked ? 'Tap to see this card' : 'Tap to see how to unlock it'}
+        className="block w-full rounded-2xl text-left transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+      >
+        <MilestoneCard
+          milestone={milestone}
+          unlocked={unlocked}
+          achievedAt={achievedAt}
+          isNew={isNew}
+          progressPercent={progressPercent}
+          progressLabel={progressLabel}
+        />
+      </button>
+      {open && (
+        <MilestoneFlipCard
+          milestone={milestone}
+          progress={progress}
+          unlocked={unlocked}
+          achievedAt={achievedAt}
+          onClose={close}
+        />
+      )}
+    </>
+  );
 }
 
 function TrackBlock({
@@ -108,9 +155,10 @@ function TrackBlock({
           const achievedAt = achievedAtById.get(milestone.id);
           const isNext = next?.id === milestone.id;
           return (
-            <MilestoneCard
+            <MilestoneTile
               key={milestone.id}
               milestone={milestone}
+              progress={progress}
               unlocked={achievedIds.has(milestone.id)}
               achievedAt={achievedAt}
               isNew={isRecentlyAchieved(achievedAt, nowMs)}

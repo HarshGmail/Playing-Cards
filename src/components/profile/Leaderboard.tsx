@@ -8,8 +8,17 @@ import { StreakBadges } from '@/components/streaks/StreakBadge';
 import RatingHelpLink from '@/components/rating/RatingHelpLink';
 import { useLeaderboardQuery } from '@/lib/queries/leaderboard';
 import { formatWinPct, getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
-import { PRIMARY_RATING_GAME } from '@/lib/games/catalog';
+import { ALL_GAMES_KEY, PRIMARY_RATING_GAME } from '@/lib/games/catalog';
 import type { LeaderboardMetric, LeaderboardRow, LeaderboardScope } from '@/types';
+
+const ALL_GAMES_OPTION = { value: ALL_GAMES_KEY, label: 'All included' };
+const METRIC_WHEN_RATING_HIDDEN: LeaderboardMetric = 'matchWins';
+
+function metricOptionsFor(gameKey: string) {
+  return gameKey === ALL_GAMES_KEY
+    ? METRIC_OPTIONS.filter((option) => option.value !== 'rating')
+    : METRIC_OPTIONS;
+}
 
 const SCOPE_OPTIONS: { value: LeaderboardScope; label: string }[] = [
   { value: 'friends', label: 'Friends' },
@@ -85,9 +94,9 @@ function MetricValue({ row, metric }: LeaderboardRowItemProps) {
 
   return (
     <>
-      <span className={valueClasses}>{formatWinPct(row.winPct)}</span>
+      <span className={valueClasses}>{formatWinPct(row.matchWinRate)}</span>
       <span className={detailClasses}>
-        {row.gamesWon}/{row.gamesPlayed}
+        {row.matchWins}/{row.matchesPlayed}
       </span>
     </>
   );
@@ -172,12 +181,17 @@ export default function Leaderboard() {
   const { data, isPending, isError, isPlaceholderData } = useLeaderboardQuery(scope, metric, gameKey);
 
   const games = data?.games ?? [];
-  const showGamePicker = metric === 'rating' && games.length > 1;
-  const isPrimaryGame = gameKey === PRIMARY_RATING_GAME.key;
+  const showGamePicker = games.length > 1;
+  const isAllGames = gameKey === ALL_GAMES_KEY;
   const rows = data?.rows ?? [];
   const pinnedRow = data ? pinnedSelfRow(scope, rows, data.self) : null;
-  const hasNoFriends = scope === 'friends' && isPrimaryGame && rows.length <= 1;
-  const noRatedPlayers = rows.length === 0 && (scope === 'global' || !isPrimaryGame);
+  const hasNoFriends = scope === 'friends' && isAllGames && rows.length <= 1;
+  const noRankedPlayers = rows.length === 0 && !hasNoFriends;
+
+  const selectGame = (nextGameKey: string) => {
+    setGameKey(nextGameKey);
+    if (nextGameKey === ALL_GAMES_KEY && metric === 'rating') setMetric(METRIC_WHEN_RATING_HIDDEN);
+  };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
@@ -196,7 +210,7 @@ export default function Leaderboard() {
           />
           <SegmentedToggle
             ariaLabel="Leaderboard metric"
-            options={METRIC_OPTIONS}
+            options={metricOptionsFor(gameKey)}
             value={metric}
             onChange={setMetric}
           />
@@ -207,9 +221,9 @@ export default function Leaderboard() {
         <div className="mb-4 max-w-full overflow-x-auto">
           <SegmentedToggle
             ariaLabel="Leaderboard game"
-            options={games.map((game) => ({ value: game.key, label: game.name }))}
+            options={[ALL_GAMES_OPTION, ...games.map((game) => ({ value: game.key, label: game.name }))]}
             value={gameKey}
-            onChange={setGameKey}
+            onChange={selectGame}
           />
         </div>
       )}
@@ -239,8 +253,10 @@ export default function Leaderboard() {
               Add friends to see how you stack up against them.
             </p>
           )}
-          {noRatedPlayers && (
-            <p className="text-gray-600 dark:text-gray-400">No ranked players yet.</p>
+          {noRankedPlayers && (
+            <p className="text-gray-600 dark:text-gray-400">
+              {isAllGames ? 'No ranked players yet.' : 'No one has finished a match in this format yet.'}
+            </p>
           )}
         </div>
       )}

@@ -5,9 +5,8 @@ import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { emptyFormatRecord, emptyPlayerStreaks, ZERO_PLAYER_STATS } from '@/lib/domain/playerStats';
 import { dayKey, liveDayStreak } from '@/lib/domain/streaks';
-import { strictlyAheadFilter } from '@/lib/stats/leaderboard';
 import { PRIMARY_RATING_GAME } from '@/lib/games/catalog';
-import { countAheadInGame } from '@/lib/stats/ratingGames';
+import { countAheadInGame, hasRatedMatchesIn } from '@/lib/stats/ratingGames';
 import type { GameRatingSummary, PlayerStatsSummary, PlayerStreaksSummary } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -70,8 +69,8 @@ async function rankGameRating(
   gameRating: GameRatingSummary
 ): Promise<RankedGameRating> {
   const ahead = await countAheadInGame(gameRating.key, {
-    ...doc,
     rating: gameRating.rating,
+    matchWins: gameRating.record.matchWins,
   });
   return { ...gameRating, globalRank: ahead + 1 };
 }
@@ -111,11 +110,12 @@ function toSummary(
 }
 
 async function globalRankOf(doc: PlayerStats | null): Promise<number | null> {
-  if (!doc || doc.gamesPlayed <= 0) return null;
-  const playerStatsCol = await getPlayerStats();
-  const rankedAhead = await playerStatsCol.countDocuments({
-    gamesPlayed: { $gt: 0 },
-    ...strictlyAheadFilter('rating', doc),
+  const primaryKey = PRIMARY_RATING_GAME.key;
+  if (!doc || !hasRatedMatchesIn(doc, primaryKey)) return null;
+  const primary = doc.ratingsByGame![primaryKey];
+  const rankedAhead = await countAheadInGame(primaryKey, {
+    rating: primary.rating,
+    matchWins: primary.record?.matchWins ?? 0,
   });
   return rankedAhead + 1;
 }

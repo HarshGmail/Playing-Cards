@@ -1,7 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { LeaderboardMetric, LeaderboardRow, LeaderboardScope, RatedGame } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
-import { PRIMARY_RATING_GAME } from '@/lib/games/catalog';
 import { leaderboardKeys } from './keys';
 
 const LEADERBOARD_STALE_TIME_MS = 60_000;
@@ -16,9 +15,8 @@ export interface LeaderboardResponse {
 export function useLeaderboardQuery(
   scope: LeaderboardScope,
   metric: LeaderboardMetric,
-  selectedGame: string
+  game: string
 ) {
-  const game = metric === 'rating' ? selectedGame : PRIMARY_RATING_GAME.key;
   return useQuery({
     queryKey: leaderboardKeys.list(scope, metric, game),
     queryFn: () =>

@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { Trophy } from 'lucide-react';
 import { User } from '@/types';
-import { useUserStatsQuery } from '@/lib/queries/users';
+import { useUserStatsQuery, type UserStats } from '@/lib/queries/users';
 import { StreakBadges } from '@/components/streaks/StreakBadge';
 import Avatar from '@/components/common/Avatar';
-import { formatStrikeRate, strikeRate } from '@/lib/domain/winRates';
+import { explainStat, type StatExplanation, type StatRecord } from '@/lib/domain/statExplainers';
+import StatCardTrigger from '@/components/stats/StatCardTrigger';
 import { findMilestone, type Milestone } from '@/lib/domain/milestones';
 import { MILESTONES_URL } from '@/lib/notifications/format';
 
@@ -15,19 +16,36 @@ interface SelfStatsCardProps {
 }
 
 interface StatTileProps {
-  value: string;
-  label: string;
+  explanation: StatExplanation;
+  prefix?: string;
   caption?: string;
 }
 
-function StatTile({ value, label, caption }: StatTileProps) {
+function StatTile({ explanation, prefix, caption }: StatTileProps) {
   return (
-    <div className="rounded-2xl bg-white/15 px-3 py-3 text-center ring-1 ring-white/20 backdrop-blur-sm">
-      <p className="text-2xl font-black tabular-nums sm:text-3xl">{value}</p>
-      <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-white/75">{label}</p>
+    <StatCardTrigger
+      explanation={explanation}
+      className="rounded-2xl bg-white/15 px-3 py-3 text-center text-white ring-1 ring-white/20 backdrop-blur-sm transition hover:bg-white/25"
+    >
+      <p className="text-2xl font-black tabular-nums sm:text-3xl">
+        {prefix}
+        {explanation.value}
+      </p>
+      <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-white/75">{explanation.title}</p>
       {caption && <p className="mt-0.5 text-[10px] text-white/60">{caption}</p>}
-    </div>
+    </StatCardTrigger>
   );
+}
+
+function dashboardRecord(stats: UserStats): StatRecord {
+  return {
+    matchesPlayed: stats.matchesPlayed,
+    matchWins: stats.matchWins,
+    gamesPlayed: stats.gamesPlayed,
+    gamesWon: stats.gamesWon,
+    currentDayStreak: stats.streaks.currentDayStreak,
+    longestDayStreak: stats.streaks.longestDayStreak,
+  };
 }
 
 function firstNameOf(fullName: string): string {
@@ -86,15 +104,12 @@ export default function SelfStatsCard({ user }: SelfStatsCardProps) {
         {stats && (
           <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-[26rem]">
             <StatTile
-              value={`🔥 ${stats.streaks.currentDayStreak}`}
-              label="Day streak"
+              explanation={explainStat('dayStreak', dashboardRecord(stats))}
+              prefix="🔥 "
               caption={`best ${dayCount(stats.streaks.longestDayStreak)}`}
             />
-            <StatTile value={stats.matchesPlayed.toLocaleString('en-IN')} label="Matches played" />
-            <StatTile
-              value={`${formatStrikeRate(strikeRate(stats.gamesWon, stats.gamesPlayed))}%`}
-              label="Game Strike Rate"
-            />
+            <StatTile explanation={explainStat('matchesPlayed', dashboardRecord(stats))} />
+            <StatTile explanation={explainStat('gameStrikeRate', dashboardRecord(stats))} />
           </div>
         )}
       </div>
