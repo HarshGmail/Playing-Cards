@@ -197,6 +197,7 @@ export interface FastestRecordView {
 export interface FastestRecordsResponse {
   matchWins: FastestRecordView[];
   gameWins: FastestRecordView[];
+  games: RatedGame[];
 }
 
 export interface RecordChanceView {

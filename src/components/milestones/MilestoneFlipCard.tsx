@@ -130,17 +130,19 @@ export default function MilestoneFlipCard({ milestone, progress, unlocked, achie
           </h2>
           <p className="text-xs opacity-80">{milestone.trackLabel}</p>
         </div>
-        <div className="relative flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4 text-gray-900 dark:text-white">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 pb-10 pt-4 text-gray-900 [scrollbar-width:thin] dark:text-white">
           <Status milestone={milestone} progress={progress} unlocked={unlocked} achievedAt={achievedAt} />
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              {unlocked ? 'How you earned it' : 'How to earn it'}
-            </p>
+            {!unlocked && (
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                How to earn it
+              </p>
+            )}
             <p className="mt-0.5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{milestone.howTo}</p>
           </div>
           <Ladder milestone={milestone} progress={progress} />
-          <CornerHero emoji={milestone.emoji} flipped />
         </div>
+        <CornerHero emoji={milestone.emoji} flipped />
       </div>
     </FlipCardModal>
   );

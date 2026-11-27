@@ -10,7 +10,13 @@ function suitClass(suit: CardSuit): string {
   return RED_SUITS.has(suit) ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white';
 }
 
-function CornerIndex({ explanation, flipped }: { explanation: StatExplanation; flipped?: boolean }) {
+function CornerIndex({
+  explanation,
+  flipped,
+}: {
+  explanation: StatExplanation;
+  flipped?: boolean;
+}) {
   return (
     <div
       aria-hidden
@@ -38,32 +44,38 @@ export default function StatFlipCard({ explanation, onClose }: StatFlipCardProps
       >
         <CornerIndex explanation={explanation} />
         <CornerIndex explanation={explanation} flipped />
-        <div className="flex h-full flex-col gap-3 overflow-y-auto px-8 py-9 text-gray-900 dark:text-white">
-          <div className="text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              {explanation.scope}
-            </p>
-            <h2 id={STAT_TITLE_ID} className="mt-1 text-lg font-extrabold">
-              {explanation.title}
-            </h2>
-            <p className={`mt-1 text-5xl font-black tabular-nums ${suitClass(explanation.suit)}`}>
-              {explanation.value}
-            </p>
-          </div>
-          <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">{explanation.meaning}</p>
-          {explanation.calculation && (
-            <div className="rounded-xl bg-violet-50 px-3 py-2 dark:bg-violet-900/30">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
-                How it&apos;s worked out
+        <div className="flex h-full flex-col overflow-y-auto px-8 py-10 text-gray-900 [scrollbar-width:thin] dark:text-white">
+          <div className="my-auto flex flex-col gap-4">
+            <div className="text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                {explanation.scope}
               </p>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums text-violet-950 dark:text-violet-100">
-                {explanation.calculation}
+              <h2 id={STAT_TITLE_ID} className="mt-1 text-lg font-extrabold">
+                {explanation.title}
+              </h2>
+              <p className={`mt-1 text-5xl font-black tabular-nums ${suitClass(explanation.suit)}`}>
+                {explanation.value}
               </p>
             </div>
-          )}
-          {explanation.detail && (
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{explanation.detail}</p>
-          )}
+            <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+              {explanation.meaning}
+            </p>
+            {explanation.calculation && (
+              <div className="rounded-xl bg-violet-50 px-3 py-2 dark:bg-violet-900/30">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                  How it&apos;s worked out
+                </p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums text-violet-950 dark:text-violet-100">
+                  {explanation.calculation}
+                </p>
+              </div>
+            )}
+            {explanation.detail && (
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                {explanation.detail}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </FlipCardModal>

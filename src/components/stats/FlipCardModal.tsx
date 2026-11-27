@@ -76,7 +76,7 @@ export default function FlipCardModal({ titleId, onClose, children }: FlipCardMo
         style={{ perspective: 1200 }}
       >
         <motion.div
-          className="relative aspect-[5/7] w-[min(82vw,300px)]"
+          className="relative h-[min(86vh,560px)] w-[min(90vw,380px)]"
           style={{ transformStyle: 'preserve-3d' }}
           initial={reduceMotion ? { rotateY: 180 } : { rotateY: 0, scale: 0.8, y: 40 }}
           animate={{ rotateY: 180, scale: 1, y: 0 }}

@@ -7,6 +7,7 @@ import MedalsTable from '@/components/profile/MedalsTable';
 import StreakStatsCard from '@/components/streaks/StreakStatsCard';
 import MilestonesSection from '@/components/streaks/MilestonesSection';
 import Leaderboard from '@/components/profile/Leaderboard';
+import FastestRecords from '@/components/records/FastestRecords';
 import {
   useMeUserQuery,
   useUpdateMeMutation,
@@ -99,6 +100,7 @@ export default function MyProfilePage() {
         <MilestonesSection stats={stats} />
 
         <Leaderboard />
+        <FastestRecords />
 
         {showEditModal && (
           <ProfileEditModal
