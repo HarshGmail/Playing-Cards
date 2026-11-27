@@ -13,12 +13,17 @@ export interface Toast {
   duration?: number;
 }
 
+export interface ProfilePulse {
+  id: number;
+  color: string;
+}
+
 export interface UIState {
   theme: ThemeChoice;
   isOnline: boolean;
   toasts: Toast[];
-  profilePulseKey: number;
-  pulseProfile: () => void;
+  profilePulse: ProfilePulse | null;
+  pulseProfile: (color: string) => void;
   setTheme: (theme: ThemeChoice) => void;
   setOnline: (isOnline: boolean) => void;
   addToast: (toast: Omit<Toast, 'id'>) => string;
@@ -30,9 +35,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   theme: DEFAULT_THEME_CHOICE,
   isOnline: true,
   toasts: [],
-  profilePulseKey: 0,
+  profilePulse: null,
 
-  pulseProfile: () => set((state) => ({ profilePulseKey: state.profilePulseKey + 1 })),
+  pulseProfile: (color: string) =>
+    set((state) => ({ profilePulse: { id: (state.profilePulse?.id ?? 0) + 1, color } })),
 
   setTheme: (theme: ThemeChoice) => {
     set({ theme });

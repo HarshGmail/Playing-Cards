@@ -104,9 +104,25 @@ describe('milestones', () => {
   });
 
   it('reports the tier and position of a milestone', () => {
-    const top = findMilestone(milestoneId('gamesWon', 500))!;
+    const top = findMilestone(milestoneId('gamesWon', 2000))!;
     expect(top.tier).toBe('Legend');
-    expect(top.levelIndex).toBe(8);
-    expect(top.levelCount).toBe(9);
+    expect(top.levelIndex).toBe(12);
+    expect(top.levelCount).toBe(13);
+  });
+
+  it('keeps headroom above active players on the busiest tracks', () => {
+    const tops = Object.fromEntries(
+      ['gamesWon', 'gamesPlayed', 'podiumFinishes'].map((metric) => [
+        metric,
+        Math.max(...ALL_MILESTONES.filter((m) => m.metric === metric).map((m) => m.threshold)),
+      ])
+    );
+    expect(tops).toEqual({ gamesWon: 2000, gamesPlayed: 5000, podiumFinishes: 250 });
+  });
+
+  it('never reuses an existing milestone id when levels are added', () => {
+    for (const id of ['gamesWon:500', 'gamesPlayed:1000', 'podiumFinishes:50', 'peakRating:1600']) {
+      expect(findMilestone(id)).not.toBeNull();
+    }
   });
 });

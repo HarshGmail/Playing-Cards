@@ -8,7 +8,7 @@ import MatchInvitesPanel from '@/components/dashboard/MatchInvitesPanel';
 import FriendsList from '@/components/dashboard/FriendsList';
 import FindFriendsTab from '@/components/dashboard/FindFriendsTab';
 import MatchCalendar from '@/components/calendar/MatchCalendar';
-import PwaPromptCard from '@/components/pwa/PwaPromptCard';
+import NotificationsNudge from '@/components/dashboard/NotificationsNudge';
 import QuickActions from '@/components/dashboard/QuickActions';
 import { CalendarDays } from 'lucide-react';
 
@@ -30,7 +30,7 @@ export default function DashboardPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {user && <SelfStatsCard user={user} />}
 
-      <PwaPromptCard />
+      <NotificationsNudge />
 
       <MatchInvitesPanel />
 

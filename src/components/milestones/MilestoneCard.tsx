@@ -8,6 +8,7 @@ import { LOCKED_CARD_CLASS, MILESTONE_THEMES } from './milestoneStyles';
 
 interface MilestoneCardProps {
   milestone: Milestone;
+  unlocked: boolean;
   achievedAt?: string;
   progressPercent?: number;
   progressLabel?: string;
@@ -61,11 +62,9 @@ function UnlockedCard({ milestone, achievedAt, isNew }: Pick<MilestoneCardProps,
           <p className="mt-0.5 text-xs opacity-80">{milestone.trackLabel}</p>
         </div>
       </div>
-      {achievedAt && (
-        <p className="mt-3 text-[11px] font-medium opacity-80 tabular-nums">
-          Unlocked {formatAchievedDate(achievedAt)}
-        </p>
-      )}
+      <p className="mt-3 text-[11px] font-medium opacity-80 tabular-nums">
+        {achievedAt ? `Unlocked ${formatAchievedDate(achievedAt)}` : 'Unlocked'}
+      </p>
     </motion.article>
   );
 }
@@ -110,7 +109,7 @@ function LockedCard({ milestone, progressPercent, progressLabel }: Pick<Mileston
 }
 
 export default function MilestoneCard(props: MilestoneCardProps) {
-  if (props.achievedAt) {
+  if (props.unlocked) {
     return <UnlockedCard milestone={props.milestone} achievedAt={props.achievedAt} isNew={props.isNew} />;
   }
   return (

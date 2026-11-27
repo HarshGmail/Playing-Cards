@@ -6,7 +6,7 @@ import { User } from '@/types';
 import { useUserStatsQuery } from '@/lib/queries/users';
 import { StreakBadges } from '@/components/streaks/StreakBadge';
 import Avatar from '@/components/common/Avatar';
-import { formatWinPct } from '@/lib/domain/ratingTier';
+import { formatStrikeRate, strikeRate } from '@/lib/domain/winRates';
 import { findMilestone, type Milestone } from '@/lib/domain/milestones';
 import { MILESTONES_URL } from '@/lib/notifications/format';
 
@@ -17,15 +17,25 @@ interface SelfStatsCardProps {
 interface StatTileProps {
   value: string;
   label: string;
+  caption?: string;
 }
 
-function StatTile({ value, label }: StatTileProps) {
+function StatTile({ value, label, caption }: StatTileProps) {
   return (
     <div className="rounded-2xl bg-white/15 px-3 py-3 text-center ring-1 ring-white/20 backdrop-blur-sm">
       <p className="text-2xl font-black tabular-nums sm:text-3xl">{value}</p>
       <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-white/75">{label}</p>
+      {caption && <p className="mt-0.5 text-[10px] text-white/60">{caption}</p>}
     </div>
   );
+}
+
+function firstNameOf(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] || fullName;
+}
+
+function dayCount(days: number): string {
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
 function latestMilestone(milestones: Array<{ id: string; achievedAt: string }>): Milestone | null {
@@ -36,7 +46,7 @@ function latestMilestone(milestones: Array<{ id: string; achievedAt: string }>):
 export default function SelfStatsCard({ user }: SelfStatsCardProps) {
   const { data: stats } = useUserStatsQuery(user.username);
   const latest = stats ? latestMilestone(stats.milestones) : null;
-  const firstName = user.name.split(' ')[0];
+  const firstName = firstNameOf(user.name);
 
   return (
     <section className="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 text-white shadow-xl sm:p-7">
@@ -49,9 +59,8 @@ export default function SelfStatsCard({ user }: SelfStatsCardProps) {
             <Avatar name={user.name} profilePicUrl={user.profilePicUrl} size={64} fallbackClassName="bg-white text-violet-700" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white/80">Hey {firstName} 👋</p>
             <h2 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-2xl font-black tracking-tight sm:text-3xl">
-              {user.name}
+              Hey {firstName} 👋
               {stats && (
                 <StreakBadges
                   gameStreak={stats.streaks.currentGameStreak}
@@ -76,9 +85,17 @@ export default function SelfStatsCard({ user }: SelfStatsCardProps) {
 
         {stats && (
           <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-[26rem]">
-            <StatTile value={String(Math.round(stats.rating))} label="Rating" />
-            <StatTile value={String(stats.matchWins)} label="Match wins" />
-            <StatTile value={formatWinPct(stats.winPct)} label="Win %" />
+            <StatTile
+              value={`🔥 ${stats.streaks.currentDayStreak}`}
+              label="Day streak"
+              caption={`best ${dayCount(stats.streaks.longestDayStreak)}`}
+            />
+            <StatTile value={stats.matchesPlayed.toLocaleString('en-IN')} label="Matches played" />
+            <StatTile
+              value={`${formatStrikeRate(strikeRate(stats.gamesWon, stats.gamesPlayed))}%`}
+              label="Strike rate"
+              caption="games won"
+            />
           </div>
         )}
       </div>

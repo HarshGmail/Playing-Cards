@@ -16,6 +16,12 @@ export const MILESTONES_SECTION_ID = 'milestones';
 
 const MILESTONES_HASH = `#${MILESTONES_SECTION_ID}`;
 const SKELETON_CARD_COUNT = 6;
+const RECENT_MILESTONE_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
+
+function isRecentlyAchieved(achievedAt: string | undefined, nowMs: number): boolean {
+  if (!achievedAt) return false;
+  return nowMs - Date.parse(achievedAt) <= RECENT_MILESTONE_WINDOW_MS;
+}
 
 interface MilestonesSectionProps {
   stats?: UserStats;
@@ -56,9 +62,11 @@ function useScrollToMilestonesHash(sectionRef: React.RefObject<HTMLElement>, isL
 function TrackBlock({
   progress,
   achievedAtById,
+  nowMs,
 }: {
   progress: MilestoneProgress;
   achievedAtById: Map<string, string>;
+  nowMs: number;
 }) {
   const { track, value, achieved, next, progressToNext } = progress;
   const achievedIds = new Set(achieved.map((m) => m.id));
@@ -78,11 +86,9 @@ function TrackBlock({
             {achieved.length}/{track.levels.length}
           </span>
         </p>
-        {next && (
-          <p className="text-xs text-gray-600 dark:text-gray-400 tabular-nums">
-            {value} / {next.threshold} to {next.title}
-          </p>
-        )}
+        <p className="text-xs text-gray-600 dark:text-gray-400 tabular-nums">
+          {next ? `${(next.threshold - value).toLocaleString('en-IN')} more to go` : 'All unlocked'}
+        </p>
       </div>
       <div
         role="progressbar"
@@ -105,9 +111,15 @@ function TrackBlock({
             <MilestoneCard
               key={milestone.id}
               milestone={milestone}
+              unlocked={achievedIds.has(milestone.id)}
               achievedAt={achievedAt}
+              isNew={isRecentlyAchieved(achievedAt, nowMs)}
               progressPercent={isNext ? Math.round(progressToNext * 100) : undefined}
-              progressLabel={isNext ? `${value} / ${milestone.threshold}` : undefined}
+              progressLabel={
+                isNext
+                  ? `${value.toLocaleString('en-IN')} / ${milestone.threshold.toLocaleString('en-IN')}`
+                  : undefined
+              }
             />
           );
         })}
@@ -138,6 +150,7 @@ export default function MilestonesSection({ stats }: MilestonesSectionProps) {
     : [];
   const achievedAtById = new Map((stats?.milestones ?? []).map((m) => [m.id, m.achievedAt]));
   const unlockedCount = tracks.reduce((sum, t) => sum + t.achieved.length, 0);
+  const nowMs = Date.now();
 
   return (
     <section
@@ -168,6 +181,7 @@ export default function MilestonesSection({ stats }: MilestonesSectionProps) {
               key={progress.track.metric}
               progress={progress}
               achievedAtById={achievedAtById}
+              nowMs={nowMs}
             />
           ))}
         </div>
