@@ -40,13 +40,38 @@ describe('showdownOutcome', () => {
     expect(outcome).toEqual({ kind: 'wrong', shower: 'harsh', declared: 0, beaters: ['vinay'] });
   });
 
-  it('records no show when nobody or several players scored zero', () => {
-    expect(showdownOutcome({ round: 4, scores: [{ playerId: 'a', value: 3 }, { playerId: 'b', value: 4 }] })).toEqual({
-      kind: 'none',
+  it('reads an unmarked round with no zero as a wrong show by the highest score, won by the lowest', () => {
+    expect(
+      showdownOutcome({
+        round: 14,
+        scores: [
+          { playerId: 'harsh', value: 52 },
+          { playerId: 'vinay', value: 73 },
+          { playerId: 'bot', value: 23 },
+        ],
+      })
+    ).toEqual({ kind: 'wrong', shower: 'vinay', declared: 23, beaters: ['bot'] });
+  });
+
+  it('leaves a round unmarked when it cannot tell who showed', () => {
+    const noPenalty = [{ playerId: 'a', value: 30 }, { playerId: 'b', value: 40 }];
+    const tiedForHighest = [{ playerId: 'a', value: 60 }, { playerId: 'b', value: 60 }, { playerId: 'c', value: 5 }];
+    const twoZeros = [{ playerId: 'a', value: 0 }, { playerId: 'b', value: 0 }];
+    for (const scores of [noPenalty, tiedForHighest, twoZeros]) {
+      expect(showdownOutcome({ round: 5, scores })).toEqual({ kind: 'none' });
+    }
+  });
+
+  it('prefers the marked +50 over the inferred one', () => {
+    const outcome = showdownOutcome({
+      round: 6,
+      scores: [
+        { playerId: 'a', value: 55, wrongShow: true },
+        { playerId: 'b', value: 70 },
+        { playerId: 'c', value: 2 },
+      ],
     });
-    expect(showdownOutcome({ round: 5, scores: [{ playerId: 'a', value: 0 }, { playerId: 'b', value: 0 }] })).toEqual({
-      kind: 'none',
-    });
+    expect(outcome).toMatchObject({ kind: 'wrong', shower: 'a', declared: 5, beaters: ['c'] });
   });
 });
 

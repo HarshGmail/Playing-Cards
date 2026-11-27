@@ -36,7 +36,25 @@ export function showdownOutcome(round: ShowdownRound): ShowdownOutcome {
     return { kind: 'wrong', shower: wrong.playerId, declared, beaters };
   }
   const zeroScorers = round.scores.filter((score) => score.value === 0);
-  return zeroScorers.length === 1 ? { kind: 'correct', shower: zeroScorers[0].playerId } : { kind: 'none' };
+  if (zeroScorers.length === 1) return { kind: 'correct', shower: zeroScorers[0].playerId };
+  if (zeroScorers.length === 0) return inferredWrongShow(round.scores);
+  return { kind: 'none' };
+}
+
+function inferredWrongShow(scores: ShowdownScore[]): ShowdownOutcome {
+  if (scores.length < 2) return { kind: 'none' };
+  const highest = Math.max(...scores.map((score) => score.value));
+  const highestScorers = scores.filter((score) => score.value === highest);
+  if (highest < WRONG_SHOW_PENALTY || highestScorers.length !== 1) return { kind: 'none' };
+  const shower = highestScorers[0].playerId;
+  const others = scores.filter((score) => score.playerId !== shower);
+  const lowest = Math.min(...others.map((score) => score.value));
+  return {
+    kind: 'wrong',
+    shower,
+    declared: declaredTotal(highest),
+    beaters: others.filter((score) => score.value === lowest).map((score) => score.playerId),
+  };
 }
 
 export type ShowdownMark = 'correct' | 'wrong' | 'beat';
