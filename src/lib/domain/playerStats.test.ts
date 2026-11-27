@@ -215,6 +215,37 @@ describe('buildPlayerStats', () => {
     expect(Array.from(ratingsByGame.keys()).sort()).toEqual([kittens.key, 'least-count']);
   });
 
+  it('keeps a separate match and round record for each game', () => {
+    const kittens = { key: 'exploding-kittens', name: 'Exploding Kittens' };
+    const { stats } = buildPlayerStats([
+      record('lc1', [standing('a', 1, { gamesWon: 3 }), standing('b', 2, { gamesWon: 1 })]),
+      record('lc2', [standing('a', 2, { gamesWon: 1 }), standing('b', 1, { gamesWon: 3 })]),
+      record('ek', [standing('a', 1, { gamesWon: 2, roundsPlayed: 3 }), standing('b', 2, { roundsPlayed: 3 })], {
+        game: kittens,
+      }),
+      record(
+        'lc-live',
+        [standing('a', 1, { gamesWon: 2, roundsPlayed: 2 }), standing('b', 2, { roundsPlayed: 2 })],
+        { status: 'active', endedAt: null, roundsPlayed: 2 }
+      ),
+    ]);
+
+    const a = stats.get('a')!;
+    expect(a.ratingsByGame['least-count'].record).toEqual({
+      matchesPlayed: 3,
+      matchWins: 1,
+      gamesWon: 6,
+      gamesPlayed: 10,
+    });
+    expect(a.ratingsByGame[kittens.key].record).toEqual({
+      matchesPlayed: 1,
+      matchWins: 1,
+      gamesWon: 2,
+      gamesPlayed: 3,
+    });
+    expect(a).toMatchObject({ matchesPlayed: 4, matchWins: 2, gamesWon: 8, gamesPlayed: 13 });
+  });
+
   it('leaves the headline rating at the start for players who only played other games', () => {
     const { stats } = buildPlayerStats([
       record('ek', [standing('a', 1), standing('b', 2)], {

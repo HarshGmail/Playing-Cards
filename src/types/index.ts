@@ -101,12 +101,20 @@ export interface PodiumCounts {
   third: number;
 }
 
+export interface FormatRecordSummary {
+  matchesPlayed: number;
+  matchWins: number;
+  gamesWon: number;
+  gamesPlayed: number;
+}
+
 export interface GameRatingSummary {
   key: string;
   name: string;
   rating: number;
   peakRating: number;
   ratedMatches: number;
+  record: FormatRecordSummary;
   globalRank?: number | null;
 }
 

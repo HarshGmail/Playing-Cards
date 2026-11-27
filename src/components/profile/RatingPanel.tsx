@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Hash, TrendingUp } from 'lucide-react';
+import type { ReactNode } from 'react';
 import RatingHelpLink from '@/components/rating/RatingHelpLink';
 import SegmentedToggle from '@/components/profile/SegmentedToggle';
-import { getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
+import { formatWinPct, getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
+import { formatStrikeRate, matchWinRate, strikeRate } from '@/lib/domain/winRates';
 import {
   formatRatingDelta,
   RATING_RANGE_LABELS,
@@ -16,7 +18,7 @@ import {
 } from '@/lib/domain/ratingHistory';
 import { useRatingHistoryQuery, UserStats } from '@/lib/queries/users';
 import { PRIMARY_RATING_GAME } from '@/lib/games/catalog';
-import type { GameRatingSummary, RatingHistoryEntry } from '@/types';
+import type { FormatRecordSummary, GameRatingSummary, RatingHistoryEntry } from '@/types';
 
 const RatingHistoryChart = dynamic(() => import('@/components/profile/RatingHistoryChart'), {
   ssr: false,
@@ -52,9 +54,41 @@ function gameRatingsOf(stats: UserStats): GameRatingSummary[] {
       rating: stats.rating,
       peakRating: stats.peakRating,
       ratedMatches: stats.ratedMatches,
+      record: {
+        matchesPlayed: stats.matchesPlayed,
+        matchWins: stats.matchWins,
+        gamesWon: stats.gamesWon,
+        gamesPlayed: stats.gamesPlayed,
+      },
       globalRank: stats.globalRank,
     },
   ];
+}
+
+function FormatStat({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-amber-200/70 dark:border-amber-800/40 bg-white/60 dark:bg-gray-900/30 px-3 py-2.5 text-center">
+      <p className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{value}</p>
+      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+function FormatStats({ record }: { record: FormatRecordSummary }) {
+  return (
+    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <FormatStat label="Matches" value={record.matchesPlayed} />
+      <FormatStat label="Games" value={record.gamesPlayed} />
+      <FormatStat
+        label="Strike Rate"
+        value={formatStrikeRate(strikeRate(record.gamesWon, record.gamesPlayed))}
+      />
+      <FormatStat
+        label="Win %"
+        value={formatWinPct(matchWinRate(record.matchWins, record.matchesPlayed))}
+      />
+    </div>
+  );
 }
 
 function changeClasses(change: number): string {
@@ -161,6 +195,8 @@ export default function RatingPanel({ stats, username = '' }: RatingPanelProps) 
           <RatingHistoryChart points={rangeWindow.points} trendingUp={rangeWindow.change >= 0} />
         )}
       </div>
+
+      <FormatStats record={selected.record} />
     </div>
   );
 }

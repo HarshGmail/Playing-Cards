@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import MedalIconRow from '@/components/profile/MedalIconRow';
 import RatingPanel from '@/components/profile/RatingPanel';
 import { formatWinPct } from '@/lib/domain/ratingTier';
+import { formatStrikeRate, matchWinRate, strikeRate } from '@/lib/domain/winRates';
 import type { UserStats } from '@/lib/queries/users';
 
 interface MedalsTableProps {
@@ -43,16 +44,6 @@ const EMPTY_STATS: UserStats = {
   totalMatches: 0,
   totalRounds: 0,
 };
-
-function matchWinPct(matchWins: number, matchesPlayed: number): number {
-  if (matchesPlayed === 0) return 0;
-  return matchWins / matchesPlayed;
-}
-
-function strikeRate(gamesWon: number, gamesPlayed: number): string {
-  if (gamesPlayed === 0) return '0.0';
-  return ((gamesWon / gamesPlayed) * 100).toFixed(1);
-}
 
 const CARD_BASE_CLASSES =
   'rounded-xl p-4 text-center border transition duration-200 hover:-translate-y-0.5 hover:shadow-md';
@@ -156,13 +147,13 @@ export default function MedalsTable({ stats = EMPTY_STATS, username }: MedalsTab
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatTile
           label="Win %"
-          value={formatWinPct(matchWinPct(stats.matchWins, stats.matchesPlayed))}
+          value={formatWinPct(matchWinRate(stats.matchWins, stats.matchesPlayed))}
           toneClasses="border-green-200 dark:border-green-800/60 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40"
           valueClassName="text-green-600 dark:text-green-500"
         />
         <StatTile
           label="Strike Rate"
-          value={strikeRate(stats.gamesWon, stats.gamesPlayed)}
+          value={formatStrikeRate(strikeRate(stats.gamesWon, stats.gamesPlayed))}
           icon={<Target className="w-4 h-4" />}
           toneClasses="border-rose-200 dark:border-rose-800/60 bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/20 dark:to-rose-900/40"
           valueClassName="text-rose-600 dark:text-rose-500"

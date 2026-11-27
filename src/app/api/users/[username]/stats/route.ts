@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
-import { getUsers, getPlayerStats, PlayerStats } from '@/lib/db/collections';
+import { getUsers, getPlayerStats, GameRating, PlayerStats } from '@/lib/db/collections';
 import { success, notFound, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
-import { emptyPlayerStreaks, ZERO_PLAYER_STATS } from '@/lib/domain/playerStats';
+import { emptyFormatRecord, emptyPlayerStreaks, ZERO_PLAYER_STATS } from '@/lib/domain/playerStats';
 import { dayKey, liveDayStreak } from '@/lib/domain/streaks';
 import { strictlyAheadFilter } from '@/lib/stats/leaderboard';
 import { PRIMARY_RATING_GAME } from '@/lib/games/catalog';
@@ -34,20 +34,34 @@ function toMilestonesSummary(doc: PlayerStats | null): PlayerStatsSummary['miles
 
 type RankedGameRating = GameRatingSummary & { globalRank: number | null };
 
-function primaryGameRating(source: Pick<PlayerStats, 'rating' | 'peakRating' | 'ratedMatches'>): GameRatingSummary {
+type GameRatingSource = Pick<PlayerStats, 'rating' | 'peakRating' | 'ratedMatches' | 'ratingsByGame'>;
+
+function formatRecordOf(gameRating: GameRating | undefined): GameRatingSummary['record'] {
+  return { ...(gameRating?.record ?? emptyFormatRecord()) };
+}
+
+function primaryGameRating(source: GameRatingSource): GameRatingSummary {
   return {
     key: PRIMARY_RATING_GAME.key,
     name: PRIMARY_RATING_GAME.name,
     rating: source.rating,
     peakRating: source.peakRating,
     ratedMatches: source.ratedMatches,
+    record: formatRecordOf(source.ratingsByGame?.[PRIMARY_RATING_GAME.key]),
   };
 }
 
 function otherGameRatings(doc: PlayerStats | null): GameRatingSummary[] {
   return Object.entries(doc?.ratingsByGame ?? {})
     .filter(([key]) => key !== PRIMARY_RATING_GAME.key)
-    .map(([key, gameRating]) => ({ key, ...gameRating }))
+    .map(([key, gameRating]) => ({
+      key,
+      name: gameRating.name,
+      rating: gameRating.rating,
+      peakRating: gameRating.peakRating,
+      ratedMatches: gameRating.ratedMatches,
+      record: formatRecordOf(gameRating),
+    }))
     .sort((a, b) => b.ratedMatches - a.ratedMatches);
 }
 
