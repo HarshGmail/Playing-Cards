@@ -59,18 +59,24 @@ as usual.
 - **Sequence:** three cards in a row of the **same suit**, such as `7♦ 8♦ 9♦`, can go
   down together. If the open card matches the sequence — `7♦ 8♦ 9♦` onto an open 7 — you
   don't pick.
+- **Identical pair:** when more than one deck is in play, the same card can turn up
+  twice — two `9♦`, for example. If you hold both, you can put them down together and
+  shed both at once.
 - When a set goes down, only its **top card** can be picked by the next player. If someone
   puts down `A 2 3`, the next player may take the `3` (putting a card of their own down
   first), but not the `2` or the `A`.
 
 ## Special cards
 
-- **J — skip.** Putting down a J skips the next player's turn. Three Js at once still skip
-  only one player, but you shed 30 points.
+- **J — skip.** Putting down a J skips the next player's turn. Three Js at once, or an
+  identical pair like two `J♦`, still skip only one player for that turn — you just shed
+  more points.
 - **7♥ — pick two.** When the 7 of hearts goes down, the next player must take **two cards
   from the closed deck** and their turn is skipped. Nobody can ever pick up the 7♥ — not
   the next player, not the one after. It can be put down but never picked up. The player
-  after can still match it with another 7 to end their turn.
+  after can still match it with another 7 to end their turn. Putting down two `7♥`
+  together (an identical pair) still makes the next player take only **two** cards, not
+  four.
 - **Sequences follow their top card.** A sequence ending in `7♥` (`5♥ 6♥ 7♥`) works like
   the 7♥: the next player picks two and is skipped. A sequence where the 7♥ is not on top
   (`6♥ 7♥ 8♥`) does nothing special. Likewise `9 10 J` skips the next player, but
