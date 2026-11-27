@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
-import { ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { getFriendships, getPlayerStats, getUsers } from '@/lib/db/collections';
+import { getFriendships, getPlayerStats } from '@/lib/db/collections';
 import { success, validationError, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
@@ -10,10 +9,10 @@ import { ALL_GAMES_KEY, PRIMARY_RATING_GAME, RATING_GAME_KEY_PATTERN } from '@/l
 import {
   buildLeaderboard,
   LeaderboardSource,
-  RankableIdentity,
   RankableStats,
   rankableStatsFor,
 } from '@/lib/stats/leaderboard';
+import { loadIdentities, UNKNOWN_IDENTITY } from '@/lib/stats/identities';
 import { loadRatedGames } from '@/lib/stats/ratingGames';
 import type { LeaderboardMetric, LeaderboardScope } from '@/types';
 
@@ -22,7 +21,6 @@ export const dynamic = 'force-dynamic';
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 const HAS_PLAYED = { gamesPlayed: { $gt: 0 } };
-const UNKNOWN_IDENTITY: RankableIdentity = { name: 'Unknown', username: '', profilePicUrl: null };
 
 const gameKeySchema = z
   .string()
@@ -64,21 +62,6 @@ function effectiveGameKey(metric: LeaderboardMetric, gameKey: string): string {
 
 function zeroSource(userId: string): LeaderboardSource {
   return { userId, ...ZERO_PLAYER_STATS, podiums: { ...ZERO_PLAYER_STATS.podiums } };
-}
-
-async function loadIdentities(userIds: string[]): Promise<Map<string, RankableIdentity>> {
-  const objectIds = userIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id));
-  if (objectIds.length === 0) return new Map();
-  const usersCol = await getUsers();
-  const users = await usersCol
-    .find({ _id: { $in: objectIds } }, { projection: { name: 1, username: 1, profilePicUrl: 1 } })
-    .toArray();
-  return new Map(
-    users.map((u) => [
-      u._id!.toString(),
-      { name: u.name, username: u.username, profilePicUrl: u.profilePicUrl ?? null },
-    ])
-  );
 }
 
 async function friendIdsOf(viewerId: string): Promise<string[]> {

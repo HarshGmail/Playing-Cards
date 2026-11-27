@@ -31,6 +31,7 @@ import EditRoundModal from '@/components/match/EditRoundModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Confetti from '@/components/effects/Confetti';
 import { useMatchCelebration } from '@/components/effects/useMatchCelebration';
+import MatchMilestoneCelebrations from '@/components/milestones/MatchMilestoneCelebrations';
 import WaitingForPlayers from '@/components/match/WaitingForPlayers';
 import { gameDisplayName, rulesPathFor, toGameType } from '@/lib/games/catalog';
 import { useFullscreen } from '@/lib/hooks/useFullscreen';
@@ -359,6 +360,7 @@ export default function MatchPage() {
       </div>
 
       <Confetti active={celebrating} delayMs={CONFETTI_AFTER_CEREMONY_MS} />
+      <MatchMilestoneCelebrations matchId={matchId} currentUserId={user?.id} />
 
       <ConfirmDialog
         open={confirmingEnd}

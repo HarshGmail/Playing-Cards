@@ -176,6 +176,48 @@ export interface PlayerStreaksSummary {
   currentDayStreak: number;
 }
 
+export type RecordKind = 'matchWins' | 'gameWins';
+
+export interface RecordHolder {
+  userId: string;
+  name: string;
+  username: string;
+  profilePicUrl: string | null;
+  count: number;
+  at: string;
+}
+
+export interface FastestRecordView {
+  kind: RecordKind;
+  threshold: number;
+  holder: RecordHolder;
+  viewer: { count: number; at: string } | null;
+}
+
+export interface FastestRecordsResponse {
+  matchWins: FastestRecordView[];
+  gameWins: FastestRecordView[];
+}
+
+export interface RecordChanceView {
+  kind: RecordKind;
+  threshold: number;
+  playerId: string;
+  playerName: string;
+  winsNeeded: number;
+  withinGames: number | null;
+  newCount: number;
+  record: RecordHolder | null;
+}
+
+export interface MatchCelebration {
+  id: string;
+  userId: string;
+  userName: string;
+  milestoneId: string;
+  createdAt: string;
+}
+
 export type LeaderboardScope = 'friends' | 'global';
 export type LeaderboardMetric = 'rating' | 'winPct' | 'matchWins' | 'gamesWon';
 

@@ -4,7 +4,7 @@ import { ratingGameFor } from '@/lib/games/catalog';
 import { recomputeMatchStandings, StandingsMatch } from '@/lib/stats/standings';
 import { NewMilestones, rebuildAllPlayerStats } from '@/lib/stats/playerStats';
 
-function milestoneNotifications(newMilestones: NewMilestones): NotificationInput[] {
+function milestoneNotifications(newMilestones: NewMilestones, matchId?: string): NotificationInput[] {
   return Array.from(newMilestones).flatMap(([userId, milestones]) =>
     milestones.map((milestone) => ({
       userId,
@@ -15,25 +15,26 @@ function milestoneNotifications(newMilestones: NewMilestones): NotificationInput
         emoji: milestone.emoji,
         metric: milestone.metric,
         threshold: milestone.threshold,
+        ...(matchId ? { matchId } : {}),
       },
     }))
   );
 }
 
-export async function notifyMilestones(newMilestones: NewMilestones): Promise<void> {
-  await notifyMany(milestoneNotifications(newMilestones));
+export async function notifyMilestones(newMilestones: NewMilestones, matchId?: string): Promise<void> {
+  await notifyMany(milestoneNotifications(newMilestones, matchId));
 }
 
-async function rebuildStatsAndNotifyMilestones(): Promise<RatingsByGame> {
+async function rebuildStatsAndNotifyMilestones(matchId?: string): Promise<RatingsByGame> {
   const { ratingsByGame, newMilestones } = await rebuildAllPlayerStats();
-  await notifyMilestones(newMilestones);
+  await notifyMilestones(newMilestones, matchId);
   return ratingsByGame;
 }
 
 export async function onRoundsChanged(matchId: string): Promise<void> {
   const match = await recomputeMatchStandings(matchId);
   if (!match) return;
-  await rebuildStatsAndNotifyMilestones();
+  await rebuildStatsAndNotifyMilestones(matchId);
 }
 
 function matchWonNotifications(
@@ -65,7 +66,7 @@ function matchWonNotifications(
 export async function onMatchEnded(matchId: string): Promise<void> {
   const match = await recomputeMatchStandings(matchId);
   if (!match) return;
-  const ratingsByGame = await rebuildStatsAndNotifyMilestones();
+  const ratingsByGame = await rebuildStatsAndNotifyMilestones(matchId);
   await notifyMany(matchWonNotifications(matchId, match, ratingsByGame));
 }
 
