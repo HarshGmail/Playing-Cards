@@ -6,6 +6,7 @@ import {
   ImageOff,
   LogIn,
   Mail,
+  Megaphone,
   Sparkles,
   Trophy,
   UserCheck,
@@ -77,6 +78,7 @@ const APPEARANCE_BY_TYPE: Record<NotificationType, NotificationAppearance> = {
   milestone: { icon: Sparkles, ...MILESTONE },
   'game-time': { icon: AlarmClock, ...VIOLET },
   'avatar-removed': { icon: ImageOff, ...RED },
+  announcement: { icon: Megaphone, ...VIOLET },
 };
 
 const FALLBACK_APPEARANCE: NotificationAppearance = { icon: Bell, ...SLATE };

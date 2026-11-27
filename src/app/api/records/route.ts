@@ -1,15 +1,16 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/api/auth';
-import { success, validationError, error } from '@/lib/api/respond';
+import { success, validationError, error, notFound } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
+import { getUsers } from '@/lib/db/collections';
 import { ALL_GAMES_KEY, RATING_GAME_KEY_PATTERN } from '@/lib/games/catalog';
 import { fastestRecords, reachedBy } from '@/lib/domain/fastestRecords';
 import { loadIdentities, UNKNOWN_IDENTITY, type PlayerIdentity } from '@/lib/stats/identities';
 import { viewerAndFriendIds } from '@/lib/stats/friends';
 import { loadRecordBook, toRecordHolder, type RecordTrack } from '@/lib/stats/fastestRecords';
 import { loadRatedGames } from '@/lib/stats/ratingGames';
-import type { FastestRecordView, RecordKind, RecordProgressView } from '@/types';
+import type { FastestRecordView, RecordKind, RecordProgressView, RecordSubject } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,18 @@ const querySchema = z.object({
     .refine((key) => key === ALL_GAMES_KEY || RATING_GAME_KEY_PATTERN.test(key))
     .default(ALL_GAMES_KEY),
   scope: z.enum(['friends', 'global']).default('friends'),
+  subject: z.string().trim().min(1).optional(),
 });
+
+async function resolveSubject(viewerId: string, username: string | undefined): Promise<RecordSubject | null> {
+  const usersCol = await getUsers();
+  const user = username
+    ? await usersCol.findOne({ username }, { projection: { name: 1 } })
+    : null;
+  if (username && !user) return null;
+  const userId = user?._id?.toString() ?? viewerId;
+  return { userId, name: user?.name ?? 'You', isViewer: userId === viewerId };
+}
 
 function recordsFor(kind: RecordKind, track: RecordTrack, memberIds: Set<string> | null) {
   return fastestRecords(kind, memberIds ? reachedBy(track.reached, memberIds) : track.reached);
@@ -30,22 +42,22 @@ function toViews(
   track: RecordTrack,
   records: ReturnType<typeof fastestRecords>,
   identities: Map<string, PlayerIdentity>,
-  viewerId: string
+  subjectId: string
 ): FastestRecordView[] {
-  const viewerReached = track.reached.get(viewerId);
+  const subjectReached = track.reached.get(subjectId);
   return records.map((record) => {
-    const viewerAchievement = viewerReached?.get(record.threshold);
+    const achievement = subjectReached?.get(record.threshold);
     return {
       kind,
       threshold: record.threshold,
       holder: toRecordHolder(record.holder, identities.get(record.holder.playerId) ?? UNKNOWN_IDENTITY),
-      viewer: viewerAchievement ? { count: viewerAchievement.count, at: viewerAchievement.at } : null,
+      subjectReached: achievement ? { count: achievement.count, at: achievement.at } : null,
     };
   });
 }
 
-function progressFor(track: RecordTrack, viewerId: string): RecordProgressView | null {
-  const progress = track.progress.get(viewerId);
+function progressFor(track: RecordTrack, subjectId: string): RecordProgressView | null {
+  const progress = track.progress.get(subjectId);
   return progress ? { wins: progress.wins, played: progress.played } : null;
 }
 
@@ -71,6 +83,12 @@ export async function GET(request: NextRequest) {
     }
     const { game, scope } = parsed.data;
 
+    const subject = await resolveSubject(userId, parsed.data.subject);
+    if (!subject) {
+      logApiResponse(requestId, 404, Date.now() - startTime);
+      return notFound();
+    }
+
     const [book, games, memberIds] = await Promise.all([
       loadRecordBook(game),
       loadRatedGames(),
@@ -84,11 +102,12 @@ export async function GET(request: NextRequest) {
 
     logApiResponse(requestId, 200, Date.now() - startTime);
     return success({
-      matchWins: toViews('matchWins', book.matchWins, matchWinRecords, identities, userId),
-      gameWins: toViews('gameWins', book.gameWins, gameWinRecords, identities, userId),
-      viewerProgress: {
-        matchWins: progressFor(book.matchWins, userId),
-        gameWins: progressFor(book.gameWins, userId),
+      matchWins: toViews('matchWins', book.matchWins, matchWinRecords, identities, subject.userId),
+      gameWins: toViews('gameWins', book.gameWins, gameWinRecords, identities, subject.userId),
+      subject,
+      subjectProgress: {
+        matchWins: progressFor(book.matchWins, subject.userId),
+        gameWins: progressFor(book.gameWins, subject.userId),
       },
       games,
     });

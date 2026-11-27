@@ -15,11 +15,14 @@ interface CelebrationsResponse {
   celebrations: MatchCelebration[];
 }
 
-export function useFastestRecordsQuery(game: string, scope: LeaderboardScope) {
+const VIEWER_SUBJECT = '';
+
+export function useFastestRecordsQuery(game: string, scope: LeaderboardScope, subjectUsername = VIEWER_SUBJECT) {
+  const params = new URLSearchParams({ game, scope });
+  if (subjectUsername) params.set('subject', subjectUsername);
   return useQuery({
-    queryKey: recordKeys.fastest(game, scope),
-    queryFn: () =>
-      apiFetch<FastestRecordsResponse>(`/api/records?game=${encodeURIComponent(game)}&scope=${scope}`),
+    queryKey: recordKeys.fastest(game, scope, subjectUsername),
+    queryFn: () => apiFetch<FastestRecordsResponse>(`/api/records?${params.toString()}`),
     staleTime: RECORDS_STALE_TIME_MS,
     placeholderData: keepPreviousData,
   });

@@ -45,18 +45,24 @@ const PLAY_UNITS: Record<RecordKind, [string, string]> = {
   gameWins: ['game', 'games'],
 };
 
+export interface RecordCardSubject {
+  name: string;
+  isViewer: boolean;
+}
+
 export interface RecordCardInput {
   kind: RecordKind;
   threshold: number;
-  holder: { name: string; count: number; isViewer: boolean };
-  viewerReachedCount: number | null;
-  viewerProgress: { wins: number; played: number } | null;
+  holder: { name: string; count: number; isViewer: boolean; isSubject: boolean };
+  subject: RecordCardSubject;
+  subjectReachedCount: number | null;
+  subjectProgress: { wins: number; played: number } | null;
 }
 
 export interface RecordCardCopy {
   title: string;
   holderLine: string;
-  viewerLine: string;
+  subjectLine: string;
   nudge: string | null;
 }
 
@@ -64,33 +70,44 @@ function chaseNudge(input: RecordCardInput, progress: { wins: number; played: nu
   const unit = PLAY_UNITS[input.kind];
   const winsNeeded = input.threshold - progress.wins;
   const budget = input.holder.count - 1 - progress.played;
+  const wins = plural(winsNeeded, ['win', 'wins']);
   if (budget < winsNeeded) {
-    return `The record is out of reach now, but ${plural(winsNeeded, ['more win', 'more wins'])} still gets you there.`;
+    return `The record is out of reach now, but ${plural(winsNeeded, ['more win', 'more wins'])} still gets there.`;
   }
   if (budget === winsNeeded) {
-    return `Win your next ${plural(winsNeeded, unit)} to take the record.`;
+    return `Winning the next ${plural(winsNeeded, unit)} takes the record.`;
   }
-  return `Win ${winsNeeded} of your next ${plural(budget, unit)} to take the record.`;
+  return `${wins} in the next ${plural(budget, unit)} takes the record.`;
 }
 
-function viewerLines(input: RecordCardInput): Pick<RecordCardCopy, 'viewerLine' | 'nudge'> {
+function subjectPhrases({ name, isViewer }: RecordCardSubject) {
+  return {
+    label: isViewer ? 'You' : name,
+    owns: isViewer ? 'This record is yours.' : `This record is ${name}'s.`,
+    notPlayed: isViewer ? "You haven't played this yet." : `${name} hasn't played this yet.`,
+    hasWon: isViewer ? "You've won" : `${name} has won`,
+  };
+}
+
+function subjectLines(input: RecordCardInput): Pick<RecordCardCopy, 'subjectLine' | 'nudge'> {
   const unit = PLAY_UNITS[input.kind];
-  if (input.holder.isViewer) {
-    return { viewerLine: 'This record is yours.', nudge: `Anyone who gets there in fewer ${unit[1]} takes it.` };
+  const phrases = subjectPhrases(input.subject);
+  if (input.holder.isSubject) {
+    return { subjectLine: phrases.owns, nudge: `Anyone who gets there in fewer ${unit[1]} takes it.` };
   }
-  if (input.viewerReachedCount !== null) {
-    const behind = input.viewerReachedCount - input.holder.count;
+  if (input.subjectReachedCount !== null) {
+    const behind = input.subjectReachedCount - input.holder.count;
     return {
-      viewerLine: `You won ${plural(input.threshold, unit)} in ${plural(input.viewerReachedCount, unit)}.`,
+      subjectLine: `${phrases.label} won ${plural(input.threshold, unit)} in ${plural(input.subjectReachedCount, unit)}.`,
       nudge: `${plural(behind, unit)} slower than the record.`,
     };
   }
-  const progress = input.viewerProgress;
+  const progress = input.subjectProgress;
   if (!progress || progress.played === 0) {
-    return { viewerLine: "You haven't played this yet.", nudge: null };
+    return { subjectLine: phrases.notPlayed, nudge: null };
   }
   return {
-    viewerLine: `You've won ${progress.wins} of ${plural(progress.played, unit)} so far.`,
+    subjectLine: `${phrases.hasWon} ${progress.wins} of ${plural(progress.played, unit)} so far.`,
     nudge: chaseNudge(input, progress),
   };
 }
@@ -103,7 +120,7 @@ export function describeRecordCard(input: RecordCardInput): RecordCardCopy {
   return {
     title: `Fastest to ${recordGoal(input.kind, input.threshold)}`,
     holderLine,
-    ...viewerLines(input),
+    ...subjectLines(input),
   };
 }
 

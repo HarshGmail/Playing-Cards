@@ -155,6 +155,12 @@ export function formatNotification(notification: FormattableNotification): Forma
         body: 'Your profile photo was removed for being inappropriate. You can upload a new one from your profile.',
         url: PROFILE_URL,
       };
+    case 'announcement':
+      return {
+        title: text(p.title) || 'Announcement',
+        body: text(p.body) || 'Something new in Playing Cards.',
+        url: text(p.url) || NOTIFICATIONS_URL,
+      };
     default:
       return { title: 'Notification', body: 'New notification', url: NOTIFICATIONS_URL };
   }

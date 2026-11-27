@@ -10,8 +10,7 @@ import FindFriendsTab from '@/components/dashboard/FindFriendsTab';
 import MatchCalendar from '@/components/calendar/MatchCalendar';
 import NotificationsNudge from '@/components/dashboard/NotificationsNudge';
 import QuickActions from '@/components/dashboard/QuickActions';
-import LiveMatchesStrip from '@/components/dashboard/LiveMatchesStrip';
-import FriendsMatchesFeed from '@/components/dashboard/FriendsMatchesFeed';
+import RelevantMatches from '@/components/dashboard/RelevantMatches';
 import { CalendarDays } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -38,11 +37,9 @@ export default function DashboardPage() {
 
       <IncomingRequestsPanel />
 
-      <LiveMatchesStrip currentUserId={user?.id} />
-
       <QuickActions />
 
-      <FriendsMatchesFeed />
+      <RelevantMatches currentUserId={user?.id} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <section className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">

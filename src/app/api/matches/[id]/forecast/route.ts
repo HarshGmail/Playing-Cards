@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { requireAuth } from '@/lib/api/auth';
+import { canWatchMatch } from '@/lib/api/viewableMatch';
 import { getMatches } from '@/lib/db/collections';
 import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
@@ -40,12 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return notFound();
     }
 
-    const canView =
-      match.creatorId === userId ||
-      match.roster.some((r) => r.userId === userId) ||
-      (match.spectators ?? []).some((s) => s.userId === userId);
-
-    if (!canView) {
+    if (!(await canWatchMatch(match, userId))) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }

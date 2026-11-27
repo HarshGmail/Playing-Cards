@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/api/auth';
+import { canWatchMatch } from '@/lib/api/viewableMatch';
 import { getMatches, getScores } from '@/lib/db/collections';
 import { success, notFound, unauthorized, error, forbidden, validationError } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
@@ -100,12 +101,7 @@ export async function GET(
       return notFound();
     }
 
-    // Check if user is creator, in roster, or a spectator
-    const isCreator = match.creatorId === userId;
-    const isInRoster = match.roster.some((r) => r.userId === userId);
-    const isSpectator = (match.spectators ?? []).some((s) => s.userId === userId);
-
-    if (!isCreator && !isInRoster && !isSpectator) {
+    if (!(await canWatchMatch(match, userId))) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }

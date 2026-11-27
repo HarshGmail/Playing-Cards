@@ -198,6 +198,14 @@ export interface PlayerStreaksSummary {
   currentDayStreak: number;
 }
 
+export interface MilestoneFriendHolder {
+  userId: string;
+  name: string;
+  username: string;
+  profilePicUrl: string | null;
+  achievedAt: string;
+}
+
 export type RecordKind = 'matchWins' | 'gameWins';
 
 export interface RecordHolder {
@@ -213,7 +221,7 @@ export interface FastestRecordView {
   kind: RecordKind;
   threshold: number;
   holder: RecordHolder;
-  viewer: { count: number; at: string } | null;
+  subjectReached: { count: number; at: string } | null;
 }
 
 export interface RecordProgressView {
@@ -221,10 +229,17 @@ export interface RecordProgressView {
   played: number;
 }
 
+export interface RecordSubject {
+  userId: string;
+  name: string;
+  isViewer: boolean;
+}
+
 export interface FastestRecordsResponse {
   matchWins: FastestRecordView[];
   gameWins: FastestRecordView[];
-  viewerProgress: Record<RecordKind, RecordProgressView | null>;
+  subject: RecordSubject;
+  subjectProgress: Record<RecordKind, RecordProgressView | null>;
   games: RatedGame[];
 }
 
@@ -356,7 +371,8 @@ export type NotificationType =
   | 'match-won'
   | 'milestone'
   | 'game-time'
-  | 'avatar-removed';
+  | 'avatar-removed'
+  | 'announcement';
 
 export interface Notification {
   id: string;

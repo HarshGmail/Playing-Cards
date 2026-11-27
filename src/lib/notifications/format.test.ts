@@ -2,6 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { formatNotification, formatRatingDelta } from './format';
 
 describe('formatNotification', () => {
+  it('formats an announcement from its own title, body and link', () => {
+    expect(
+      formatNotification({
+        type: 'announcement',
+        payload: { title: 'Least Count - 2 is now Least Showdown', body: 'Same game, new name.', url: '/profile' },
+      })
+    ).toEqual({ title: 'Least Count - 2 is now Least Showdown', body: 'Same game, new name.', url: '/profile' });
+    expect(formatNotification({ type: 'announcement', payload: {} }).url).toBe('/notifications');
+  });
+
   it('formats a milestone with its emoji and links to the profile milestones section', () => {
     const result = formatNotification({
       type: 'milestone',

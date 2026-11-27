@@ -13,12 +13,16 @@ import {
 import type { UserStats } from '@/lib/queries/users';
 import MilestoneCard from '@/components/milestones/MilestoneCard';
 import MilestoneFlipCard from '@/components/milestones/MilestoneFlipCard';
+import { useFriendMilestoneHoldersQuery } from '@/lib/queries/milestones';
+import type { MilestoneFriendHolder } from '@/types';
 
 export const MILESTONES_SECTION_ID = 'milestones';
 
 const MILESTONES_HASH = `#${MILESTONES_SECTION_ID}`;
 const SKELETON_CARD_COUNT = 6;
 const RECENT_MILESTONE_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
+const NO_FRIEND_HOLDERS: MilestoneFriendHolder[] = [];
+const NO_FRIEND_HOLDERS_BY_ID: Record<string, MilestoneFriendHolder[]> = {};
 
 function isRecentlyAchieved(achievedAt: string | undefined, nowMs: number): boolean {
   if (!achievedAt) return false;
@@ -69,9 +73,19 @@ interface MilestoneTileProps {
   isNew: boolean;
   progressPercent?: number;
   progressLabel?: string;
+  friendHolders: MilestoneFriendHolder[];
 }
 
-function MilestoneTile({ milestone, progress, unlocked, achievedAt, isNew, progressPercent, progressLabel }: MilestoneTileProps) {
+function MilestoneTile({
+  milestone,
+  progress,
+  unlocked,
+  achievedAt,
+  isNew,
+  progressPercent,
+  progressLabel,
+  friendHolders,
+}: MilestoneTileProps) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
 
@@ -91,6 +105,7 @@ function MilestoneTile({ milestone, progress, unlocked, achievedAt, isNew, progr
           isNew={isNew}
           progressPercent={progressPercent}
           progressLabel={progressLabel}
+          friendHolders={friendHolders}
         />
       </button>
       {open && (
@@ -99,6 +114,7 @@ function MilestoneTile({ milestone, progress, unlocked, achievedAt, isNew, progr
           progress={progress}
           unlocked={unlocked}
           achievedAt={achievedAt}
+          friendHolders={friendHolders}
           onClose={close}
         />
       )}
@@ -110,10 +126,12 @@ function TrackBlock({
   progress,
   achievedAtById,
   nowMs,
+  friendHoldersById,
 }: {
   progress: MilestoneProgress;
   achievedAtById: Map<string, string>;
   nowMs: number;
+  friendHoldersById: Record<string, MilestoneFriendHolder[]>;
 }) {
   const { track, value, achieved, next, progressToNext } = progress;
   const achievedIds = new Set(achieved.map((m) => m.id));
@@ -168,6 +186,7 @@ function TrackBlock({
                   ? `${value.toLocaleString('en-IN')} / ${milestone.threshold.toLocaleString('en-IN')}`
                   : undefined
               }
+              friendHolders={friendHoldersById[milestone.id] ?? NO_FRIEND_HOLDERS}
             />
           );
         })}
@@ -189,6 +208,7 @@ function MilestonesSkeleton() {
 export default function MilestonesSection({ stats }: MilestonesSectionProps) {
   const sectionRef = useRef<HTMLElement>(null);
   useScrollToMilestonesHash(sectionRef, !!stats);
+  const { data: friendHoldersById = NO_FRIEND_HOLDERS_BY_ID } = useFriendMilestoneHoldersQuery();
 
   const tracks = stats
     ? milestoneProgress(
@@ -230,6 +250,7 @@ export default function MilestonesSection({ stats }: MilestonesSectionProps) {
               progress={progress}
               achievedAtById={achievedAtById}
               nowMs={nowMs}
+              friendHoldersById={friendHoldersById}
             />
           ))}
         </div>

@@ -5,7 +5,7 @@ import PlayerNameLink from '@/components/common/PlayerNameLink';
 import FlipCardModal, { CARD_FACE_STYLE } from '@/components/stats/FlipCardModal';
 import { describeRecordCard } from '@/lib/domain/recordCopy';
 import { APP_TIME_ZONE } from '@/lib/domain/streaks';
-import type { FastestRecordView, RecordProgressView } from '@/types';
+import type { FastestRecordView, RecordProgressView, RecordSubject } from '@/types';
 import type { RecordTrackStyle } from './recordTracks';
 
 const RECORD_TITLE_ID = 'record-card-title';
@@ -16,7 +16,8 @@ interface RecordFlipCardProps {
   scopeLabel: string;
   formatLabel: string;
   viewerId?: string;
-  viewerProgress: RecordProgressView | null;
+  subject: RecordSubject;
+  subjectProgress: RecordProgressView | null;
   onClose: () => void;
 }
 
@@ -35,17 +36,23 @@ export default function RecordFlipCard({
   scopeLabel,
   formatLabel,
   viewerId,
-  viewerProgress,
+  subject,
+  subjectProgress,
   onClose,
 }: RecordFlipCardProps) {
   const { holder } = record;
-  const viewerHolds = holder.userId === viewerId;
   const copy = describeRecordCard({
     kind: record.kind,
     threshold: record.threshold,
-    holder: { name: holder.name, count: holder.count, isViewer: viewerHolds },
-    viewerReachedCount: record.viewer?.count ?? null,
-    viewerProgress,
+    holder: {
+      name: holder.name,
+      count: holder.count,
+      isViewer: holder.userId === viewerId,
+      isSubject: holder.userId === subject.userId,
+    },
+    subject: { name: subject.name, isViewer: subject.isViewer },
+    subjectReachedCount: record.subjectReached?.count ?? null,
+    subjectProgress,
   });
 
   return (
@@ -93,8 +100,10 @@ export default function RecordFlipCard({
             </div>
 
             <div className="rounded-xl bg-violet-50 p-3 dark:bg-violet-900/30">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">You</p>
-              <p className="mt-1 text-sm font-semibold text-violet-950 dark:text-violet-100">{copy.viewerLine}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                {subject.isViewer ? 'You' : subject.name}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-violet-950 dark:text-violet-100">{copy.subjectLine}</p>
               {copy.nudge && <p className="mt-1 text-xs text-violet-800/80 dark:text-violet-200/80">{copy.nudge}</p>}
             </div>
           </div>

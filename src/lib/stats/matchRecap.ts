@@ -5,6 +5,7 @@ import { ratedMatchesForGame, roundScoresWithinCutoff } from '@/lib/domain/playe
 import { matchRatingDeltas } from '@/lib/domain/rating';
 import { gameDisplayName, ratingGameFor } from '@/lib/games/catalog';
 import { loadStandingsRecords } from './playerStats';
+import { canWatchMatch } from '@/lib/api/viewableMatch';
 
 const SCORE_PROJECTION = { _id: 0, playerId: 1, round: 1, value: 1 } as const;
 
@@ -23,13 +24,6 @@ export type MatchRecapResult =
   | { access: 'forbidden' }
   | { access: 'not-ended' };
 
-function canView(match: Match, userId: string): boolean {
-  return (
-    match.creatorId === userId ||
-    match.roster.some((r) => r.userId === userId) ||
-    (match.spectators ?? []).some((s) => s.userId === userId)
-  );
-}
 
 async function loadRatingDeltas(matchId: string, gameKey: string): Promise<Map<string, number>> {
   const ratedMatches = ratedMatchesForGame(await loadStandingsRecords(), gameKey);
@@ -42,7 +36,7 @@ export async function loadMatchRecap(matchId: string, userId: string): Promise<M
   const matchesCol = await getMatches();
   const match = await matchesCol.findOne({ _id: new ObjectId(matchId), deletedAt: null });
   if (!match) return { access: 'not-found' };
-  if (!canView(match, userId)) return { access: 'forbidden' };
+  if (!(await canWatchMatch(match, userId))) return { access: 'forbidden' };
   if (match.status !== 'ended' || !match.endedAt || !match.standings) {
     return { access: 'not-ended' };
   }

@@ -1,13 +1,13 @@
 'use client';
 
-import { Crown, Trophy, Users } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronRight, Crown, Trophy, Users } from 'lucide-react';
 import PlayerNameLink from '@/components/common/PlayerNameLink';
 import { StatusPill } from '@/components/calendar/MatchCard';
 import { formatShortDate } from '@/components/calendar/format';
 import { POSITION_CLASSES } from '@/components/match/positionClasses';
 import { getPositionColor } from '@/lib/domain/positionColor';
-import { useFriendsMatchesQuery } from '@/lib/queries/matches';
-import type { FriendMatchCard } from '@/types';
+import type { FriendMatchCard as FriendMatchSummary } from '@/types';
 
 const MAX_FRIEND_NAMES = 2;
 
@@ -18,14 +18,14 @@ function friendsHeadline(friendNames: string[]): string {
   return more > 0 ? `${shown} +${more}` : shown;
 }
 
-function ResultLine({ match }: { match: FriendMatchCard }) {
+function ResultLine({ match }: { match: FriendMatchSummary }) {
   const [first] = match.standings;
   if (!first) return null;
   const isLive = match.status === 'active';
   const Icon = isLive ? Crown : Trophy;
   return (
     <p
-      className={`flex items-center gap-1.5 text-xs font-medium ${
+      className={`flex min-w-0 items-center gap-1.5 text-xs font-medium ${
         isLive ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'
       }`}
     >
@@ -35,23 +35,28 @@ function ResultLine({ match }: { match: FriendMatchCard }) {
   );
 }
 
-function FeedCard({ match }: { match: FriendMatchCard }) {
+export default function FriendMatchCard({ match }: { match: FriendMatchSummary }) {
   const isLive = match.status === 'active';
   const playedOn = new Date(match.endedAt ?? match.createdAt);
+  const matchHref = `/matches/${match.id}`;
 
   return (
-    <article className="flex w-[17rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:w-[19rem]">
+    <article
+      className={`flex w-[17rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-gray-900 sm:w-[19rem] ${
+        isLive ? 'border-emerald-300 dark:border-emerald-700/70' : 'border-gray-200 dark:border-gray-700'
+      }`}
+    >
       <p className="truncate bg-gray-100 px-4 py-2 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
         Match of {friendsHeadline(match.friendNames)}
       </p>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+          <Link href={matchHref} className="min-w-0 hover:underline">
             <p className="truncate font-bold text-gray-900 dark:text-white">{match.name}</p>
             <p className="truncate text-xs text-gray-500 dark:text-gray-400">
               {match.gameName} · {formatShortDate(playedOn)} · {match.roundsPlayed} rounds
             </p>
-          </div>
+          </Link>
           <StatusPill isLive={isLive} />
         </div>
 
@@ -87,25 +92,14 @@ function FeedCard({ match }: { match: FriendMatchCard }) {
             {match.playerCount}
           </span>
         </div>
+        <Link
+          href={matchHref}
+          className="inline-flex items-center justify-center gap-1 rounded-lg bg-gray-100 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+        >
+          {isLive ? 'Watch live' : 'View result'}
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </Link>
       </div>
     </article>
-  );
-}
-
-export default function FriendsMatchesFeed() {
-  const { data: matches = [] } = useFriendsMatchesQuery();
-  if (matches.length === 0) return null;
-
-  return (
-    <section aria-labelledby="friends-matches-heading">
-      <h2 id="friends-matches-heading" className="mb-3 text-xl font-bold text-gray-900 dark:text-white">
-        Friends&apos; matches
-      </h2>
-      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-        {matches.map((match) => (
-          <FeedCard key={match.id} match={match} />
-        ))}
-      </div>
-    </section>
   );
 }
