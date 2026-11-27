@@ -121,7 +121,13 @@ export async function GET(request: NextRequest) {
 
     const fromParam = request.nextUrl.searchParams.get('from');
     const toParam = request.nextUrl.searchParams.get('to');
-    logApiRequest(requestId, 'GET /api/matches', userId, { from: fromParam, to: toParam });
+    const statusParam = request.nextUrl.searchParams.get('status');
+    logApiRequest(requestId, 'GET /api/matches', userId, { from: fromParam, to: toParam, status: statusParam });
+
+    if (statusParam !== null && statusParam !== 'active' && statusParam !== 'ended') {
+      logApiResponse(requestId, 400, Date.now() - startTime);
+      return validationError('status must be active or ended');
+    }
 
     const from = parseDateParam(fromParam);
     const to = parseDateParam(toParam);
@@ -140,6 +146,7 @@ export async function GET(request: NextRequest) {
           ],
           deletedAt: null,
           ...createdAtRange(from, to),
+          ...(statusParam ? { status: statusParam } : {}),
         },
         { projection: MATCH_SUMMARY_PROJECTION }
       )

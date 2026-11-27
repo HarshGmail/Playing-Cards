@@ -1,5 +1,62 @@
 import { describe, it, expect } from 'vitest';
-import { describeChance, describeRecordToBeat, recordGoal, recordSpent } from './recordCopy';
+import { describeChance, describeRecordCard, describeRecordToBeat, recordGoal, recordSpent } from './recordCopy';
+
+describe('describeRecordCard', () => {
+  const base = {
+    kind: 'matchWins' as const,
+    threshold: 5,
+    holder: { name: 'Harsh Vardhan', count: 17, isViewer: false },
+    viewerReachedCount: null,
+    viewerProgress: null,
+  };
+
+  it('compares the viewer with the record holder once both got there', () => {
+    expect(describeRecordCard({ ...base, viewerReachedCount: 21 })).toEqual({
+      title: 'Fastest to 5 match wins',
+      holderLine: 'Harsh Vardhan won in 17 matches.',
+      viewerLine: 'You won 5 matches in 21 matches.',
+      nudge: '4 matches slower than the record.',
+    });
+  });
+
+  it('tells the holder the record is theirs', () => {
+    const copy = describeRecordCard({ ...base, holder: { ...base.holder, isViewer: true }, viewerReachedCount: 17 });
+    expect(copy.holderLine).toBe('You won in 17 matches.');
+    expect(copy.viewerLine).toBe('This record is yours.');
+  });
+
+  it('shows progress and what it takes to beat the record', () => {
+    const copy = describeRecordCard({ ...base, viewerProgress: { wins: 3, played: 12 } });
+    expect(copy.viewerLine).toBe("You've won 3 of 12 matches so far.");
+    expect(copy.nudge).toBe('Win 2 of your next 4 matches to take the record.');
+  });
+
+  it('asks for consecutive wins when there is no room to spare', () => {
+    const copy = describeRecordCard({ ...base, viewerProgress: { wins: 3, played: 14 } });
+    expect(copy.nudge).toBe('Win your next 2 matches to take the record.');
+  });
+
+  it('admits when the record can no longer be beaten', () => {
+    const copy = describeRecordCard({ ...base, viewerProgress: { wins: 1, played: 15 } });
+    expect(copy.nudge).toBe('The record is out of reach now, but 4 more wins still gets you there.');
+  });
+
+  it('handles a viewer who has not played the format', () => {
+    expect(describeRecordCard(base)).toMatchObject({ viewerLine: "You haven't played this yet.", nudge: null });
+  });
+
+  it('uses games for game-win records', () => {
+    const copy = describeRecordCard({
+      ...base,
+      kind: 'gameWins',
+      threshold: 50,
+      holder: { name: 'BattingBot', count: 134, isViewer: false },
+      viewerReachedCount: 195,
+    });
+    expect(copy.holderLine).toBe('BattingBot won in 134 games.');
+    expect(copy.viewerLine).toBe('You won 50 games in 195 games.');
+  });
+});
 
 describe('record copy', () => {
   it('names the goal and the cost with singular and plural words', () => {

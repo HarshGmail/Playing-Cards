@@ -5,6 +5,7 @@ import {
   gameWinEvents,
   matchWinEvents,
   progressOf,
+  reachedBy,
   RECORD_THRESHOLDS,
   recordsOnTheLine,
   type PlayEvent,
@@ -109,6 +110,20 @@ describe('fastest records', () => {
     expect(fastestRecords('matchWins', reached)[0].holder.playerId).toBe('a');
   });
 
+  it('ranks only the players it is given, so a friends view has its own holders', () => {
+    const reached = firstReaches(
+      events([
+        ['stranger', true],
+        ['friend', false],
+        ['friend', true],
+      ]),
+      [1]
+    );
+    const friendsOnly = reachedBy(reached, new Set(['friend']));
+    expect(fastestRecords('matchWins', reached)[0].holder.playerId).toBe('stranger');
+    expect(fastestRecords('matchWins', friendsOnly)[0].holder.playerId).toBe('friend');
+  });
+
   it('lists only thresholds someone has reached', () => {
     const reached = firstReaches(events([['a', true]]), RECORD_THRESHOLDS.matchWins);
     expect(fastestRecords('matchWins', reached).map((r) => r.threshold)).toEqual([1]);
@@ -122,6 +137,7 @@ describe('fastest records', () => {
 describe('recordsOnTheLine', () => {
   const holder = (count: number) => ({ playerId: 'x', count, at: '2026-01-01T00:00:00Z', matchId: 'm', sequence: 0 });
   const noMatchWinThresholdInReach = new Map([['a', { wins: 2, played: 8 }]]);
+  const noGameWinThresholdInReach = new Map([['a', { wins: 30, played: 100 }]]);
 
   it('flags a match-win record a player breaks by winning this match', () => {
     const chances = recordsOnTheLine({
@@ -129,7 +145,7 @@ describe('recordsOnTheLine', () => {
       matchWinRecords: [{ kind: 'matchWins', threshold: 5, holder: holder(9) }],
       gameWinRecords: [],
       matchWinProgress: new Map([['a', { wins: 4, played: 6 }]]),
-      gameWinProgress: new Map(),
+      gameWinProgress: noGameWinThresholdInReach,
     });
     expect(chances).toEqual([
       expect.objectContaining({ kind: 'matchWins', threshold: 5, newCount: 7, winsNeeded: 1 }),
@@ -142,7 +158,7 @@ describe('recordsOnTheLine', () => {
       matchWinRecords: [{ kind: 'matchWins', threshold: 5, holder: holder(7) }],
       gameWinRecords: [],
       matchWinProgress: new Map([['a', { wins: 4, played: 6 }]]),
-      gameWinProgress: new Map(),
+      gameWinProgress: noGameWinThresholdInReach,
     });
     expect(chances).toEqual([]);
   });
@@ -177,7 +193,7 @@ describe('recordsOnTheLine', () => {
       matchWinRecords: [],
       gameWinRecords: [],
       matchWinProgress: new Map([['a', { wins: 0, played: 0 }]]),
-      gameWinProgress: new Map(),
+      gameWinProgress: noGameWinThresholdInReach,
     });
     expect(chances).toEqual([expect.objectContaining({ kind: 'matchWins', threshold: 1, record: null })]);
   });

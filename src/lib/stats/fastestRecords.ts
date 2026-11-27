@@ -101,7 +101,3 @@ export function toRecordHolder(achievement: Achievement, identity: PlayerIdentit
     at: achievement.at,
   };
 }
-
-export function recordHolderIds(book: RecordBook): string[] {
-  return [...book.matchWins.records, ...book.gameWins.records].map((record) => record.holder.playerId);
-}

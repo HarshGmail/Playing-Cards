@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api/fetcher';
-import type { FastestRecordsResponse, MatchCelebration, RecordChanceView } from '@/types';
+import type { FastestRecordsResponse, LeaderboardScope, MatchCelebration, RecordChanceView } from '@/types';
 import { recordKeys } from './keys';
 
 const RECORDS_STALE_TIME_MS = 60_000;
@@ -15,10 +15,11 @@ interface CelebrationsResponse {
   celebrations: MatchCelebration[];
 }
 
-export function useFastestRecordsQuery(game: string) {
+export function useFastestRecordsQuery(game: string, scope: LeaderboardScope) {
   return useQuery({
-    queryKey: recordKeys.fastest(game),
-    queryFn: () => apiFetch<FastestRecordsResponse>(`/api/records?game=${encodeURIComponent(game)}`),
+    queryKey: recordKeys.fastest(game, scope),
+    queryFn: () =>
+      apiFetch<FastestRecordsResponse>(`/api/records?game=${encodeURIComponent(game)}&scope=${scope}`),
     staleTime: RECORDS_STALE_TIME_MS,
     placeholderData: keepPreviousData,
   });

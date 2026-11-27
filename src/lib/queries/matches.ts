@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { GameType, MatchSummary } from '@/types';
+import type { FriendMatchCard, GameType, MatchSummary } from '@/types';
 import { apiFetch } from '@/lib/api/fetcher';
 import { gameKeys, matchKeys } from './keys';
 
@@ -29,6 +29,28 @@ interface CreateMatchResponse {
   /** Players sent an invite. They are not on the roster until they accept. */
   invitedCount: number;
   addedDirectlyCount: number;
+}
+
+const HOME_FEED_POLL_INTERVAL_MS = 30_000;
+
+export function useLiveMatchesQuery() {
+  return useQuery({
+    queryKey: matchKeys.live(),
+    queryFn: () =>
+      apiFetch<MatchesResponse>('/api/matches?status=active').then((data) => data.matches),
+    refetchInterval: HOME_FEED_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
+}
+
+export function useFriendsMatchesQuery() {
+  return useQuery({
+    queryKey: matchKeys.friendsFeed(),
+    queryFn: () =>
+      apiFetch<{ matches: FriendMatchCard[] }>('/api/matches/feed').then((data) => data.matches),
+    refetchInterval: HOME_FEED_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
 }
 
 export function useMatchesQuery() {

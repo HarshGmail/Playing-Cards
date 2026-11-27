@@ -37,7 +37,7 @@ export function gameAccentFor(match: Pick<MatchSummary, 'gameType'>): GameAccent
   return GAME_ACCENTS[toGameType(match.gameType)];
 }
 
-function StatusPill({ isLive }: { isLive: boolean }) {
+export function StatusPill({ isLive }: { isLive: boolean }) {
   if (isLive) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
@@ -56,7 +56,7 @@ function StatusPill({ isLive }: { isLive: boolean }) {
   );
 }
 
-function RosterAvatars({ roster }: { roster: MatchSummary['roster'] }) {
+export function RosterAvatars({ roster }: { roster: MatchSummary['roster'] }) {
   const shown = roster.slice(0, MAX_AVATARS);
   const hiddenCount = roster.length - shown.length;
   return (
@@ -79,7 +79,7 @@ function RosterAvatars({ roster }: { roster: MatchSummary['roster'] }) {
   );
 }
 
-function StandingLine({ match }: { match: MatchSummary }) {
+export function StandingLine({ match }: { match: MatchSummary }) {
   const standing = describeMatchStanding(match);
   const base = 'flex min-w-0 items-center gap-1 text-xs';
   if (standing.kind === 'winner') {
