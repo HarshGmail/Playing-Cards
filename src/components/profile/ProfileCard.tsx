@@ -17,11 +17,12 @@ interface ProfileCardProps {
   };
   actions?: React.ReactNode;
   isOwnProfile?: boolean;
+  hasMilestones?: boolean;
 }
 
 const AVATAR_SIZE = 72;
 
-export default function ProfileCard({ user, actions, isOwnProfile }: ProfileCardProps) {
+export default function ProfileCard({ user, actions, isOwnProfile, hasMilestones }: ProfileCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   // Only an actual picture expands — initials would open an empty lightbox. This
@@ -30,7 +31,13 @@ export default function ProfileCard({ user, actions, isOwnProfile }: ProfileCard
   const canExpand = !!user.profilePicUrl;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6 space-y-4">
+    <div
+      className={`bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 space-y-4 transition-shadow ${
+        hasMilestones
+          ? 'border-2 border-amber-400/80 shadow-[0_0_24px_rgba(251,191,36,0.45)] dark:border-amber-400/70'
+          : 'shadow-lg'
+      }`}
+    >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0">
           {canExpand ? (

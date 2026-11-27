@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
+  ALL_MILESTONES,
   ordinal,
+  tierFor,
   milestoneId,
   findMilestone,
   reachedMilestones,
@@ -15,6 +17,8 @@ const ZERO: MilestoneStats = {
   matchWins: 0,
   matchesPlayed: 0,
   gamesPlayed: 0,
+  podiumFinishes: 0,
+  peakRating: 0,
   longestGameStreak: 0,
   longestMatchStreak: 0,
   longestDayStreak: 0,
@@ -81,5 +85,28 @@ describe('milestones', () => {
     )!;
     expect(games.achieved.map((m) => m.threshold)).toEqual([10]);
     expect(games.next!.threshold).toBe(25);
+  });
+
+  it('unlocks peak rating and podium milestones from their own stats', () => {
+    const ids = reachedMilestones({ ...ZERO, peakRating: 1420, podiumFinishes: 5 }).map((m) => m.id);
+    expect(ids).toEqual(['podiumFinishes:1', 'podiumFinishes:5', 'peakRating:1300', 'peakRating:1400']);
+  });
+
+  it('gives every milestone a hero emoji and a unique id', () => {
+    expect(ALL_MILESTONES.every((m) => m.emoji.length > 0)).toBe(true);
+    expect(new Set(ALL_MILESTONES.map((m) => m.id)).size).toBe(ALL_MILESTONES.length);
+  });
+
+  it('spreads levels across four tiers from bronze to legend', () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => tierFor(i, 9))).toEqual([
+      'Bronze', 'Bronze', 'Bronze', 'Silver', 'Silver', 'Gold', 'Gold', 'Legend', 'Legend',
+    ]);
+  });
+
+  it('reports the tier and position of a milestone', () => {
+    const top = findMilestone(milestoneId('gamesWon', 500))!;
+    expect(top.tier).toBe('Legend');
+    expect(top.levelIndex).toBe(8);
+    expect(top.levelCount).toBe(9);
   });
 });

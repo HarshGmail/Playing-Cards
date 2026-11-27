@@ -1,26 +1,61 @@
 'use client';
 
+import { useCallback, useMemo, useRef, useState } from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
+import { useReducedMotion } from 'framer-motion';
+import { Play } from 'lucide-react';
 import { buildScoreboardRows } from '@/lib/domain/scoreboard';
-import { playerLabelHtml } from './playerLabel';
+import { buildScoreChartOptions, DEFAULT_SCORE_CHART_HEIGHT } from './scoreChartOptions';
+import {
+  buildScoreRaceFrame,
+  cumulativeTotals,
+  leadersByRound,
+  scoreRaceFinish,
+  type RankPreference,
+} from './scoreRaceFrame';
+import { useRaceAnimation } from './useRaceAnimation';
 import type { PlayersById } from '@/types';
 
 interface ScoreTrendChartProps {
   rounds: Array<{ round: number; scores: Array<{ playerId: string; value: number }> }>;
   players: Array<{ userId: string; userName: string }>;
   playersById: PlayersById;
+  rankPreference?: RankPreference;
   height?: number;
 }
-
-const DEFAULT_HEIGHT = 320;
 
 export default function ScoreTrendChart({
   rounds,
   players,
   playersById,
-  height = DEFAULT_HEIGHT,
+  rankPreference = 'highest-first',
+  height = DEFAULT_SCORE_CHART_HEIGHT,
 }: ScoreTrendChartProps) {
+  const reduceMotion = useReducedMotion();
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [replayCount, setReplayCount] = useState(0);
+
+  const rows = useMemo(() => buildScoreboardRows(rounds, players), [rounds, players]);
+  const totals = useMemo(() => cumulativeTotals(rows), [rows]);
+  const leaders = useMemo(() => leadersByRound(totals, rankPreference), [totals, rankPreference]);
+  const roundNumbers = useMemo(() => rounds.map((round) => round.round), [rounds]);
+  const finish = scoreRaceFinish(rounds.length);
+
+  const buildFrame = useCallback((progress: number) => buildScoreRaceFrame(totals, progress), [totals]);
+  const toggleFocus = useCallback(
+    (playerId: string) => setFocusedId((current) => (current === playerId ? null : playerId)),
+    []
+  );
+  const chartRef = useRef<HighchartsReact.RefObject>(null);
+  const frame = useRaceAnimation({
+    chartRef,
+    animate: !reduceMotion,
+    replayCount,
+    finish,
+    buildFrame,
+  });
+
   if (rounds.length === 0 || players.length === 0) {
     return (
       <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
@@ -29,49 +64,43 @@ export default function ScoreTrendChart({
     );
   }
 
-  const rows = buildScoreboardRows(rounds, players);
-
-  const series: Highcharts.SeriesLineOptions[] = rows.map((row) => {
-    let running = 0;
-    const data = row.cells.map((cell) => {
-      if (cell !== null) running += cell;
-      return running;
-    });
-    return { type: 'line', name: row.userName, data };
+  const options = buildScoreChartOptions({
+    rows,
+    totals,
+    leaders,
+    roundNumbers,
+    rankPreference,
+    playersById,
+    focusedId,
+    frame,
+    onToggleFocus: toggleFocus,
+    height,
   });
 
-  const options: Highcharts.Options = {
-    chart: { type: 'line', backgroundColor: 'transparent', height },
-    title: { text: undefined },
-    credits: { enabled: false },
-    xAxis: {
-      categories: rounds.map((r) => `R${r.round}`),
-      labels: { style: { color: '#9ca3af' } },
-    },
-    yAxis: {
-      title: { text: 'Running total' },
-      labels: { style: { color: '#9ca3af' } },
-      gridLineColor: 'rgba(148, 163, 184, 0.2)',
-    },
-    legend: {
-      useHTML: true,
-      itemStyle: { color: '#9ca3af' },
-      // This chart's x-axis is rounds, so the players are named in the legend
-      // rather than on an axis. Series order matches `rows`, so the series index
-      // maps straight back to a player.
-      labelFormatter() {
-        const row = rows[(this as Highcharts.Series).index];
-        if (!row) return String((this as Highcharts.Series).name);
-        return playerLabelHtml({
-          name: row.userName,
-          profilePicUrl: playersById[row.playerId]?.profilePicUrl,
-          size: 20,
-          stacked: false,
-        });
-      },
-    },
-    series,
-  };
+  const nameOf = (playerId: string) => players.find((p) => p.userId === playerId)?.userName ?? 'Unknown';
 
-  return <HighchartsReact highcharts={Highcharts} options={options} />;
+  return (
+    <div className="space-y-3">
+      {!reduceMotion && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setReplayCount((count) => count + 1)}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+          >
+            <Play className="w-3 h-3" />
+            Replay
+          </button>
+        </div>
+      )}
+
+      <HighchartsReact ref={chartRef} highcharts={Highcharts} options={options} />
+
+      <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+        {focusedId
+          ? `Following ${nameOf(focusedId)}. Tap again to see everyone.`
+          : 'Tap a line to follow that player. Hover a round for the running totals.'}
+      </p>
+    </div>
+  );
 }

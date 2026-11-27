@@ -17,6 +17,8 @@ export interface UIState {
   theme: ThemeChoice;
   isOnline: boolean;
   toasts: Toast[];
+  profilePulseKey: number;
+  pulseProfile: () => void;
   setTheme: (theme: ThemeChoice) => void;
   setOnline: (isOnline: boolean) => void;
   addToast: (toast: Omit<Toast, 'id'>) => string;
@@ -28,6 +30,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   theme: DEFAULT_THEME_CHOICE,
   isOnline: true,
   toasts: [],
+  profilePulseKey: 0,
+
+  pulseProfile: () => set((state) => ({ profilePulseKey: state.profilePulseKey + 1 })),
 
   setTheme: (theme: ThemeChoice) => {
     set({ theme });

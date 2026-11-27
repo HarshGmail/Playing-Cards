@@ -7,6 +7,7 @@ import { useNotificationsQuery } from '@/lib/queries/notifications';
 import Header from '@/components/layout/Header';
 import OfflineBanner from '@/components/layout/OfflineBanner';
 import Toaster from '@/components/ui/Toaster';
+import MilestoneCelebrationBanner from '@/components/milestones/MilestoneCelebrationBanner';
 
 export default function AppLayout({
   children,
@@ -34,6 +35,7 @@ export default function AppLayout({
   return (
     <>
       <Header />
+      <MilestoneCelebrationBanner enabled={!!user} />
       <OfflineBanner />
       <main className="flex-1">{children}</main>
       <Toaster />

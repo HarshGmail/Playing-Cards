@@ -2,18 +2,26 @@ import type Highcharts from 'highcharts';
 import { ordinal } from '@/lib/domain/milestones';
 import type { PositionRosterEntry, RoundPositions } from '@/lib/domain/positionHistory';
 import type { PositionStory } from '@/lib/domain/positionStory';
-import { playerFaceHtml, playerLabelHtml } from './playerLabel';
+import { playerLabelHtml } from './playerLabel';
+import {
+  AXIS_LABEL_COLOR,
+  CROWN_CLEARANCE_PX,
+  CROWN_HEIGHT_PX,
+  FOCUSED_LINE_WIDTH,
+  FADED_OPACITY,
+  GRID_LINE_COLOR,
+  HEAD_SIZE,
+  LINE_WIDTH,
+  claimHeadSlot,
+  headRoomPx,
+  raceDataLabels,
+  raceHeadHtml,
+  type RaceFrame,
+  type RaceHead,
+} from './raceFrame';
 import type { PlayersById } from '@/types';
 
-export interface RaceHead {
-  x: number;
-  staggerPx: number;
-}
-
-export interface RaceFrame {
-  dataByPlayer: Map<string, Highcharts.PointOptionsObject[]>;
-  heads: Map<string, RaceHead>;
-}
+export type { RaceFrame, RaceHead } from './raceFrame';
 
 export interface PositionChartInput {
   history: RoundPositions[];
@@ -26,18 +34,8 @@ export interface PositionChartInput {
   height?: number;
 }
 
-const CROWN = '👑';
-const HEAD_SIZE = 26;
-const TIED_HEAD_STAGGER_PX = 16;
-const CROWN_CLEARANCE_PX = HEAD_SIZE / 2 + 4;
-const CROWN_HEIGHT_PX = 18;
-const LINE_WIDTH = 3;
-const FOCUSED_LINE_WIDTH = 5;
-const FADED_OPACITY = 0.15;
 const MIN_PLAYERS_FOR_LAST_PLACE = 4;
 export const DEFAULT_POSITION_CHART_HEIGHT = 340;
-const AXIS_LABEL_COLOR = '#9ca3af';
-const GRID_LINE_COLOR = 'rgba(148, 163, 184, 0.2)';
 const LEADER_BAND_COLOR = 'rgba(168, 85, 247, 0.14)';
 const LAST_PLACE_BAND_COLOR = 'rgba(239, 68, 68, 0.08)';
 const PODIUM_COLORS: Record<number, string> = { 1: '#a855f7', 2: '#22c55e', 3: '#eab308' };
@@ -117,7 +115,7 @@ export function buildRaceFrame(
   const clamped = Math.min(Math.max(progress, 0), finalRaceProgress(history));
   const settledIndex = Math.floor(clamped);
   const fraction = clamped - settledIndex;
-  const playersAtSpot = new Map<string, number>();
+  const claimedSpots = new Map<string, number>();
 
   roster.forEach((player) => {
     const points: Highcharts.PointOptionsObject[] = [];
@@ -135,10 +133,10 @@ export function buildRaceFrame(
     const head = points[points.length - 1];
     if (head && typeof head.x === 'number') {
       head.marker = { enabled: false };
-      const spot = `${head.x}:${head.y}`;
-      const alreadyThere = playersAtSpot.get(spot) ?? 0;
-      playersAtSpot.set(spot, alreadyThere + 1);
-      heads.set(player.userId, { x: head.x, staggerPx: alreadyThere * TIED_HEAD_STAGGER_PX });
+      heads.set(player.userId, {
+        x: head.x,
+        staggerPx: claimHeadSlot(claimedSpots, head.x, Number(head.y)),
+      });
     }
     dataByPlayer.set(player.userId, points);
   });
@@ -156,12 +154,6 @@ function positionBands(fieldSize: number): Highcharts.YAxisPlotBandsOptions[] {
   return [leaderBand, { from: fieldSize - 0.5, to: fieldSize + 0.5, color: LAST_PLACE_BAND_COLOR }];
 }
 
-function headRoomPx(history: RoundPositions[], roster: PositionRosterEntry[]): number {
-  const finishHeads = buildRaceFrame(history, roster, finalRaceProgress(history)).heads;
-  const widestStagger = Math.max(0, ...Array.from(finishHeads.values()).map((head) => head.staggerPx));
-  return HEAD_SIZE / 2 + widestStagger + 6;
-}
-
 export function buildPositionChartOptions(input: PositionChartInput): Highcharts.Options {
   const {
     history,
@@ -174,9 +166,8 @@ export function buildPositionChartOptions(input: PositionChartInput): Highcharts
     height = DEFAULT_POSITION_CHART_HEIGHT,
   } = input;
   const fieldSize = largestFieldSize(history);
-  const playerById = new Map(roster.map((player) => [player.userId, player]));
   const isFaded = (playerId: string) => focusedId !== null && focusedId !== playerId;
-  const headRoom = headRoomPx(history, roster);
+  const headRoom = headRoomPx(frame.heads);
 
   const series: Highcharts.SeriesLineOptions[] = roster.map((player) => ({
     type: 'line',
@@ -188,49 +179,22 @@ export function buildPositionChartOptions(input: PositionChartInput): Highcharts
     zIndex: focusedId === player.userId ? 2 : 1,
   }));
 
-  const crownLabel: Highcharts.DataLabelsOptions = {
-    enabled: true,
-    allowOverlap: true,
-    crop: false,
-    overflow: 'allow',
-    style: { fontSize: '14px', textOutline: 'none' },
-    align: 'center',
-    verticalAlign: 'bottom',
-    x: 0,
-    y: -CROWN_CLEARANCE_PX,
-    formatter() {
-      const playerId = this.series.options.id;
-      if (!playerId || isFaded(playerId) || !Number.isInteger(this.x)) return null;
-      const round = history[this.x]?.round;
-      if (round === undefined) return null;
-      return story.newLeadersByRound.get(round)?.has(playerId) ? CROWN : null;
-    },
+  const isCrowned = (playerId: string, x: number) => {
+    const round = history[x]?.round;
+    if (round === undefined) return false;
+    return story.newLeadersByRound.get(round)?.has(playerId) ?? false;
   };
 
-  const headLabel: Highcharts.DataLabelsOptions = {
-    enabled: true,
-    useHTML: true,
-    allowOverlap: true,
-    crop: false,
-    overflow: 'allow',
-    align: 'center',
-    verticalAlign: 'middle',
-    x: 0,
-    y: 0,
-    formatter() {
-      const playerId = this.series.options.id;
-      const player = playerId ? playerById.get(playerId) : undefined;
-      const head = playerId ? frame.heads.get(playerId) : undefined;
-      if (!player || !head || head.x !== this.x) return null;
-      const opacity = isFaded(player.userId) ? `opacity:${FADED_OPACITY};` : '';
-      return playerFaceHtml({
-        name: player.userName,
-        profilePicUrl: playersById[player.userId]?.profilePicUrl,
-        size: HEAD_SIZE,
-        ringColor: typeof this.series.color === 'string' ? this.series.color : undefined,
-        extraStyle: `margin-left:${head.staggerPx}px;${opacity}`,
-      });
-    },
+  const headFace = (playerId: string, x: number, style: { color?: string; faded: boolean }) => {
+    const player = roster.find((entry) => entry.userId === playerId);
+    const head = frame.heads.get(playerId);
+    if (!player || !head || head.x !== x) return null;
+    return raceHeadHtml({
+      name: player.userName,
+      profilePicUrl: playersById[playerId]?.profilePicUrl,
+      staggerPx: head.staggerPx,
+      style,
+    });
   };
 
   return {
@@ -283,7 +247,7 @@ export function buildPositionChartOptions(input: PositionChartInput): Highcharts
         animation: false,
         cursor: 'pointer',
         marker: { enabled: true, radius: 4 },
-        dataLabels: [crownLabel, headLabel],
+        dataLabels: raceDataLabels({ isFaded, isCrowned, headFace }),
         events: {
           click() {
             if (this.options.id) onToggleFocus(this.options.id);

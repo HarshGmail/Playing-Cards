@@ -83,13 +83,13 @@ export function usePushNotifications() {
     void refresh();
   }, [refresh]);
 
-  const enable = useCallback(async () => {
+  const enable = useCallback(async (): Promise<boolean> => {
     setState((prev) => ({ ...prev, busy: true, error: null }));
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         setState((prev) => ({ ...prev, busy: false, permission }));
-        return;
+        return false;
       }
       const registration = await navigator.serviceWorker.ready;
       const subscription =
@@ -100,12 +100,14 @@ export function usePushNotifications() {
         }));
       await saveSubscription(subscription);
       setState((prev) => ({ ...prev, busy: false, permission, subscribed: true }));
+      return true;
     } catch (err) {
       setState((prev) => ({
         ...prev,
         busy: false,
         error: err instanceof Error ? err.message : 'Could not enable notifications',
       }));
+      return false;
     }
   }, []);
 

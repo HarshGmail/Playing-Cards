@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BellRing, BellOff, Download, Share, PlusSquare, Loader2, X } from 'lucide-react';
 import { useInstallPrompt } from './useInstallPrompt';
 import { usePushNotifications } from './usePushNotifications';
@@ -59,10 +60,27 @@ function IosInstallHelp({ onDismiss }: { onDismiss: () => void }) {
   );
 }
 
+export const NOTIFICATIONS_SETTINGS_URL = '/settings#settings-notifications';
+export const INSTALL_SETTINGS_URL = '/settings#settings-install';
+
 export default function PwaPromptCard() {
+  const router = useRouter();
   const push = usePushNotifications();
   const { canInstall, install } = useInstallPrompt();
   const [iosHelpDismissed, setIosHelpDismissed] = useState(true);
+
+  const turnOnNotifications = async () => {
+    const enabled = await push.enable();
+    if (!enabled) router.push(NOTIFICATIONS_SETTINGS_URL);
+  };
+
+  const installApp = () => {
+    if (canInstall) {
+      void install();
+      return;
+    }
+    router.push(INSTALL_SETTINGS_URL);
+  };
 
   useEffect(() => {
     setIosHelpDismissed(readIosHelpDismissed());
@@ -122,9 +140,9 @@ export default function PwaPromptCard() {
               Get told about match invites, scored rounds and wins even when the app is closed.
             </p>
             {push.error && <p className="text-sm text-red-600 dark:text-red-400 mt-1">{push.error}</p>}
-            <button type="button" onClick={push.enable} disabled={push.busy} className={`${PRIMARY_BUTTON_CLASS} mt-3`}>
+            <button type="button" onClick={turnOnNotifications} disabled={push.busy} className={`${PRIMARY_BUTTON_CLASS} mt-3`}>
               {push.busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />}
-              Enable notifications
+              Turn on notifications
             </button>
           </div>
         </div>
@@ -149,7 +167,7 @@ export default function PwaPromptCard() {
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">
               Add it to your device for quicker access and a full-screen experience.
             </p>
-            <button type="button" onClick={install} className={`${PRIMARY_BUTTON_CLASS} mt-3`}>
+            <button type="button" onClick={installApp} className={`${PRIMARY_BUTTON_CLASS} mt-3`}>
               <Download className="w-4 h-4" />
               Install app
             </button>

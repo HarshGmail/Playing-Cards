@@ -9,7 +9,7 @@ import PositionStoryCards, { type PositionStoryCard } from '@/components/match/P
 import { ordinal } from '@/lib/domain/milestones';
 import { buildPositionHistory, type PositionRosterEntry } from '@/lib/domain/positionHistory';
 import { buildPositionStory, describeRace, type PositionStory } from '@/lib/domain/positionStory';
-import { buildPositionChartOptions } from './positionChartOptions';
+import { buildPositionChartOptions, buildRaceFrame, finalRaceProgress } from './positionChartOptions';
 import { useRaceAnimation } from './useRaceAnimation';
 import type { PlayersById } from '@/types';
 
@@ -113,12 +113,17 @@ export default function PositionTrendChart({
     []
   );
   const chartRef = useRef<HighchartsReact.RefObject>(null);
+  const finish = finalRaceProgress(history);
+  const buildFrame = useCallback(
+    (progress: number) => buildRaceFrame(history, roster, progress),
+    [history, roster]
+  );
   const frame = useRaceAnimation({
-    history,
-    roster,
     chartRef,
     animate: !reduceMotion,
     replayCount,
+    finish,
+    buildFrame,
   });
 
   if (history.length === 0 || roster.length === 0) {

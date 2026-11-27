@@ -345,6 +345,8 @@ export function toMilestoneStats(aggregate: PlayerStatsAggregate): MilestoneStat
     matchWins: aggregate.matchWins,
     matchesPlayed: aggregate.matchesPlayed,
     gamesPlayed: aggregate.gamesPlayed,
+    podiumFinishes: aggregate.podiums.first + aggregate.podiums.second + aggregate.podiums.third,
+    peakRating: aggregate.peakRating,
     longestGameStreak: aggregate.streaks.longestGameStreak,
     longestMatchStreak: aggregate.streaks.longestMatchStreak,
     longestDayStreak: aggregate.streaks.longestDayStreak,

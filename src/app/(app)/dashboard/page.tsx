@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import SelfStatsCard from '@/components/dashboard/SelfStatsCard';
 import IncomingRequestsPanel from '@/components/dashboard/IncomingRequestsPanel';
@@ -9,6 +8,9 @@ import MatchInvitesPanel from '@/components/dashboard/MatchInvitesPanel';
 import FriendsList from '@/components/dashboard/FriendsList';
 import FindFriendsTab from '@/components/dashboard/FindFriendsTab';
 import MatchCalendar from '@/components/calendar/MatchCalendar';
+import PwaPromptCard from '@/components/pwa/PwaPromptCard';
+import QuickActions from '@/components/dashboard/QuickActions';
+import { CalendarDays } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth(true);
@@ -25,45 +27,28 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Self Stats */}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {user && <SelfStatsCard user={user} />}
 
-      {/* Match Invites — above friend requests: these gate an active game. */}
+      <PwaPromptCard />
+
       <MatchInvitesPanel />
 
-      {/* Incoming Requests */}
       <IncomingRequestsPanel />
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3">
-        <Link
-          href="/matches/create"
-          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-        >
-          Create Match
-        </Link>
-        <Link
-          href="/matches/join"
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-        >
-          Join Match
-        </Link>
-      </div>
+      <QuickActions />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Your Matches */}
-        <div className="lg:col-span-2">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Your Matches
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white">
+            <CalendarDays className="h-5 w-5 text-violet-600 dark:text-violet-400" aria-hidden />
+            Your matches
           </h2>
           <MatchCalendar currentUserId={user?.id} />
-        </div>
+        </section>
 
-        {/* Friends Sidebar */}
         <div className="space-y-6">
-          {/* Friends Tab */}
-          <div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">
             <div className="flex gap-2 mb-4 bg-gray-200 dark:bg-gray-800 rounded-lg p-1">
               <button
                 onClick={() => setTab('friends')}

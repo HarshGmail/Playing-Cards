@@ -97,6 +97,7 @@ export default function LiveChartPanel({
           rounds={rounds}
           players={players}
           playersById={playersById}
+          rankPreference={rankPreference}
           height={height}
         />
       )}
