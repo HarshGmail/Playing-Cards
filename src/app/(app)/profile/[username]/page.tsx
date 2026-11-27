@@ -163,7 +163,7 @@ export default function ProfilePage() {
         <StreakStatsCard stats={stats} />
         <MilestonesSection stats={stats} />
         {viewer && viewer.username === username && <Leaderboard />}
-        {viewer && viewer.username === username && <FastestRecords />}
+        <FastestRecords subjectUsername={viewer?.username === username ? undefined : username} />
       </div>
       <ConfirmDialog
         open={confirmingAvatarRemoval}

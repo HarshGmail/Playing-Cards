@@ -1,10 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, Radio } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { RosterAvatars, StandingLine, StatusPill } from '@/components/calendar/MatchCard';
 import { gameDisplayName } from '@/lib/games/catalog';
-import { useLiveMatchesQuery } from '@/lib/queries/matches';
 import type { MatchSummary } from '@/types';
 
 function roleLabel(match: MatchSummary, currentUserId?: string): string {
@@ -17,7 +16,7 @@ function roundLabel(roundsPlayed: number): string {
   return roundsPlayed === 0 ? 'Not started' : `Round ${roundsPlayed}`;
 }
 
-function LiveMatchCard({ match, currentUserId }: { match: MatchSummary; currentUserId?: string }) {
+export default function LiveMatchCard({ match, currentUserId }: { match: MatchSummary; currentUserId?: string }) {
   return (
     <Link
       href={`/matches/${match.id}`}
@@ -47,24 +46,3 @@ function LiveMatchCard({ match, currentUserId }: { match: MatchSummary; currentU
   );
 }
 
-export default function LiveMatchesStrip({ currentUserId }: { currentUserId?: string }) {
-  const { data: matches = [] } = useLiveMatchesQuery();
-  if (matches.length === 0) return null;
-
-  return (
-    <section aria-labelledby="live-matches-heading">
-      <h2 id="live-matches-heading" className="mb-3 flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white">
-        <Radio className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
-        Live now
-        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold tabular-nums text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-          {matches.length}
-        </span>
-      </h2>
-      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-        {matches.map((match) => (
-          <LiveMatchCard key={match.id} match={match} currentUserId={currentUserId} />
-        ))}
-      </div>
-    </section>
-  );
-}

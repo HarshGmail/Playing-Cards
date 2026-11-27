@@ -5,44 +5,59 @@ describe('describeRecordCard', () => {
   const base = {
     kind: 'matchWins' as const,
     threshold: 5,
-    holder: { name: 'Harsh Vardhan', count: 17, isViewer: false },
-    viewerReachedCount: null,
-    viewerProgress: null,
+    holder: { name: 'Harsh Vardhan', count: 17, isViewer: false, isSubject: false },
+    subject: { name: 'You', isViewer: true },
+    subjectReachedCount: null,
+    subjectProgress: null,
   };
+  const friend = { name: 'Vinay', isViewer: false };
 
   it('compares the viewer with the record holder once both got there', () => {
-    expect(describeRecordCard({ ...base, viewerReachedCount: 21 })).toEqual({
+    expect(describeRecordCard({ ...base, subjectReachedCount: 21 })).toEqual({
       title: 'Fastest to 5 match wins',
       holderLine: 'Harsh Vardhan won in 17 matches.',
-      viewerLine: 'You won 5 matches in 21 matches.',
+      subjectLine: 'You won 5 matches in 21 matches.',
       nudge: '4 matches slower than the record.',
     });
   });
 
   it('tells the holder the record is theirs', () => {
-    const copy = describeRecordCard({ ...base, holder: { ...base.holder, isViewer: true }, viewerReachedCount: 17 });
+    const holder = { ...base.holder, isViewer: true, isSubject: true };
+    const copy = describeRecordCard({ ...base, holder, subjectReachedCount: 17 });
     expect(copy.holderLine).toBe('You won in 17 matches.');
-    expect(copy.viewerLine).toBe('This record is yours.');
+    expect(copy.subjectLine).toBe('This record is yours.');
   });
 
   it('shows progress and what it takes to beat the record', () => {
-    const copy = describeRecordCard({ ...base, viewerProgress: { wins: 3, played: 12 } });
-    expect(copy.viewerLine).toBe("You've won 3 of 12 matches so far.");
-    expect(copy.nudge).toBe('Win 2 of your next 4 matches to take the record.');
+    const copy = describeRecordCard({ ...base, subjectProgress: { wins: 3, played: 12 } });
+    expect(copy.subjectLine).toBe("You've won 3 of 12 matches so far.");
+    expect(copy.nudge).toBe('2 wins in the next 4 matches takes the record.');
   });
 
   it('asks for consecutive wins when there is no room to spare', () => {
-    const copy = describeRecordCard({ ...base, viewerProgress: { wins: 3, played: 14 } });
-    expect(copy.nudge).toBe('Win your next 2 matches to take the record.');
+    const copy = describeRecordCard({ ...base, subjectProgress: { wins: 3, played: 14 } });
+    expect(copy.nudge).toBe('Winning the next 2 matches takes the record.');
   });
 
   it('admits when the record can no longer be beaten', () => {
-    const copy = describeRecordCard({ ...base, viewerProgress: { wins: 1, played: 15 } });
-    expect(copy.nudge).toBe('The record is out of reach now, but 4 more wins still gets you there.');
+    const copy = describeRecordCard({ ...base, subjectProgress: { wins: 1, played: 15 } });
+    expect(copy.nudge).toBe('The record is out of reach now, but 4 more wins still gets there.');
   });
 
   it('handles a viewer who has not played the format', () => {
-    expect(describeRecordCard(base)).toMatchObject({ viewerLine: "You haven't played this yet.", nudge: null });
+    expect(describeRecordCard(base)).toMatchObject({ subjectLine: "You haven't played this yet.", nudge: null });
+  });
+
+  it("speaks about a friend on the friend's profile", () => {
+    expect(describeRecordCard({ ...base, subject: friend, subjectReachedCount: 21 }).subjectLine).toBe(
+      'Vinay won 5 matches in 21 matches.'
+    );
+    expect(describeRecordCard({ ...base, subject: friend, subjectProgress: { wins: 3, played: 12 } }).subjectLine).toBe(
+      'Vinay has won 3 of 12 matches so far.'
+    );
+    expect(describeRecordCard({ ...base, subject: friend }).subjectLine).toBe("Vinay hasn't played this yet.");
+    const holder = { name: 'Vinay', count: 17, isViewer: false, isSubject: true };
+    expect(describeRecordCard({ ...base, holder, subject: friend }).subjectLine).toBe("This record is Vinay's.");
   });
 
   it('uses games for game-win records', () => {
@@ -50,11 +65,11 @@ describe('describeRecordCard', () => {
       ...base,
       kind: 'gameWins',
       threshold: 50,
-      holder: { name: 'BattingBot', count: 134, isViewer: false },
-      viewerReachedCount: 195,
+      holder: { name: 'BattingBot', count: 134, isViewer: false, isSubject: false },
+      subjectReachedCount: 195,
     });
     expect(copy.holderLine).toBe('BattingBot won in 134 games.');
-    expect(copy.viewerLine).toBe('You won 50 games in 195 games.');
+    expect(copy.subjectLine).toBe('You won 50 games in 195 games.');
   });
 });
 

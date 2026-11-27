@@ -4,6 +4,8 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Lock, Sparkles } from 'lucide-react';
 import type { Milestone } from '@/lib/domain/milestones';
 import { APP_TIME_ZONE } from '@/lib/domain/streaks';
+import type { MilestoneFriendHolder } from '@/types';
+import FriendHolderStack from './FriendHolderStack';
 import { LOCKED_CARD_CLASS, MILESTONE_THEMES } from './milestoneStyles';
 
 interface MilestoneCardProps {
@@ -13,6 +15,7 @@ interface MilestoneCardProps {
   progressPercent?: number;
   progressLabel?: string;
   isNew?: boolean;
+  friendHolders?: MilestoneFriendHolder[];
 }
 
 function formatAchievedDate(achievedAt: string): string {
@@ -23,7 +26,7 @@ function formatAchievedDate(achievedAt: string): string {
   });
 }
 
-function UnlockedCard({ milestone, achievedAt, isNew }: Pick<MilestoneCardProps, 'milestone' | 'achievedAt' | 'isNew'>) {
+function UnlockedCard({ milestone, achievedAt, isNew, friendHolders = [] }: Pick<MilestoneCardProps, 'milestone' | 'achievedAt' | 'isNew' | 'friendHolders'>) {
   const reduceMotion = useReducedMotion();
   const theme = MILESTONE_THEMES[milestone.color];
 
@@ -65,11 +68,16 @@ function UnlockedCard({ milestone, achievedAt, isNew }: Pick<MilestoneCardProps,
       <p className="mt-3 text-[11px] font-medium opacity-80 tabular-nums">
         {achievedAt ? `Unlocked ${formatAchievedDate(achievedAt)}` : 'Unlocked'}
       </p>
+      {friendHolders.length > 0 && (
+        <div className="mt-2">
+          <FriendHolderStack holders={friendHolders} />
+        </div>
+      )}
     </motion.article>
   );
 }
 
-function LockedCard({ milestone, progressPercent, progressLabel }: Pick<MilestoneCardProps, 'milestone' | 'progressPercent' | 'progressLabel'>) {
+function LockedCard({ milestone, progressPercent, progressLabel, friendHolders = [] }: Pick<MilestoneCardProps, 'milestone' | 'progressPercent' | 'progressLabel' | 'friendHolders'>) {
   return (
     <article
       aria-label={`${milestone.title}, locked`}
@@ -104,19 +112,30 @@ function LockedCard({ milestone, progressPercent, progressLabel }: Pick<Mileston
           {progressLabel && <p className="mt-1 text-[11px] tabular-nums">{progressLabel}</p>}
         </div>
       )}
+      {friendHolders.length > 0 && (
+        <div className="mt-3">
+          <FriendHolderStack holders={friendHolders} tone="muted" />
+        </div>
+      )}
     </article>
   );
 }
 
 export default function MilestoneCard(props: MilestoneCardProps) {
   if (props.unlocked) {
-    return <UnlockedCard milestone={props.milestone} achievedAt={props.achievedAt} isNew={props.isNew} />;
+    return <UnlockedCard
+        milestone={props.milestone}
+        achievedAt={props.achievedAt}
+        isNew={props.isNew}
+        friendHolders={props.friendHolders}
+      />;
   }
   return (
     <LockedCard
       milestone={props.milestone}
       progressPercent={props.progressPercent}
       progressLabel={props.progressLabel}
+      friendHolders={props.friendHolders}
     />
   );
 }

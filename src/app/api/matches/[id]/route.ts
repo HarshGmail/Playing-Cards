@@ -3,6 +3,7 @@ import { getMatchInvites, getMatches, getUsers } from '@/lib/db/collections';
 import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
+import { canWatchMatch } from '@/lib/api/viewableMatch';
 import { toGameType } from '@/lib/games/catalog';
 import { ObjectId } from 'mongodb';
 import { onMatchDeleted } from '@/lib/events/matchEvents';
@@ -45,14 +46,11 @@ export async function GET(
       return notFound();
     }
 
-    const isCreator = match.creatorId === userId;
-    const isInRoster = match.roster.some((r) => r.userId === userId);
-    const isSpectator = (match.spectators ?? []).some((s) => s.userId === userId);
-
-    if (!isCreator && !isInRoster && !isSpectator) {
+    if (!(await canWatchMatch(match, userId))) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }
+    const isSpectator = match.creatorId !== userId && !match.roster.some((r) => r.userId === userId);
 
     // Joined at read time rather than denormalised onto the match document.
     // roster.userName *is* denormalised, and that is why it drifted — it holds

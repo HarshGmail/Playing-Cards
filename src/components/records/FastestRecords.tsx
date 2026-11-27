@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useFastestRecordsQuery } from '@/lib/queries/records';
 import { ALL_GAMES_KEY } from '@/lib/games/catalog';
 import { APP_TIME_ZONE } from '@/lib/domain/streaks';
-import type { FastestRecordView, LeaderboardScope, RecordProgressView } from '@/types';
+import type { FastestRecordView, LeaderboardScope, RecordProgressView, RecordSubject } from '@/types';
 import RecordFlipCard from './RecordFlipCard';
 import { RECORD_TRACKS, unitFor, type RecordTrackStyle } from './recordTracks';
 
@@ -35,16 +35,21 @@ interface RecordRowProps {
   record: FastestRecordView;
   track: RecordTrackStyle;
   viewerId?: string;
-  viewerProgress: RecordProgressView | null;
+  subject: RecordSubject;
+  subjectProgress: RecordProgressView | null;
   scopeLabel: string;
   formatLabel: string;
 }
 
-function RecordRow({ record, track, viewerId, viewerProgress, scopeLabel, formatLabel }: RecordRowProps) {
+function shortSubjectName(subject: RecordSubject): string {
+  return subject.isViewer ? 'You' : subject.name.trim().split(/\s+/)[0] || subject.name;
+}
+
+function RecordRow({ record, track, viewerId, subject, subjectProgress, scopeLabel, formatLabel }: RecordRowProps) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  const { holder, viewer, threshold } = record;
-  const viewerHolds = holder.userId === viewerId;
+  const { holder, subjectReached, threshold } = record;
+  const subjectHolds = holder.userId === subject.userId;
 
   return (
     <li>
@@ -54,7 +59,7 @@ function RecordRow({ record, track, viewerId, viewerProgress, scopeLabel, format
         aria-haspopup="dialog"
         title="Tap to compare with the record"
         className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${
-          viewerHolds
+          subjectHolds
             ? 'border-amber-300 bg-amber-50/80 dark:border-amber-700/70 dark:bg-amber-900/15'
             : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40'
         }`}
@@ -73,7 +78,7 @@ function RecordRow({ record, track, viewerId, viewerProgress, scopeLabel, format
           <span className="min-w-0">
             <span className="block truncate font-semibold text-gray-900 dark:text-white">
               {holder.name}
-              {viewerHolds && <span className="ml-1 text-xs font-medium text-amber-700 dark:text-amber-400">(you)</span>}
+              {subjectHolds && subject.isViewer && <span className="ml-1 text-xs font-medium text-amber-700 dark:text-amber-400">(you)</span>}
             </span>
             <span className="block text-xs text-gray-500 dark:text-gray-400">{formatRecordDate(holder.at)}</span>
           </span>
@@ -86,9 +91,9 @@ function RecordRow({ record, track, viewerId, viewerProgress, scopeLabel, format
           <span className="block text-[11px] text-gray-500 dark:text-gray-400">
             {unitFor(holder.count, track.spentUnit)}
           </span>
-          {viewer && !viewerHolds && (
+          {subjectReached && !subjectHolds && (
             <span className="mt-1 block text-[11px] font-medium tabular-nums text-violet-700 dark:text-violet-300">
-              You: {viewer.count.toLocaleString('en-IN')}
+              {shortSubjectName(subject)}: {subjectReached.count.toLocaleString('en-IN')}
             </span>
           )}
         </span>
@@ -100,7 +105,8 @@ function RecordRow({ record, track, viewerId, viewerProgress, scopeLabel, format
           scopeLabel={scopeLabel}
           formatLabel={formatLabel}
           viewerId={viewerId}
-          viewerProgress={viewerProgress}
+          subject={subject}
+          subjectProgress={subjectProgress}
           onClose={close}
         />
       )}
@@ -122,11 +128,11 @@ function RecordsSkeleton() {
   );
 }
 
-export default function FastestRecords() {
+export default function FastestRecords({ subjectUsername }: { subjectUsername?: string }) {
   const { user } = useAuth();
   const [scope, setScope] = useState<LeaderboardScope>('friends');
   const [gameKey, setGameKey] = useState(ALL_GAMES_KEY);
-  const { data, isPending, isError, isPlaceholderData } = useFastestRecordsQuery(gameKey, scope);
+  const { data, isPending, isError, isPlaceholderData } = useFastestRecordsQuery(gameKey, scope, subjectUsername);
   const games = data?.games ?? [];
   const formatLabel = games.find((game) => game.key === gameKey)?.name ?? ALL_GAMES_LABEL;
 
@@ -187,7 +193,8 @@ export default function FastestRecords() {
                         record={record}
                         track={track}
                         viewerId={user?.id}
-                        viewerProgress={data.viewerProgress[track.kind]}
+                        subject={data.subject}
+                        subjectProgress={data.subjectProgress[track.kind]}
                         scopeLabel={SCOPE_LABELS[scope]}
                         formatLabel={formatLabel}
                       />

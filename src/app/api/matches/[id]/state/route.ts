@@ -3,6 +3,7 @@ import { getMatches, getScores } from '@/lib/db/collections';
 import { success, notFound, error, forbidden } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
+import { canWatchMatch } from '@/lib/api/viewableMatch';
 import { ObjectId } from 'mongodb';
 import { computeMatchLeaderboard } from '@/lib/domain/ranking';
 
@@ -45,11 +46,7 @@ export async function GET(
       return notFound();
     }
 
-    const isCreator = match.creatorId === userId;
-    const isInRoster = match.roster.some((r) => r.userId === userId);
-    const isSpectator = (match.spectators ?? []).some((s) => s.userId === userId);
-
-    if (!isCreator && !isInRoster && !isSpectator) {
+    if (!(await canWatchMatch(match, userId))) {
       logApiResponse(requestId, 403, Date.now() - startTime);
       return forbidden();
     }

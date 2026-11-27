@@ -8,7 +8,10 @@ import {
   type MilestoneProgress,
 } from '@/lib/domain/milestones';
 import { APP_TIME_ZONE } from '@/lib/domain/streaks';
+import Avatar from '@/components/common/Avatar';
+import PlayerNameLink from '@/components/common/PlayerNameLink';
 import FlipCardModal, { CARD_FACE_STYLE } from '@/components/stats/FlipCardModal';
+import type { MilestoneFriendHolder } from '@/types';
 import { MILESTONE_THEMES } from './milestoneStyles';
 
 const MILESTONE_TITLE_ID = 'milestone-card-title';
@@ -18,7 +21,49 @@ interface MilestoneFlipCardProps {
   progress: MilestoneProgress;
   unlocked: boolean;
   achievedAt?: string;
+  friendHolders?: MilestoneFriendHolder[];
   onClose: () => void;
+}
+
+function formatHolderDate(achievedAt: string): string {
+  return new Date(achievedAt).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: APP_TIME_ZONE,
+  });
+}
+
+function FriendHolders({ holders }: { holders: MilestoneFriendHolder[] }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        Friends who have it{holders.length > 0 ? ` · ${holders.length}` : ''}
+      </p>
+      {holders.length === 0 ? (
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">None of your friends yet. Be the first.</p>
+      ) : (
+        <ul className="mt-1.5 space-y-1.5">
+          {holders.map((holder) => (
+            <li key={holder.userId} className="flex items-center gap-2">
+              <Avatar name={holder.name} profilePicUrl={holder.profilePicUrl} size={24} />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                <PlayerNameLink
+                  userId={holder.userId}
+                  userName={holder.username}
+                  displayName={holder.name}
+                  className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                />
+              </span>
+              <span className="shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400">
+                {formatHolderDate(holder.achievedAt)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function formatNumber(n: number): string {
@@ -105,7 +150,14 @@ function Ladder({ milestone, progress }: { milestone: Milestone; progress: Miles
   );
 }
 
-export default function MilestoneFlipCard({ milestone, progress, unlocked, achievedAt, onClose }: MilestoneFlipCardProps) {
+export default function MilestoneFlipCard({
+  milestone,
+  progress,
+  unlocked,
+  achievedAt,
+  friendHolders = [],
+  onClose,
+}: MilestoneFlipCardProps) {
   const theme = MILESTONE_THEMES[milestone.color];
 
   return (
@@ -140,6 +192,7 @@ export default function MilestoneFlipCard({ milestone, progress, unlocked, achie
             )}
             <p className="mt-0.5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{milestone.howTo}</p>
           </div>
+          <FriendHolders holders={friendHolders} />
           <Ladder milestone={milestone} progress={progress} />
         </div>
         <CornerHero emoji={milestone.emoji} flipped />

@@ -151,7 +151,7 @@ with a target are ever computed.
 
 ## Validation
 
-To backtest, take every ended lowest-first Least Count / Least Count - 2 match with at
+To backtest, take every ended lowest-first Least Count / Least Showdown match with at
 least 6 games, oldest first. Forecast each one from its halfway point, using only
 matches that finished earlier as history. Run 2026-10-31 on 26 matches (87 player rows):
 
