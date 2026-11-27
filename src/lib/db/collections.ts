@@ -199,11 +199,19 @@ export interface AchievedMilestoneDoc {
   achievedAt: Date;
 }
 
+export interface FormatRecord {
+  matchesPlayed: number;
+  matchWins: number;
+  gamesWon: number;
+  gamesPlayed: number;
+}
+
 export interface GameRating {
   name: string;
   rating: number;
   peakRating: number;
   ratedMatches: number;
+  record?: FormatRecord;
 }
 
 export interface PlayerStats {

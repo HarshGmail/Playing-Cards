@@ -1,5 +1,6 @@
 import type {
   AchievedMilestoneDoc,
+  FormatRecord,
   GameRating,
   MatchStanding,
   PlayerStreaks,
@@ -30,6 +31,8 @@ export interface MatchStandingsRecord {
 }
 
 export type RatingsByGame = Map<string, Map<string, RatingState>>;
+
+type FormatRecordsByGame = Map<string, Map<string, FormatRecord>>;
 
 export type ActiveDaysByPlayer = Map<string, string[]>;
 
@@ -188,10 +191,15 @@ export function replayRatingsByGame(records: MatchStandingsRecord[]): RatingsByG
   return ratingsByGame;
 }
 
+export function emptyFormatRecord(): FormatRecord {
+  return { matchesPlayed: 0, matchWins: 0, gamesWon: 0, gamesPlayed: 0 };
+}
+
 function gameRatingsOf(
   userId: string,
   ratingsByGame: RatingsByGame,
-  names: Map<string, string>
+  names: Map<string, string>,
+  formatRecords: FormatRecordsByGame
 ): Record<string, GameRating> {
   const gameRatings: Record<string, GameRating> = {};
   for (const [gameKey, ratings] of Array.from(ratingsByGame)) {
@@ -202,6 +210,7 @@ function gameRatingsOf(
       rating: state.rating,
       peakRating: state.peakRating,
       ratedMatches: state.ratedMatches,
+      record: formatRecords.get(gameKey)?.get(userId) ?? emptyFormatRecord(),
     };
   }
   return gameRatings;
@@ -368,10 +377,18 @@ export function buildPlayerStats(
     if (!tallies.has(userId)) tallies.set(userId, emptyTally());
     return tallies.get(userId)!;
   };
+  const formatRecords: FormatRecordsByGame = new Map();
+  const formatRecordFor = (gameKey: string, userId: string) => {
+    if (!formatRecords.has(gameKey)) formatRecords.set(gameKey, new Map());
+    const byPlayer = formatRecords.get(gameKey)!;
+    if (!byPlayer.has(userId)) byPlayer.set(userId, emptyFormatRecord());
+    return byPlayer.get(userId)!;
+  };
 
   for (const record of records) {
     if (record.roundsPlayed <= 0) continue;
     const isEnded = record.status === 'ended';
+    const gameKey = ratingGameOf(record).key;
 
     for (const standing of rankAmongPlayed(record.standings)) {
       if (standing.isDnf) {
@@ -379,15 +396,21 @@ export function buildPlayerStats(
         continue;
       }
       const tally = tallyFor(standing.playerId);
+      const format = formatRecordFor(gameKey, standing.playerId);
       recordGameRuns(tally, record, standing);
       tally.matchesPlayed += 1;
       tally.gamesWon += standing.gamesWon;
       tally.gamesPlayed += standing.roundsPlayed;
+      format.matchesPlayed += 1;
+      format.gamesWon += standing.gamesWon;
+      format.gamesPlayed += standing.roundsPlayed;
       if (!isEnded) continue;
       tally.rankSum += standing.rank;
       tally.rankedMatches += 1;
       recordPodium(tally.podiums, standing.rank);
-      if (standing.rank === 1) tally.matchWins += 1;
+      if (standing.rank !== 1) continue;
+      tally.matchWins += 1;
+      format.matchWins += 1;
     }
   }
 
@@ -404,7 +427,7 @@ export function buildPlayerStats(
       rating: rating?.rating ?? START_RATING,
       peakRating: rating?.peakRating ?? START_RATING,
       ratedMatches: rating?.ratedMatches ?? 0,
-      ratingsByGame: gameRatingsOf(userId, ratingsByGame, names),
+      ratingsByGame: gameRatingsOf(userId, ratingsByGame, names, formatRecords),
       matchesPlayed: tally.matchesPlayed,
       matchWins: tally.matchWins,
       podiums: tally.podiums,
