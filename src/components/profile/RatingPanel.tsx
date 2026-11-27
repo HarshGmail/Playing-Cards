@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Hash, TrendingUp } from 'lucide-react';
-import type { ReactNode } from 'react';
 import RatingHelpLink from '@/components/rating/RatingHelpLink';
 import SegmentedToggle from '@/components/profile/SegmentedToggle';
-import { formatWinPct, getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
-import { formatStrikeRate, matchWinRate, strikeRate } from '@/lib/domain/winRates';
+import { getRatingTier, TIER_BADGE_CLASSES } from '@/lib/domain/ratingTier';
+import { explainStat, type StatExplanation, type StatKind } from '@/lib/domain/statExplainers';
+import StatCardTrigger from '@/components/stats/StatCardTrigger';
 import {
   formatRatingDelta,
   RATING_RANGE_LABELS,
@@ -65,29 +65,33 @@ function gameRatingsOf(stats: UserStats): GameRatingSummary[] {
   ];
 }
 
-function FormatStat({ label, value }: { label: string; value: ReactNode }) {
+const FORMAT_STAT_ORDER: StatKind[] = [
+  'matchesPlayed',
+  'matchWins',
+  'matchWinPct',
+  'gamesPlayed',
+  'gamesWon',
+  'gameStrikeRate',
+];
+
+function FormatStat({ explanation }: { explanation: StatExplanation }) {
   return (
-    <div className="rounded-lg border border-amber-200/70 dark:border-amber-800/40 bg-white/60 dark:bg-gray-900/30 px-3 py-2.5 text-center">
-      <p className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{value}</p>
-      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{label}</p>
-    </div>
+    <StatCardTrigger
+      explanation={explanation}
+      className="rounded-lg border border-amber-200/70 dark:border-amber-800/40 bg-white/60 dark:bg-gray-900/30 px-3 py-2.5 text-center transition hover:-translate-y-0.5 hover:shadow-md"
+    >
+      <p className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{explanation.value}</p>
+      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{explanation.title}</p>
+    </StatCardTrigger>
   );
 }
 
-function FormatStats({ record }: { record: FormatRecordSummary }) {
+function FormatStats({ record, gameName }: { record: FormatRecordSummary; gameName: string }) {
   return (
-    <div className="mt-4 grid grid-cols-3 sm:grid-cols-5 gap-2">
-      <FormatStat label="Matches" value={record.matchesPlayed} />
-      <FormatStat label="Match Wins" value={record.matchWins} />
-      <FormatStat label="Games" value={record.gamesPlayed} />
-      <FormatStat
-        label="Game Strike Rate"
-        value={formatStrikeRate(strikeRate(record.gamesWon, record.gamesPlayed))}
-      />
-      <FormatStat
-        label="Match Win %"
-        value={formatWinPct(matchWinRate(record.matchWins, record.matchesPlayed))}
-      />
+    <div className="mt-4 grid grid-cols-3 sm:grid-cols-6 gap-2">
+      {FORMAT_STAT_ORDER.map((kind) => (
+        <FormatStat key={kind} explanation={explainStat(kind, record, gameName)} />
+      ))}
     </div>
   );
 }
@@ -197,7 +201,7 @@ export default function RatingPanel({ stats, username = '' }: RatingPanelProps) 
         )}
       </div>
 
-      <FormatStats record={selected.record} />
+      <FormatStats record={selected.record} gameName={selected.name} />
     </div>
   );
 }

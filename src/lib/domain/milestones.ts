@@ -38,6 +38,7 @@ export interface MilestoneTrack {
   color: MilestoneColor;
   levels: MilestoneLevel[];
   describe: (threshold: number) => string;
+  howTo: string;
   cheers: string[];
 }
 
@@ -52,6 +53,7 @@ export interface Milestone {
   tier: MilestoneTier;
   levelIndex: number;
   levelCount: number;
+  howTo: string;
   cheers: string[];
 }
 
@@ -102,6 +104,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 2000, hero: '🌌' },
     ],
     describe: (n) => `${ordinal(n)} game win`,
+    howTo: 'Win rounds. Every round where you post the best score counts, even when you share it.',
     cheers: [
       'Another one off the table',
       'The scoreboard is sweating',
@@ -124,6 +127,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 200, hero: '🦄' },
     ],
     describe: (n) => (n === 1 ? 'First match win' : `${n} match wins`),
+    howTo: 'Finish 1st when a match ends. Sharing 1st place still counts.',
     cheers: [
       'The whole table bowed',
       'The crown is getting heavy',
@@ -146,6 +150,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 500, hero: '🎡' },
     ],
     describe: (n) => (n === 1 ? 'First match played' : `${n} matches played`),
+    howTo: 'Just keep showing up. Every match you play counts, win or lose.',
     cheers: [
       'You showed up, and that counts',
       'Regular at the card table',
@@ -170,6 +175,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 5000, hero: '♾️' },
     ],
     describe: (n) => `${n} games played`,
+    howTo: 'Play rounds. Every round you have a score in counts.',
     cheers: [
       'Dealt, shuffled and played',
       'Hands full of experience',
@@ -194,6 +200,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 250, hero: '🗽' },
     ],
     describe: (n) => (n === 1 ? 'First podium finish' : `${n} podium finishes`),
+    howTo: 'Finish in the top three when a match ends.',
     cheers: [
       'Top three, again',
       'The medal count goes up',
@@ -216,6 +223,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 2000, hero: '☀️' },
     ],
     describe: (n) => `Peak rating ${n}`,
+    howTo: 'Win matches, especially against higher-rated players, to push your rating up. Only your best ever rating counts, so a bad day never takes this away.',
     cheers: [
       'Higher than you have ever been',
       'New personal ceiling',
@@ -235,6 +243,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 6, hero: '🚀' },
     ],
     describe: (n) => (n === 3 ? 'First hat-trick' : `${n} game wins in a row`),
+    howTo: 'Win rounds back to back in the same match. A streak ends when the match does.',
     cheers: [
       'Unstoppable run',
       'Flames on the table',
@@ -253,6 +262,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 5, hero: '🦅' },
     ],
     describe: (n) => `${n} match wins in a row`,
+    howTo: 'Win matches one after another. Finishing anywhere but 1st resets the run.',
     cheers: [
       'Momentum is real',
       'Matches keep falling your way',
@@ -272,6 +282,7 @@ export const MILESTONE_TRACKS: MilestoneTrack[] = [
       { threshold: 30, hero: '🌟' },
     ],
     describe: (n) => `${n}-day streak`,
+    howTo: 'Play at least one round every day. Missing a day resets the streak.',
     cheers: [
       'Showing up every single day',
       'The habit is real',
@@ -298,6 +309,7 @@ function toMilestone(track: MilestoneTrack, levelIndex: number): Milestone {
     tier: tierFor(levelIndex, track.levels.length),
     levelIndex,
     levelCount: track.levels.length,
+    howTo: track.howTo,
     cheers: track.cheers,
   };
 }
@@ -349,4 +361,12 @@ export function milestoneProgress(
     const progressToNext = next ? Math.min(1, Math.max(0, value / next.threshold)) : 1;
     return { track, value, achieved, next, progressToNext };
   });
+}
+
+export function remainingToMilestone(milestone: Milestone, value: number): number {
+  return Math.max(0, milestone.threshold - value);
+}
+
+export function trackMilestones(metric: MilestoneMetric): Milestone[] {
+  return ALL_MILESTONES.filter((milestone) => milestone.metric === metric);
 }

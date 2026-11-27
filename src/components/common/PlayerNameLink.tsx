@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Avatar from '@/components/common/Avatar';
 import { StreakBadges } from '@/components/streaks/StreakBadge';
 import { formatWinPct } from '@/lib/domain/ratingTier';
+import { matchWinRate } from '@/lib/domain/winRates';
 import type { UserStats } from '@/lib/queries/users';
 
 const HOVER_PREVIEW_DELAY_MS = 300;
@@ -228,7 +229,7 @@ export default function PlayerNameLink({
                 </div>
                 <div>
                   <div className="text-lg font-bold text-green-600 dark:text-green-400 flex items-center justify-center">
-                    {formatWinPct(stats.winPct)}
+                    {formatWinPct(matchWinRate(stats.matchWins, stats.matchesPlayed))}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Match Win %</p>
                 </div>

@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   ALL_MILESTONES,
+  MILESTONE_TRACKS,
   ordinal,
+  remainingToMilestone,
+  trackMilestones,
   tierFor,
   milestoneId,
   findMilestone,
@@ -124,5 +127,20 @@ describe('milestones', () => {
     for (const id of ['gamesWon:500', 'gamesPlayed:1000', 'podiumFinishes:50', 'peakRating:1600']) {
       expect(findMilestone(id)).not.toBeNull();
     }
+  });
+
+  it('tells every track how to earn its milestones', () => {
+    expect(MILESTONE_TRACKS.every((track) => track.howTo.length > 0)).toBe(true);
+    expect(findMilestone(milestoneId('gamesWon', 10))!.howTo).toMatch(/best score/);
+  });
+
+  it('counts what is left to reach a milestone and stops at zero', () => {
+    const thousand = findMilestone(milestoneId('gamesPlayed', 1000))!;
+    expect(remainingToMilestone(thousand, 628)).toBe(372);
+    expect(remainingToMilestone(thousand, 1200)).toBe(0);
+  });
+
+  it('lists a track in threshold order', () => {
+    expect(trackMilestones('podiumFinishes').map((m) => m.threshold)).toEqual([1, 5, 10, 25, 50, 75, 100, 150, 250]);
   });
 });

@@ -8,7 +8,7 @@ import {
   ratingGameFor,
   RatingGame,
 } from '@/lib/games/catalog';
-import { RankableStats, strictlyAheadFilter } from './leaderboard';
+import { RankableStats, ratingAheadFilter } from './leaderboard';
 
 export const ratingGameKeySchema = z
   .string()
@@ -16,44 +16,32 @@ export const ratingGameKeySchema = z
   .default(PRIMARY_RATING_GAME.key);
 
 const RATED_MATCH_FILTER = { deletedAt: null, status: 'ended' as const, roundsPlayed: { $gte: 1 } };
-const HAS_PLAYED = { gamesPlayed: { $gt: 0 } };
-
-export function isPrimaryGame(gameKey: string): boolean {
-  return gameKey === PRIMARY_RATING_GAME.key;
-}
 
 function gameRatingPath(gameKey: string): string {
   return `ratingsByGame.${gameKey}`;
 }
 
-export function gameRatingProjection(gameKey: string): Record<string, 1> {
-  return isPrimaryGame(gameKey) ? {} : { [gameRatingPath(gameKey)]: 1 };
-}
-
-export function gameRatingStages(gameKey: string): Document[] {
-  if (isPrimaryGame(gameKey)) return [{ $match: HAS_PLAYED }];
+function gameRatingStages(gameKey: string): Document[] {
   const path = gameRatingPath(gameKey);
   return [
     { $match: { [`${path}.ratedMatches`]: { $gt: 0 } } },
-    { $addFields: { rating: `$${path}.rating` } },
+    { $addFields: { rating: `$${path}.rating`, matchWins: `$${path}.record.matchWins` } },
   ];
 }
 
-export function withGameRating<T extends Pick<PlayerStats, 'rating' | 'ratingsByGame'>>(
-  stats: T,
-  gameKey: string
-): T | null {
-  if (isPrimaryGame(gameKey)) return stats;
-  const gameRating = stats.ratingsByGame?.[gameKey];
-  return gameRating ? { ...stats, rating: gameRating.rating } : null;
+export function hasRatedMatchesIn(stats: Pick<PlayerStats, 'ratingsByGame'>, gameKey: string): boolean {
+  return (stats.ratingsByGame?.[gameKey]?.ratedMatches ?? 0) > 0;
 }
 
-export async function countAheadInGame(gameKey: string, stats: RankableStats): Promise<number> {
+export async function countAheadInGame(
+  gameKey: string,
+  stats: Pick<RankableStats, 'rating' | 'matchWins'>
+): Promise<number> {
   const playerStatsCol = await getPlayerStats();
   const [result] = await playerStatsCol
     .aggregate<{ ahead: number }>([
       ...gameRatingStages(gameKey),
-      { $match: strictlyAheadFilter('rating', stats) },
+      { $match: ratingAheadFilter(stats) },
       { $count: 'ahead' },
     ])
     .toArray();

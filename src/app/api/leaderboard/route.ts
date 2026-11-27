@@ -1,30 +1,21 @@
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { getFriendships, getPlayerStats, getUsers, PlayerStats } from '@/lib/db/collections';
+import { getFriendships, getPlayerStats, getUsers } from '@/lib/db/collections';
 import { success, validationError, error } from '@/lib/api/respond';
 import { logApiRequest, logApiResponse, logError } from '@/lib/logger';
 import { requireAuth } from '@/lib/api/auth';
 import { ZERO_PLAYER_STATS } from '@/lib/domain/playerStats';
+import { ALL_GAMES_KEY, PRIMARY_RATING_GAME, RATING_GAME_KEY_PATTERN } from '@/lib/games/catalog';
 import {
-  METRIC_SORT_KEYS,
+  buildLeaderboard,
+  LeaderboardSource,
   RankableIdentity,
   RankableStats,
-  rankByMetric,
-  sortRows,
-  strictlyAheadFilter,
-  toLeaderboardRow,
+  rankableStatsFor,
 } from '@/lib/stats/leaderboard';
-import {
-  countAheadInGame,
-  gameRatingProjection,
-  gameRatingStages,
-  isPrimaryGame,
-  loadRatedGames,
-  ratingGameKeySchema,
-  withGameRating,
-} from '@/lib/stats/ratingGames';
-import type { LeaderboardMetric, LeaderboardRow } from '@/types';
+import { loadRatedGames } from '@/lib/stats/ratingGames';
+import type { LeaderboardMetric, LeaderboardScope } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,36 +24,46 @@ const MAX_LIMIT = 100;
 const HAS_PLAYED = { gamesPlayed: { $gt: 0 } };
 const UNKNOWN_IDENTITY: RankableIdentity = { name: 'Unknown', username: '', profilePicUrl: null };
 
+const gameKeySchema = z
+  .string()
+  .refine((key) => key === ALL_GAMES_KEY || RATING_GAME_KEY_PATTERN.test(key))
+  .default(PRIMARY_RATING_GAME.key);
+
 const querySchema = z.object({
   scope: z.enum(['friends', 'global']).default('friends'),
   metric: z.enum(['rating', 'winPct', 'matchWins', 'gamesWon']).default('rating'),
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
-  game: ratingGameKeySchema,
+  game: gameKeySchema,
 });
 
-const STATS_PROJECTION = {
+const SOURCE_PROJECTION = {
   _id: 0,
   userId: 1,
   rating: 1,
-  winPct: 1,
   matchWins: 1,
   podiums: 1,
   gamesWon: 1,
   gamesPlayed: 1,
   matchesPlayed: 1,
+  ratingsByGame: 1,
   'streaks.currentGameStreak': 1,
   'streaks.currentMatchStreak': 1,
 } as const;
 
-type StatsRow = Pick<PlayerStats, keyof RankableStats | 'ratingsByGame'>;
-
-function zeroStats(userId: string): RankableStats {
-  return { userId, ...ZERO_PLAYER_STATS, podiums: { ...ZERO_PLAYER_STATS.podiums } };
+interface LeaderboardQuery {
+  scope: LeaderboardScope;
+  viewerId: string;
+  metric: LeaderboardMetric;
+  gameKey: string;
+  limit: number;
 }
 
-function mongoSort(metric: LeaderboardMetric): Record<string, -1> {
-  const [primary, secondary] = METRIC_SORT_KEYS[metric];
-  return { [primary]: -1, [secondary]: -1 };
+function effectiveGameKey(metric: LeaderboardMetric, gameKey: string): string {
+  return metric === 'rating' && gameKey === ALL_GAMES_KEY ? PRIMARY_RATING_GAME.key : gameKey;
+}
+
+function zeroSource(userId: string): LeaderboardSource {
+  return { userId, ...ZERO_PLAYER_STATS, podiums: { ...ZERO_PLAYER_STATS.podiums } };
 }
 
 async function loadIdentities(userIds: string[]): Promise<Map<string, RankableIdentity>> {
@@ -70,10 +71,7 @@ async function loadIdentities(userIds: string[]): Promise<Map<string, RankableId
   if (objectIds.length === 0) return new Map();
   const usersCol = await getUsers();
   const users = await usersCol
-    .find(
-      { _id: { $in: objectIds } },
-      { projection: { name: 1, username: 1, profilePicUrl: 1 } }
-    )
+    .find({ _id: { $in: objectIds } }, { projection: { name: 1, username: 1, profilePicUrl: 1 } })
     .toArray();
   return new Map(
     users.map((u) => [
@@ -83,124 +81,44 @@ async function loadIdentities(userIds: string[]): Promise<Map<string, RankableId
   );
 }
 
-interface LeaderboardQuery {
-  viewerId: string;
-  metric: LeaderboardMetric;
-  gameKey: string;
-}
-
-function isGameRatingQuery({ metric, gameKey }: LeaderboardQuery): boolean {
-  return metric === 'rating' && !isPrimaryGame(gameKey);
-}
-
-function statsProjection(query: LeaderboardQuery) {
-  return isGameRatingQuery(query)
-    ? { ...STATS_PROJECTION, ...gameRatingProjection(query.gameKey) }
-    : STATS_PROJECTION;
-}
-
-function friendsStatsFor(
-  query: LeaderboardQuery,
-  memberIds: string[],
-  statsById: Map<string, StatsRow>
-): Map<string, RankableStats> {
-  const statsByMember = new Map<string, RankableStats>();
-  for (const id of memberIds) {
-    const doc = statsById.get(id);
-    if (!isGameRatingQuery(query)) {
-      statsByMember.set(id, doc ?? zeroStats(id));
-      continue;
-    }
-    const rated = doc ? withGameRating(doc, query.gameKey) : null;
-    if (rated) statsByMember.set(id, rated);
-  }
-  return statsByMember;
-}
-
-async function friendsLeaderboard(query: LeaderboardQuery) {
-  const { viewerId, metric } = query;
+async function friendIdsOf(viewerId: string): Promise<string[]> {
   const friendshipsCol = await getFriendships();
   const friendships = await friendshipsCol
     .find({ $or: [{ userA: viewerId }, { userB: viewerId }] }, { projection: { userA: 1, userB: 1 } })
     .toArray();
-  const memberIds = Array.from(
+  return Array.from(
     new Set([viewerId, ...friendships.map((f) => (f.userA === viewerId ? f.userB : f.userA))])
   );
+}
 
+async function loadSources({ scope, viewerId }: LeaderboardQuery): Promise<LeaderboardSource[]> {
   const playerStatsCol = await getPlayerStats();
-  const [statsDocs, identities] = await Promise.all([
-    playerStatsCol
-      .find({ userId: { $in: memberIds } }, { projection: statsProjection(query) })
-      .toArray() as Promise<StatsRow[]>,
-    loadIdentities(memberIds),
-  ]);
-  const statsByMember = friendsStatsFor(
-    query,
-    memberIds,
-    new Map(statsDocs.map((doc) => [doc.userId, doc]))
-  );
-
-  const rows = rankByMetric(
-    metric,
-    Array.from(statsByMember)
-      .filter(([id]) => identities.has(id))
-      .map(([id, stats]) => ({ stats, identity: identities.get(id)! })),
-    viewerId
-  );
-  return { rows, self: rows.find((row) => row.isSelf) ?? null };
-}
-
-function eligibleStages(query: LeaderboardQuery) {
-  return isGameRatingQuery(query) ? gameRatingStages(query.gameKey) : [{ $match: HAS_PLAYED }];
-}
-
-function countAhead(query: LeaderboardQuery, stats: RankableStats): Promise<number> {
-  if (isGameRatingQuery(query)) return countAheadInGame(query.gameKey, stats);
-  return getPlayerStats().then((col) =>
-    col.countDocuments({ ...HAS_PLAYED, ...strictlyAheadFilter(query.metric, stats) })
-  );
-}
-
-async function globalLeaderboard(query: LeaderboardQuery, limit: number) {
-  const { viewerId, metric } = query;
-  const playerStatsCol = await getPlayerStats();
-  const [facet] = await playerStatsCol
-    .aggregate<{ top: StatsRow[]; self: StatsRow[] }>([
-      ...eligibleStages(query),
-      {
-        $facet: {
-          top: [
-            { $sort: mongoSort(metric) },
-            { $limit: limit },
-            { $project: STATS_PROJECTION },
-          ],
-          self: [{ $match: { userId: viewerId } }, { $project: STATS_PROJECTION }],
-        },
-      },
-    ])
-    .toArray();
-
-  const top = facet?.top ?? [];
-  const viewerStats = facet?.self[0] ?? null;
-  const viewerInTop = top.some((doc) => doc.userId === viewerId);
-
-  const [identities, viewerAheadCount] = await Promise.all([
-    loadIdentities([...top.map((doc) => doc.userId), viewerId]),
-    viewerStats && !viewerInTop ? countAhead(query, viewerStats) : Promise.resolve(0),
-  ]);
-  const identityOf = (userId: string) => identities.get(userId) ?? UNKNOWN_IDENTITY;
-
-  const rows = rankByMetric(
-    metric,
-    top.map((stats) => ({ stats, identity: identityOf(stats.userId) })),
-    viewerId
-  );
-
-  let self: LeaderboardRow | null = rows.find((row) => row.isSelf) ?? null;
-  if (!self && viewerStats) {
-    self = toLeaderboardRow(viewerAheadCount + 1, viewerStats, identityOf(viewerId), viewerId);
+  if (scope === 'global') {
+    return (await playerStatsCol
+      .find(HAS_PLAYED, { projection: SOURCE_PROJECTION })
+      .toArray()) as unknown as LeaderboardSource[];
   }
-  return { rows: sortRows(metric, rows), self };
+  const memberIds = await friendIdsOf(viewerId);
+  const docs = (await playerStatsCol
+    .find({ userId: { $in: memberIds } }, { projection: SOURCE_PROJECTION })
+    .toArray()) as unknown as LeaderboardSource[];
+  const docsById = new Map(docs.map((doc) => [doc.userId, doc]));
+  return memberIds.map((id) => docsById.get(id) ?? zeroSource(id));
+}
+
+async function leaderboardFor(query: LeaderboardQuery) {
+  const gameKey = effectiveGameKey(query.metric, query.gameKey);
+  const sources = await loadSources(query);
+  const eligible = sources
+    .map((source) => rankableStatsFor(source, gameKey))
+    .filter((stats): stats is RankableStats => stats !== null);
+
+  const identities = await loadIdentities(eligible.map((stats) => stats.userId));
+  const entries = eligible
+    .filter((stats) => query.scope === 'global' || identities.has(stats.userId))
+    .map((stats) => ({ stats, identity: identities.get(stats.userId) ?? UNKNOWN_IDENTITY }));
+
+  return buildLeaderboard(query.metric, entries, query.viewerId, query.limit);
 }
 
 export async function GET(request: NextRequest) {
@@ -222,14 +140,13 @@ export async function GET(request: NextRequest) {
     if (!parsed.success) {
       logApiResponse(requestId, 400, Date.now() - startTime);
       return validationError(
-        'scope must be friends|global, metric rating|winPct|matchWins|gamesWon, limit 1-100, game a lowercase slug'
+        `scope must be friends|global, metric rating|winPct|matchWins|gamesWon, limit 1-100, game a lowercase slug or ${ALL_GAMES_KEY}`
       );
     }
     const { scope, metric, limit, game } = parsed.data;
-    const query: LeaderboardQuery = { viewerId: userId, metric, gameKey: game };
 
     const [result, games] = await Promise.all([
-      scope === 'friends' ? friendsLeaderboard(query) : globalLeaderboard(query, limit),
+      leaderboardFor({ scope, viewerId: userId, metric, gameKey: game, limit }),
       loadRatedGames(),
     ]);
 

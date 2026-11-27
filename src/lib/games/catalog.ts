@@ -92,6 +92,8 @@ export const PRIMARY_RATING_GAME: RatingGame = {
 
 export const RATING_GAME_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+export const ALL_GAMES_KEY = '_all';
+
 const NON_SLUG_CHARACTERS = /[^a-z0-9]+/g;
 const EDGE_DASHES = /^-+|-+$/g;
 
