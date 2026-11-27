@@ -38,7 +38,7 @@ interface StandingsTableProps {
 }
 
 const ROW_GRID =
-  'grid grid-cols-[1.75rem_minmax(0,1fr)_2.5rem_3.25rem_2.75rem] sm:grid-cols-[1.75rem_minmax(0,1fr)_2.5rem_3.25rem_3rem_3rem] items-center gap-x-2 sm:gap-x-3';
+  'grid grid-cols-[1.75rem_minmax(0,1fr)_2.5rem_3.25rem_2.75rem] sm:grid-cols-[1.75rem_minmax(0,1fr)_2.5rem_3.25rem_3rem_3rem] lg:grid-cols-[1.75rem_minmax(0,1fr)_2.5rem_3.25rem_2.75rem] items-center gap-x-2 sm:gap-x-3';
 
 const NO_GAP = '—';
 
@@ -84,7 +84,7 @@ export default function StandingsTable({
           Won
         </span>
         <span className="text-right">Total</span>
-        <span className="hidden sm:block text-right" title="Gap to the leader">
+        <span className="hidden sm:block lg:hidden text-right" title="Gap to the leader">
           Gap
         </span>
         <span className="text-right" title="Interval: gap to the player just above">
@@ -146,7 +146,7 @@ export default function StandingsTable({
               <p className={`relative text-right font-bold tabular-nums text-gray-900 dark:text-white ${totalSize}`}>
                 {entry.total}
               </p>
-              <p className="relative hidden sm:block text-right text-xs tabular-nums text-gray-500 dark:text-gray-400">
+              <p className="relative hidden sm:block lg:hidden text-right text-xs tabular-nums text-gray-500 dark:text-gray-400">
                 {formatGap(entry)}
               </p>
               <p className="relative text-right text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-300">

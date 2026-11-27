@@ -3,6 +3,7 @@ import { computeMatchLeaderboard, type LeaderboardEntry } from '@/lib/domain/ran
 export interface SubmittedScore {
   playerId: string;
   value: number;
+  wrongShow?: boolean;
 }
 
 export interface RoundScore extends SubmittedScore {
@@ -67,7 +68,13 @@ export function appendRound(
 ): CachedRound[] {
   const submitted: CachedRound = {
     round: roundNumber,
-    scores: scores.map(({ playerId, value }) => ({ playerId, value, enteredBy, enteredAt })),
+    scores: scores.map(({ playerId, value, wrongShow }) => ({
+      playerId,
+      value,
+      enteredBy,
+      enteredAt,
+      ...(wrongShow ? { wrongShow: true } : {}),
+    })),
   };
   return [...rounds.filter((existing) => existing.round !== roundNumber), submitted];
 }

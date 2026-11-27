@@ -76,8 +76,36 @@ export function gameDisplayName(
 }
 
 /** Rules page for a match's game, or null when there are none to link to. */
-export function rulesPathFor(gameType: GameType | undefined): string | null {
-  return GAMES[toGameType(gameType)].rulesPath;
+export function rulesPathFor(gameType: GameType | undefined, gameLabel?: string | null): string | null {
+  return GAMES[toGameType(gameType)].rulesPath ?? namedVariantFor(gameType, gameLabel)?.rulesPath ?? null;
+}
+
+export interface NamedVariant {
+  key: string;
+  label: string;
+  blurb: string;
+  rulesPath: string;
+}
+
+export const LEAST_SHOWDOWN: NamedVariant = {
+  key: 'least-showdown',
+  label: 'Least Showdown',
+  blurb: '7 cards and an open joker. Call Show when you are lowest; a wrong show costs 50.',
+  rulesPath: '/rules/least-showdown',
+};
+
+export const NAMED_VARIANTS: NamedVariant[] = [LEAST_SHOWDOWN];
+
+export function namedVariantFor(
+  gameType: GameType | undefined,
+  gameLabel?: string | null
+): NamedVariant | null {
+  const key = ratingGameFor(gameType, gameLabel).key;
+  return NAMED_VARIANTS.find((variant) => variant.key === key) ?? null;
+}
+
+export function isLeastShowdown(gameType: GameType | undefined, gameLabel?: string | null): boolean {
+  return namedVariantFor(gameType, gameLabel)?.key === LEAST_SHOWDOWN.key;
 }
 
 export interface RatingGame {

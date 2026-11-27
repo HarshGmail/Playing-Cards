@@ -76,6 +76,8 @@ export interface Score {
   value: number;
   enteredBy: string;
   enteredAt: Date;
+  wrongShow?: boolean;
+  clientRoundId?: string;
   editHistory: Array<{ from: number; to: number; at: Date; by: string }>;
 }
 

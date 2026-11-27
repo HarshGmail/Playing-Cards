@@ -32,6 +32,7 @@ export async function ensureIndexes(): Promise<void> {
     { unique: true }
   );
   await scores.createIndex({ matchId: 1, round: 1 });
+  await scores.createIndex({ matchId: 1, clientRoundId: 1 }, { sparse: true });
 
   const friendships = await getFriendships();
   await friendships.createIndex({ userA: 1, userB: 1 }, { unique: true });

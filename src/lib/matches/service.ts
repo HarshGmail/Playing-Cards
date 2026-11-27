@@ -38,6 +38,7 @@ export interface MatchPlayer {
 export interface RoundScore {
   playerId: string;
   value: number;
+  wrongShow?: boolean;
 }
 
 export interface CreatedMatch {
@@ -288,14 +289,26 @@ export async function submitRound({
   matchId,
   userId,
   scores,
+  clientRoundId,
 }: {
   matchId: string;
   userId: string;
   scores: RoundScore[];
+  clientRoundId?: string;
 }): Promise<SubmittedRound> {
   const match = await findMatchDocument(matchId);
 
   if (match.creatorId !== userId) throw FORBIDDEN();
+
+  if (clientRoundId) {
+    const alreadyRecorded = await (await getScores()).findOne(
+      { matchId, clientRoundId },
+      { projection: { round: 1 } }
+    );
+    if (alreadyRecorded) {
+      return { matchId, round: alreadyRecorded.round, scoreCount: scores.length, version: match.version };
+    }
+  }
 
   const activePlayerIds = activeRosterEntries(match.roster).map((entry) => entry.userId);
 
@@ -329,6 +342,8 @@ export async function submitRound({
     enteredBy: userId,
     enteredAt: new Date(),
     editHistory: [],
+    ...(score.wrongShow ? { wrongShow: true } : {}),
+    ...(clientRoundId ? { clientRoundId } : {}),
   }));
 
   await withTransaction(async (session) => {
